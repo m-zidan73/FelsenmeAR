@@ -1013,9 +1013,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       ? normalizeDegrees(state.compassHeadingDegrees)
       : null;
     const isDistanceOk = typeof distanceMeters === "number" && distanceMeters <= CONFIG.allowedLocationRadiusMeters;
-    const isHeadingOk = typeof heading === "number" &&
-      heading >= CONFIG.allowedHeadingMinDegrees &&
-      heading <= CONFIG.allowedHeadingMaxDegrees;
+    const isHeadingOk = true;
 
     if (typeof distanceMeters === "number") {
       const accuracy = state.userPosition && typeof state.userPosition.accuracy === "number"
@@ -1072,28 +1070,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       };
     }
 
-    if (typeof state.compassHeadingDegrees !== "number") {
-      captureCompassHeading();
-      return {
-        allowed: false,
-        message: "Placement locked: allow motion/orientation, point north, then tap again.",
-        debug: "heading gate: waiting for compass"
-      };
-    }
-
-    const heading = normalizeDegrees(state.compassHeadingDegrees);
-    if (heading < CONFIG.allowedHeadingMinDegrees || heading > CONFIG.allowedHeadingMaxDegrees) {
-      return {
-        allowed: false,
-        message: "Placement locked: face north between 0-15 deg. Current: " + heading.toFixed(0) + " deg.",
-        debug: "heading gate: " + heading.toFixed(1) + " deg"
-      };
-    }
-
     return {
       allowed: true,
       message: "Placement unlocked.",
-      debug: "geo gate passed"
+      debug: "geo gate passed; heading gate disabled"
     };
   }
 
