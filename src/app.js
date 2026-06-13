@@ -21,8 +21,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     riseSpeedMetersPerSecond: 0.2,
     pinchMetersPerPixel: 0.0006667,
     editorKeyboardPinchSpeedMetersPerSecond: 0.2,
-    allowedLatitude: 49.9015622,
-    allowedLongitude: 8.8564976,
+    allowedLatitude: 49.90000549974582,
+    allowedLongitude: 8.85554978661026,
     allowedLocationRadiusMeters: 25,
     allowedHeadingMinDegrees: 0,
     allowedHeadingMaxDegrees: 15
