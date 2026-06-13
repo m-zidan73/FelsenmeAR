@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>AR Island Prototype - Web</title>
+    <link rel="stylesheet" href="src/styles.css?v=geo-status-2">
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="src/app.js?v=geo-status-2"></script>
+  </head>
+  <body>
+    <main id="app">
+      <section id="overlay" aria-live="polite">
+        <div class="status-card">
+          <p class="eyebrow">Web port</p>
+          <h1>AR Island Prototype</h1>
+          <p id="statusText">Enter AR, scan for a surface, then tap the detected plane.</p>
+          <dl>
+            <div>
+              <dt>Height</dt>
+              <dd><span id="heightValue">0.00</span> m</dd>
+            </div>
+            <div>
+              <dt>Separation</dt>
+              <dd><span id="separationValue">1.20</span> m</dd>
+            </div>
+          </dl>
+          <p id="xrDebugText" class="debug-line">XR: checking support</p>
+          <div id="geoStatus" class="geo-status">
+            <div>
+              <span>Distance</span>
+              <strong id="geoDistanceValue">waiting</strong>
+            </div>
+            <div>
+              <span>Heading</span>
+              <strong id="geoHeadingValue">waiting</strong>
+            </div>
+            <div>
+              <span>Gate</span>
+              <strong id="geoGateValue">locked</strong>
+            </div>
+          </div>
+        </div>
+        <div id="gestureIndicators" class="gesture-indicators" hidden aria-hidden="true">
+          <div class="gesture-indicator">
+            <span class="gesture-label">Swipe inward</span>
+            <span class="gesture-arrow">&gt;</span>
+          </div>
+          <div class="gesture-indicator">
+            <span class="gesture-arrow">&lt;</span>
+            <span class="gesture-label">Swipe inward</span>
+          </div>
+        </div>
+        <div class="control-row">
+          <button id="startArButton" type="button">Start Camera AR</button>
+          <button id="resetButton" type="button">Reset</button>
+          <button id="pinchButton" type="button">Hold C / Pinch</button>
+        </div>
+      </section>
+      <div id="canvasRoot" aria-hidden="true"></div>
+    </main>
+  </body>
+</html>

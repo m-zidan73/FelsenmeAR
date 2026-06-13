@@ -1,0 +1,249 @@
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  color: #f8fbff;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  touch-action: none;
+}
+
+#app {
+  background: #111820;
+}
+
+body.in-camera-ar #app {
+  background: transparent;
+}
+
+#app,
+#canvasRoot,
+canvas {
+  width: 100%;
+  height: 100%;
+}
+
+#canvasRoot {
+  position: fixed;
+  inset: 0;
+}
+
+canvas {
+  display: block;
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+.status-card {
+  grid-row: 1;
+  justify-self: start;
+  align-self: start;
+  width: min(360px, 100%);
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: rgba(17, 24, 32, 0.78);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #7bdff2;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  line-height: 1.15;
+}
+
+#statusText {
+  margin: 8px 0 12px;
+  color: #c8d6e5;
+  line-height: 1.35;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+dt {
+  color: #93a4b6;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+dd {
+  margin: 2px 0 0;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.debug-line {
+  margin: 10px 0 0;
+  color: #7bdff2;
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.geo-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(123, 223, 242, 0.22);
+}
+
+.geo-status div {
+  min-width: 0;
+}
+
+.geo-status span {
+  display: block;
+  color: #93a4b6;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.geo-status strong {
+  display: block;
+  margin-top: 2px;
+  color: #f8fbff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.geo-status strong.is-ok {
+  color: #8ef28e;
+}
+
+.geo-status strong.is-locked {
+  color: #ffb3b3;
+}
+
+.control-row {
+  grid-row: 3;
+  justify-self: end;
+  align-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.gesture-indicators {
+  grid-row: 2;
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(24px, 8vw, 96px);
+  pointer-events: none;
+}
+
+.gesture-indicators[hidden] {
+  display: none;
+}
+
+.gesture-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.5vw, 14px);
+  min-width: clamp(120px, 18vw, 190px);
+  padding: 12px 18px;
+  border: 2px solid rgba(248, 251, 255, 0.72);
+  border-radius: 999px;
+  background: rgba(17, 24, 32, 0.54);
+  box-shadow: 0 0 28px rgba(123, 223, 242, 0.48), 0 12px 28px rgba(0, 0, 0, 0.28);
+  color: rgba(248, 251, 255, 0.92);
+  opacity: 0.72;
+  animation: gesturePulse 1.25s ease-in-out infinite;
+}
+
+.gesture-arrow {
+  font-size: clamp(2.1rem, 5vw, 4rem);
+  line-height: 0.8;
+  font-weight: 900;
+}
+
+.gesture-label {
+  font-size: clamp(0.78rem, 1.7vw, 1.05rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+@keyframes gesturePulse {
+  0%,
+  100% {
+    transform: scale(0.88);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(248, 251, 255, 0.92);
+  color: #111820;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 520px) {
+  #overlay {
+    padding: 12px;
+  }
+
+  .status-card {
+    width: 100%;
+  }
+
+  .control-row {
+    justify-content: stretch;
+  }
+
+  button {
+    flex: 1 1 0;
+  }
+}
