@@ -25,7 +25,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     allowedLongitude: 8.85554978661026,
     allowedLocationRadiusMeters: 25,
     allowedHeadingMinDegrees: 0,
-    allowedHeadingMaxDegrees: 15
+    allowedHeadingMaxDegrees: 360
   };
 
   const state = {
