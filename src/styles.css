@@ -2,6 +2,7 @@ html,
 body {
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   margin: 0;
   overflow: hidden;
   background: transparent;
@@ -23,6 +24,7 @@ body.in-camera-ar #app {
 canvas {
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
 }
 
 #canvasRoot {
@@ -42,7 +44,7 @@ canvas {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
-  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
   box-sizing: border-box;
 }
 
@@ -50,7 +52,9 @@ canvas {
   grid-row: 1;
   justify-self: start;
   align-self: start;
-  width: min(360px, 100%);
+  width: min(360px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  max-height: calc(52dvh - env(safe-area-inset-top));
+  overflow: auto;
   padding: 14px 16px;
   border-radius: 8px;
   background: rgba(17, 24, 32, 0.78);
@@ -166,6 +170,7 @@ dd {
   align-items: center;
   justify-content: center;
   gap: clamp(24px, 8vw, 96px);
+  max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
   pointer-events: none;
 }
 
@@ -226,13 +231,17 @@ button {
   cursor: pointer;
 }
 
+body.in-camera-ar:not(.has-dom-overlay) #overlay {
+  opacity: 0.001;
+}
+
 button:active {
   transform: translateY(1px);
 }
 
 @media (max-width: 520px) {
   #overlay {
-    padding: 12px;
+    padding: calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
   }
 
   .status-card {
@@ -245,5 +254,43 @@ button:active {
 
   button {
     flex: 1 1 0;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 820px) {
+  #overlay {
+    grid-template-rows: auto minmax(96px, 1fr) auto;
+  }
+
+  .status-card {
+    width: min(420px, 38vw);
+    max-height: calc(58dvh - env(safe-area-inset-top));
+    padding: 12px 14px;
+  }
+
+  #statusText {
+    margin-bottom: 8px;
+  }
+
+  .geo-status {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .control-row {
+    justify-self: center;
+    max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+
+  .gesture-indicators {
+    align-self: end;
+    margin-bottom: clamp(48px, 11vh, 96px);
+    gap: clamp(28px, 9vw, 120px);
+  }
+}
+
+@media (orientation: landscape) and (min-aspect-ratio: 4 / 3) {
+  .gesture-indicators {
+    transform: translateY(4vh);
   }
 }

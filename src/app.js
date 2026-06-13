@@ -79,7 +79,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     geolocationWatchId: null,
     sunDirection: new THREE.Vector3(-0.3, 0.8, 0.5).normalize(),
     lastSunPosition: null,
-    sunReady: false
+    sunReady: false,
+    domOverlayActive: false,
+    xrHud: null
   };
 
   const ui = {
@@ -116,6 +118,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     addLights();
     addDesktopFallbackFloor();
     createReticleAndPlaneIndicator();
+    createXrFallbackHud();
     loadIslandModels();
 
     window.addEventListener("resize", onResize);
@@ -410,7 +413,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     setXRDebug("requesting hit-test source");
     state.xrHitTestSource = await session.requestHitTestSource({ space: state.xrViewerSpace });
 
+    state.domOverlayActive = Boolean(session.domOverlayState && session.domOverlayState.type);
     document.body.classList.add("in-camera-ar");
+    document.body.classList.toggle("has-dom-overlay", state.domOverlayActive);
+    setXrHudVisible(shouldUseXrFallbackHud());
     setGeoStatusVisible(true);
     captureCompassHeading();
     startLocationTracking();
@@ -434,6 +440,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.reticle.visible = false;
     state.planeIndicator.visible = false;
     document.body.classList.remove("in-camera-ar");
+    document.body.classList.remove("has-dom-overlay");
+    state.domOverlayActive = false;
+    setXrHudVisible(false);
     setGestureIndicatorsVisible(false);
     setGeoStatusVisible(false);
     stopLocationTracking();
@@ -476,6 +485,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     if (state.xrSession) {
       updateGeoStatus();
+      updateXrHudLayout();
     }
 
     if (state.cubesPlaced) {
@@ -992,12 +1002,253 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateHud("Move the iPad to detect a plane, then tap the green grid.");
   }
 
+  function createXrFallbackHud() {
+    state.scene.add(state.camera);
+
+    const root = new THREE.Group();
+    root.name = "XR Fallback HUD";
+    root.visible = false;
+    state.camera.add(root);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 512;
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+
+    const panel = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+      })
+    );
+    panel.renderOrder = 1000;
+    root.add(panel);
+
+    const indicators = new THREE.Group();
+    indicators.name = "XR Fallback Gesture Indicators";
+    indicators.visible = false;
+    indicators.add(createXrIndicatorCard(">", "SWIPE IN", -1));
+    indicators.add(createXrIndicatorCard("<", "SWIPE IN", 1));
+    root.add(indicators);
+
+    state.xrHud = {
+      root,
+      canvas,
+      context: canvas.getContext("2d"),
+      texture,
+      panel,
+      indicators,
+      lastText: "",
+      lastAspect: 0
+    };
+
+    refreshXrHudTexture();
+    updateXrHudLayout();
+  }
+
+  function createXrIndicatorCard(arrow, label, side) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 192;
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    drawRoundedRect(context, 12, 20, 488, 152, 72, "rgba(17, 24, 32, 0.54)", "rgba(248, 251, 255, 0.72)", 8);
+    context.fillStyle = "rgba(248, 251, 255, 0.94)";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = "900 76px Arial";
+    context.fillText(arrow, side < 0 ? 334 : 178, 92);
+    context.font = "800 34px Arial";
+    context.fillText(label, side < 0 ? 180 : 330, 94);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.5, 0.19),
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.72,
+        depthTest: false,
+        depthWrite: false
+      })
+    );
+    mesh.renderOrder = 1001;
+    mesh.userData.side = side;
+    mesh.userData.baseScale = 1;
+    return mesh;
+  }
+
+  function setXrHudVisible(isVisible) {
+    if (!state.xrHud) {
+      return;
+    }
+
+    state.xrHud.root.visible = isVisible;
+    refreshXrHudTexture();
+    updateXrHudLayout();
+  }
+
+  function updateXrHudLayout() {
+    if (!state.xrHud || !state.xrHud.root.visible) {
+      return;
+    }
+
+    const distance = 1.25;
+    const aspect = Math.max(0.55, state.camera.aspect || (window.innerWidth / window.innerHeight));
+    const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(state.camera.fov) * 0.5) * distance;
+    const visibleWidth = visibleHeight * aspect;
+    const margin = Math.max(0.08, Math.min(0.16, visibleWidth * 0.045));
+    const panelWidth = Math.min(1.12, visibleWidth - margin * 2);
+    const panelHeight = panelWidth * 0.45;
+
+    state.xrHud.panel.scale.set(panelWidth, panelHeight, 1);
+    state.xrHud.panel.position.set(
+      -visibleWidth * 0.5 + panelWidth * 0.5 + margin,
+      visibleHeight * 0.5 - panelHeight * 0.5 - margin,
+      -distance
+    );
+
+    const indicatorOffset = Math.min(visibleWidth * 0.24, 0.58);
+    const indicatorY = -visibleHeight * 0.08;
+    state.xrHud.indicators.children.forEach((indicator) => {
+      const side = indicator.userData.side || 1;
+      indicator.position.set(side * indicatorOffset, indicatorY, -distance);
+      const pulse = 0.94 + Math.sin(performance.now() * 0.006) * 0.12;
+      indicator.scale.setScalar(pulse);
+    });
+
+    state.xrHud.lastAspect = aspect;
+  }
+
+  function refreshXrHudTexture() {
+    if (!state.xrHud) {
+      return;
+    }
+
+    const text = [
+      ui.statusText.textContent,
+      "Height " + ui.heightValue.textContent + " m",
+      "Separation " + ui.separationValue.textContent + " m",
+      "Distance " + ui.geoDistanceValue.textContent,
+      "Heading " + ui.geoHeadingValue.textContent,
+      "Gate " + ui.geoGateValue.textContent,
+      ui.xrDebugText.textContent
+    ].join("|");
+
+    if (text === state.xrHud.lastText) {
+      return;
+    }
+
+    state.xrHud.lastText = text;
+    const context = state.xrHud.context;
+    const canvas = state.xrHud.canvas;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    drawRoundedRect(context, 18, 18, canvas.width - 36, canvas.height - 36, 32, "rgba(17, 24, 32, 0.80)", "rgba(123, 223, 242, 0.24)", 4);
+
+    context.fillStyle = "#7bdff2";
+    context.font = "800 34px Arial";
+    context.textAlign = "left";
+    context.textBaseline = "top";
+    context.fillText("WEB PORT", 54, 48);
+
+    context.fillStyle = "#f8fbff";
+    context.font = "800 58px Arial";
+    context.fillText("AR Island Prototype", 54, 92);
+
+    context.fillStyle = "#c8d6e5";
+    context.font = "36px Arial";
+    drawWrappedText(context, ui.statusText.textContent, 54, 168, 900, 42, 2);
+
+    context.fillStyle = "#93a4b6";
+    context.font = "800 25px Arial";
+    context.fillText("HEIGHT", 54, 278);
+    context.fillText("SEPARATION", 330, 278);
+    context.fillText("DISTANCE", 606, 278);
+
+    context.fillStyle = "#f8fbff";
+    context.font = "44px Arial";
+    context.fillText(ui.heightValue.textContent + " m", 54, 312);
+    context.fillText(ui.separationValue.textContent + " m", 330, 312);
+    context.fillText(ui.geoDistanceValue.textContent, 606, 312);
+
+    context.fillStyle = "#7bdff2";
+    context.font = "30px Arial";
+    context.fillText("Heading " + ui.geoHeadingValue.textContent + " | Gate " + ui.geoGateValue.textContent, 54, 390);
+    context.fillText(ui.xrDebugText.textContent, 54, 432);
+
+    state.xrHud.texture.needsUpdate = true;
+  }
+
+  function drawWrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
+    const words = String(text || "").split(/\s+/);
+    let line = "";
+    let lineCount = 0;
+
+    for (let index = 0; index < words.length; index += 1) {
+      const testLine = line ? line + " " + words[index] : words[index];
+      if (context.measureText(testLine).width > maxWidth && line) {
+        context.fillText(line, x, y + lineCount * lineHeight);
+        line = words[index];
+        lineCount += 1;
+        if (lineCount >= maxLines) {
+          return;
+        }
+      } else {
+        line = testLine;
+      }
+    }
+
+    if (line && lineCount < maxLines) {
+      context.fillText(line, x, y + lineCount * lineHeight);
+    }
+  }
+
+  function drawRoundedRect(context, x, y, width, height, radius, fill, stroke, lineWidth) {
+    const right = x + width;
+    const bottom = y + height;
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.lineTo(right - radius, y);
+    context.quadraticCurveTo(right, y, right, y + radius);
+    context.lineTo(right, bottom - radius);
+    context.quadraticCurveTo(right, bottom, right - radius, bottom);
+    context.lineTo(x + radius, bottom);
+    context.quadraticCurveTo(x, bottom, x, bottom - radius);
+    context.lineTo(x, y + radius);
+    context.quadraticCurveTo(x, y, x + radius, y);
+    context.closePath();
+    context.fillStyle = fill;
+    context.fill();
+    if (stroke && lineWidth > 0) {
+      context.strokeStyle = stroke;
+      context.lineWidth = lineWidth;
+      context.stroke();
+    }
+  }
+
   function setGestureIndicatorsVisible(isVisible) {
     ui.gestureIndicators.hidden = !isVisible;
+    if (state.xrHud) {
+      state.xrHud.indicators.visible = isVisible && shouldUseXrFallbackHud();
+    }
   }
 
   function setGeoStatusVisible(isVisible) {
     ui.geoStatus.dataset.active = isVisible ? "true" : "false";
+  }
+
+  function shouldUseXrFallbackHud() {
+    return Boolean(state.xrSession) && (!state.domOverlayActive || isLikelyIpadDevice());
+  }
+
+  function isLikelyIpadDevice() {
+    const userAgent = navigator.userAgent || "";
+    return /iPad/.test(userAgent) || (/Macintosh/.test(userAgent) && navigator.maxTouchPoints > 1);
   }
 
   function updateGeoStatus() {
@@ -1036,6 +1287,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     ui.geoHeadingValue.classList.toggle("is-locked", !isHeadingOk);
     ui.geoGateValue.classList.toggle("is-ok", isDistanceOk && isHeadingOk);
     ui.geoGateValue.classList.toggle("is-locked", !(isDistanceOk && isHeadingOk));
+    refreshXrHudTexture();
   }
 
   function getPlacementGateStatus() {
@@ -1097,6 +1349,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const currentHeight = Math.max(0, state.placementCenter.y - state.planeHeight);
     ui.heightValue.textContent = currentHeight.toFixed(2);
     ui.separationValue.textContent = state.currentSeparation.toFixed(2);
+    refreshXrHudTexture();
   }
 
   function setXRDebug(message) {
