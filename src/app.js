@@ -12,26 +12,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   const CONFIG = {
     modelFootprintMeters: 2.5,
-    contactEpsilonMeters: 0.01,
-    contactProxyScale: 0.8,
-    targetCenterHeightMeters: 1.0,
     floatingObjectTargetHeightMeters: 1.0,
     floatingObjectStartDelayMs: 2000,
-    initialVisibleGapMeters: 0,
-    pinchReadyVisibleGapMeters: 0.002,
-    initialSeparationMeters: 1.2,
     riseSpeedMetersPerSecond: 0.2,
-    pinchMetersPerPixel: 0.0006667,
-    editorKeyboardPinchSpeedMetersPerSecond: 0.2,
-    allowedLatitude: 49.90000549974582,
-    allowedLongitude: 8.85554978661026,
     allowedLocations: [
       { latitude: 49.90000549974582, longitude: 8.85554978661026 },
       { latitude: 49.8686172198458, longitude: 8.649528051715288 }
     ],
-    allowedLocationRadiusMeters: 25,
-    allowedHeadingMinDegrees: 0,
-    allowedHeadingMaxDegrees: 360
+    allowedLocationRadiusMeters: 25
   };
 
   const state = {
@@ -50,42 +38,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     planeIndicator: null,
     sunLight: null,
     shadowReceiver: null,
-    islandAssets: null,
+    modelAssets: null,
     bouldersRoot: null,
     floatingObject: null,
-    floatingObjectBaseY: 0,
-    floatingObjectTargetY: 0,
-    floatingObjectLocalToWorldScale: 1,
     floatingObjectBaseWorldPosition: new THREE.Vector3(),
     floatingObjectTargetWorldPosition: new THREE.Vector3(),
     floatingObjectPlacedAtTime: 0,
     floatingObjectTriggered: false,
     modelsLoaded: false,
     modelLoadError: false,
-    contactProxySize: null,
-    oceanicIsland: null,
-    continentalIsland: null,
-    insideEarth: null,
-    oceanicMixer: null,
-    oceanicAction: null,
     placementCenter: new THREE.Vector3(),
-    separationAxis: new THREE.Vector3(1, 0, 0),
-    offset: new THREE.Vector3(),
     planeHeight: 0,
-    currentSeparation: CONFIG.initialSeparationMeters,
-    contactSeparation: CONFIG.initialSeparationMeters,
-    floatStartSeparation: CONFIG.initialSeparationMeters,
-    pinchReadySeparation: CONFIG.initialSeparationMeters,
-    previousPinchDistance: -1,
-    cubesPlaced: false,
-    cubesAtTargetHeight: false,
-    pinchEnabled: false,
-    contactReached: false,
-    isSwiping: false,
+    bouldersPlaced: false,
     animationStarted: false,
     animationComplete: false,
-    interactionsFrozen: false,
-    holdingPinchButton: false,
     lastTime: 0,
     hitFrames: 0,
     noHitFrames: 0,
@@ -110,7 +76,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     xrDebugText: document.getElementById("xrDebugText"),
     startArButton: document.getElementById("startArButton"),
     resetButton: document.getElementById("resetButton"),
-    gestureIndicators: document.getElementById("gestureIndicators"),
     formationSlider: document.getElementById("formationSlider"),
     formationRange: document.getElementById("formationRange"),
     formationFill: document.querySelector(".formation-fill"),
@@ -140,7 +105,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     addDesktopFallbackFloor();
     createReticleAndPlaneIndicator();
     createXrFallbackHud();
-    loadIslandModels();
+    loadBoulderModel();
 
     window.addEventListener("resize", onResize);
     ui.startArButton.addEventListener("click", startARSession);
@@ -223,7 +188,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     window.__formationSliderStep = stepIndex;
   }
 
-  async function loadIslandModels() {
+  async function loadBoulderModel() {
     const loader = new GLTFLoader();
     const assetVersion = Date.now();
     const assetUrl = (fileName) => "Assets/" + fileName + "?v=" + assetVersion;
@@ -231,7 +196,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     try {
       const boulders = await loader.loadAsync(assetUrl("Boulders%20on%20Ground.glb"));
 
-      state.islandAssets = {
+      state.modelAssets = {
         boulders
       };
       state.modelsLoaded = true;
@@ -251,24 +216,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    window.__arIslandDebug = {
+    window.__arBoulderDebug = {
       getState() {
         return {
           modelsLoaded: state.modelsLoaded,
           modelLoadError: state.modelLoadError,
-          bouldersPlaced: state.cubesPlaced,
-          currentSeparation: state.currentSeparation,
-          contactSeparation: state.contactSeparation,
-          contactProxySize: state.contactProxySize,
-          floatStartSeparation: state.floatStartSeparation,
-          pinchReadySeparation: state.pinchReadySeparation,
-          pinchEnabled: state.pinchEnabled,
-          contactReached: state.contactReached,
+          bouldersPlaced: state.bouldersPlaced,
           animationStarted: state.animationStarted,
           animationComplete: state.animationComplete,
           floatingObjectTriggered: state.floatingObjectTriggered,
           floatingObjectY: state.floatingObject ? state.floatingObject.position.y : null,
-          floatingObjectTargetY: state.floatingObjectTargetY
+          floatingObjectTargetWorldY: state.floatingObjectTargetWorldPosition.y
         };
       },
       placeAtOrigin() {
@@ -276,34 +234,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
           return false;
         }
 
-        if (state.cubesPlaced) {
+        if (state.bouldersPlaced) {
           reset();
         }
 
-        state.separationAxis.set(1, 0, 0);
-        placeIslands(new THREE.Vector3(0, 0, 0));
-        updateCubePositions();
-        return true;
-      },
-      placeWithAxis(x, z) {
-        if (!state.modelsLoaded) {
-          return false;
-        }
-
-        if (state.cubesPlaced) {
-          reset();
-        }
-
-        placeIslands(new THREE.Vector3(0, 0, 0), new THREE.Vector3(x, 0, z));
-        updateCubePositions();
+        placeBoulders(new THREE.Vector3(0, 0, 0));
+        updateBoulderPlacement();
         return true;
       },
       triggerFloat() {
-        if (!state.cubesPlaced) {
+        if (!state.bouldersPlaced) {
           return false;
         }
 
-        applyInwardPinch(0);
+        triggerFloatingObject();
         return true;
       },
       getAlignmentSnapshot() {
@@ -502,7 +446,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     document.body.classList.remove("has-dom-overlay");
     state.domOverlayActive = false;
     setXrHudVisible(false);
-    setGestureIndicatorsVisible(false);
     setGeoStatusVisible(false);
     stopLocationTracking();
     ui.startArButton.disabled = state.modelLoadError || !state.modelsLoaded;
@@ -510,7 +453,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   async function onXRSelect() {
-    if (state.cubesPlaced) {
+    if (state.bouldersPlaced) {
       return;
     }
 
@@ -532,7 +475,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     const anchor = await createPlacementAnchor();
-    placeIslands(state.latestHit.position, null, anchor);
+    placeBoulders(state.latestHit.position, anchor);
   }
 
   function render(time, frame) {
@@ -549,18 +492,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       updateXrHudLayout();
     }
 
-    if (state.cubesPlaced) {
+    if (state.bouldersPlaced) {
       updateFloatingObject(deltaSeconds);
-      applyEditorSimulationControls(deltaSeconds);
-      updateOceanicAnimation(deltaSeconds);
     }
 
     state.renderer.render(state.scene, state.camera);
   }
 
   function updateHitTest(frame) {
-    if (!state.xrHitTestSource || !state.xrReferenceSpace || state.cubesPlaced) {
-      if (!state.cubesPlaced && performance.now() - state.lastScanDebugTime > 900) {
+    if (!state.xrHitTestSource || !state.xrReferenceSpace || state.bouldersPlaced) {
+      if (!state.bouldersPlaced && performance.now() - state.lastScanDebugTime > 900) {
         state.lastScanDebugTime = performance.now();
         setXRDebug("waiting for hit-test setup");
       }
@@ -643,7 +584,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const previousPlaneHeight = state.planeHeight;
     state.placementCenter.copy(anchoredPose.position);
     state.planeHeight = anchoredPose.position.y;
-    updateCubePositions();
+    updateBoulderPlacement();
 
     if (state.shadowReceiver) {
       state.shadowReceiver.position.copy(anchoredPose.position);
@@ -665,56 +606,34 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.xrPlacementAnchorSpace = null;
   }
 
-  function placeIslands(center, forcedSeparationAxis, anchor) {
+  function placeBoulders(center, anchor) {
     state.placementCenter.copy(center);
     state.planeHeight = center.y;
     state.xrPlacementAnchor = anchor || null;
     state.xrPlacementAnchorSpace = anchor ? anchor.anchorSpace : null;
 
-    if (forcedSeparationAxis && forcedSeparationAxis.lengthSq() > 0.001) {
-      state.separationAxis.copy(forcedSeparationAxis).normalize();
-    } else {
-      const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(state.camera.quaternion);
-      cameraRight.y = 0;
-      if (cameraRight.lengthSq() > 0.001) {
-        state.separationAxis.copy(cameraRight.normalize());
-      } else {
-        state.separationAxis.set(1, 0, 0);
-      }
-    }
-
-    const sharedModelScale = getSharedIslandScale(state.islandAssets.boulders.scene);
-    const boulders = createBoulderInstance(state.islandAssets.boulders, sharedModelScale);
+    const modelScale = getModelScale(state.modelAssets.boulders.scene);
+    const boulders = createBoulderInstance(state.modelAssets.boulders, modelScale);
     state.bouldersRoot = boulders.root;
     state.floatingObject = boulders.floatingObject;
-    state.currentSeparation = CONFIG.initialSeparationMeters;
 
     state.scene.add(state.bouldersRoot);
     createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
 
-    state.cubesPlaced = true;
-    state.cubesAtTargetHeight = true;
-    state.pinchEnabled = true;
-    state.contactReached = false;
-    state.isSwiping = false;
+    state.bouldersPlaced = true;
     state.animationStarted = false;
     state.animationComplete = false;
     state.floatingObjectTriggered = false;
-    state.interactionsFrozen = false;
     state.reticle.visible = false;
     state.planeIndicator.visible = false;
-    setGestureIndicatorsVisible(false);
     positionSunLightAt(center);
 
-    updateCubePositions();
+    updateBoulderPlacement();
     state.bouldersRoot.updateMatrixWorld(true);
     if (state.floatingObject) {
       state.floatingObject.getWorldPosition(state.floatingObjectBaseWorldPosition);
       state.floatingObjectTargetWorldPosition.copy(state.floatingObjectBaseWorldPosition);
       state.floatingObjectTargetWorldPosition.y += CONFIG.floatingObjectTargetHeightMeters;
-      state.floatingObjectBaseY = state.floatingObject.position.y;
-      state.floatingObjectTargetY = state.floatingObject.position.y;
-      state.floatingObjectLocalToWorldScale = sharedModelScale;
       state.floatingObjectPlacedAtTime = performance.now();
     }
     updateHud(state.floatingObject
@@ -746,81 +665,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     };
   }
 
-  function getSharedIslandScale(referenceScene) {
+  function getModelScale(referenceScene) {
     const bounds = new THREE.Box3().setFromObject(referenceScene);
     const size = bounds.getSize(new THREE.Vector3());
     const footprint = Math.max(size.x, size.z, 0.001);
 
     return CONFIG.modelFootprintMeters / footprint;
-  }
-
-  function createIslandInstance(gltf, name, modelScale) {
-    const root = new THREE.Group();
-    root.name = name + " Root";
-
-    const model = cloneModelForScene(gltf.scene);
-    root.add(model);
-
-    model.scale.setScalar(modelScale);
-
-    const scaledBounds = new THREE.Box3().setFromObject(root);
-
-    applyModelShadowSettings(root);
-    return {
-      root,
-      localCenterX: (scaledBounds.min.x + scaledBounds.max.x) * 0.5,
-      localMinX: scaledBounds.min.x,
-      localMaxX: scaledBounds.max.x,
-      localSizeY: scaledBounds.max.y - scaledBounds.min.y,
-      localSizeZ: scaledBounds.max.z - scaledBounds.min.z
-    };
-  }
-
-  function getContactSeparation(oceanic, continental) {
-    const continentalHalfWidth = state.contactProxySize.x * 0.5;
-    const oceanicContactHalfWidth = continentalHalfWidth;
-    const continentalContactHalfWidth = continentalHalfWidth;
-    const oceanicContactMaxX = oceanic.localCenterX + oceanicContactHalfWidth;
-    const continentalContactMinX = continental.localCenterX - continentalContactHalfWidth;
-    const edgeDistance = oceanicContactMaxX - continentalContactMinX;
-    return Math.max(0.05, edgeDistance + CONFIG.contactEpsilonMeters);
-  }
-
-  function getSharedContactProxySize(referenceModel) {
-    return {
-      x: (referenceModel.localMaxX - referenceModel.localMinX) * CONFIG.contactProxyScale,
-      y: referenceModel.localSizeY * CONFIG.contactProxyScale,
-      z: referenceModel.localSizeZ * CONFIG.contactProxyScale
-    };
-  }
-
-  function getSeparationForVisibleGap(oceanic, continental, visibleGapMeters) {
-    const edgeDistance = oceanic.localMaxX - continental.localMinX;
-    return Math.max(0.05, edgeDistance + visibleGapMeters);
-  }
-
-  function alignIslandAxesToSeparationAxis() {
-    if (!state.oceanicIsland || !state.continentalIsland) {
-      return;
-    }
-
-    const axis = state.separationAxis.clone();
-    axis.y = 0;
-    if (axis.lengthSq() <= 0.001) {
-      axis.set(1, 0, 0);
-    } else {
-      axis.normalize();
-    }
-
-    const alignment = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(1, 0, 0),
-      axis
-    );
-    state.oceanicIsland.quaternion.copy(alignment);
-    state.continentalIsland.quaternion.copy(alignment);
-    if (state.insideEarth) {
-      state.insideEarth.quaternion.copy(alignment);
-    }
   }
 
   function cloneModelForScene(source) {
@@ -862,34 +712,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     });
   }
 
-  function setupOceanicAnimation(animations) {
-    if (!animations || !animations.length || !state.oceanicIsland) {
-      updateHud("Oceanic model has no animation. The islands can still be placed and pinched.");
-      return;
-    }
-
-    state.oceanicMixer = new THREE.AnimationMixer(state.oceanicIsland);
-    state.oceanicAction = state.oceanicMixer.clipAction(animations[0]);
-    state.oceanicAction.setLoop(THREE.LoopOnce, 1);
-    state.oceanicAction.clampWhenFinished = true;
-    state.oceanicAction.enabled = true;
-    state.oceanicAction.paused = true;
-    state.oceanicAction.play();
-
-    state.oceanicMixer.addEventListener("finished", (event) => {
-      if (event.action !== state.oceanicAction) {
-        return;
-      }
-
-      state.animationComplete = true;
-      state.interactionsFrozen = true;
-      state.isSwiping = false;
-      state.holdingPinchButton = false;
-      state.oceanicAction.paused = true;
-      updateHud("Animation complete. Swiping is now locked until Reset.");
-    });
-  }
-
   function createShadowReceiver(center, orientation) {
     if (state.shadowReceiver) {
       state.scene.remove(state.shadowReceiver);
@@ -913,34 +735,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.shadowReceiver.quaternion.copy(orientation);
     }
     state.scene.add(state.shadowReceiver);
-  }
-
-  function raiseCubesTowardTarget(deltaSeconds) {
-    if (state.cubesAtTargetHeight) {
-      return;
-    }
-
-    const targetY = state.planeHeight + CONFIG.targetCenterHeightMeters;
-    const maxStep = CONFIG.riseSpeedMetersPerSecond * deltaSeconds;
-    const nextY = moveTowards(state.placementCenter.y, targetY, maxStep);
-    state.placementCenter.y = nextY;
-    state.cubesAtTargetHeight = Math.abs(nextY - targetY) <= 0.00001;
-    const riseProgress = CONFIG.targetCenterHeightMeters > 0
-      ? THREE.MathUtils.clamp((state.placementCenter.y - state.planeHeight) / CONFIG.targetCenterHeightMeters, 0, 1)
-      : 1;
-    state.currentSeparation = THREE.MathUtils.lerp(
-      state.floatStartSeparation,
-      state.pinchReadySeparation,
-      riseProgress
-    );
-    updateCubePositions();
-
-    if (state.cubesAtTargetHeight) {
-      state.pinchEnabled = true;
-      updateHud("At target height. Pinch inward to move the islands closer.");
-    } else {
-      updateHud("Floating upward. Pinch unlocks when the 1 cm gap is ready.");
-    }
   }
 
   function updateFloatingObject(deltaSeconds) {
@@ -973,53 +767,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     if (Math.abs(state.floatingObjectTargetWorldPosition.y - state.floatingObject.getWorldPosition(new THREE.Vector3()).y) <= 0.00001) {
       state.animationComplete = true;
-      state.isSwiping = false;
-      state.holdingPinchButton = false;
       updateHud("Object_5 reached 1.00 m.");
     } else {
       updateHud("Object_5 is floating upward.");
     }
   }
 
-  function applyEditorSimulationControls(deltaSeconds) {
-  }
-
-  function onTouchMove(event) {
-    if (!state.cubesPlaced || event.touches.length !== 2 || state.interactionsFrozen || !state.pinchEnabled) {
-      state.previousPinchDistance = -1;
-      setSwipeActive(false);
-      return;
-    }
-
-    event.preventDefault();
-    const first = event.touches[0];
-    const second = event.touches[1];
-    const pinchDistance = Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
-
-    if (state.previousPinchDistance < 0) {
-      state.previousPinchDistance = pinchDistance;
-      return;
-    }
-
-    const inwardPixels = state.previousPinchDistance - pinchDistance;
-    state.previousPinchDistance = pinchDistance;
-
-    if (inwardPixels <= 0) {
-      setSwipeActive(false);
-      return;
-    }
-
-    setSwipeActive(true);
-    applyInwardPinch(inwardPixels * CONFIG.pinchMetersPerPixel);
-    updateHud("Pinch detected. Object_5 is floating upward.");
-  }
-
-  function onTouchEnd() {
-    state.previousPinchDistance = -1;
-    setSwipeActive(false);
-  }
-
-  function updateCubePositions() {
+  function updateBoulderPlacement() {
     if (!state.bouldersRoot) {
       return;
     }
@@ -1059,11 +813,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     };
   }
 
-  function applyInwardPinch(amountMeters) {
-    if (state.interactionsFrozen) {
-      return;
-    }
-
+  function triggerFloatingObject() {
     if (!state.floatingObject) {
       updateHud("Object_5 was not found, so nothing can float.");
       return;
@@ -1071,46 +821,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     state.floatingObjectTriggered = true;
     state.animationStarted = true;
-    state.currentSeparation = Math.max(0, state.currentSeparation - amountMeters);
-  }
-
-  function setSwipeActive(isActive) {
-    if (state.interactionsFrozen) {
-      state.isSwiping = false;
-      return;
-    }
-
-    state.isSwiping = isActive;
-    if (isActive && state.pinchEnabled) {
-      applyInwardPinch(0);
-    }
-  }
-
-  function updateOceanicAnimationPlayback() {
-    if (!state.oceanicAction || state.animationComplete) {
-      return;
-    }
-
-    if (!state.contactReached) {
-      state.oceanicAction.paused = true;
-      return;
-    }
-
-    if (state.isSwiping) {
-      state.animationStarted = true;
-      state.oceanicAction.paused = false;
-    } else if (state.animationStarted) {
-      state.oceanicAction.paused = true;
-      updateHud("Animation paused.");
-    }
-  }
-
-  function updateOceanicAnimation(deltaSeconds) {
-    if (!state.oceanicMixer || state.animationComplete) {
-      return;
-    }
-
-    state.oceanicMixer.update(deltaSeconds);
   }
 
   function reset() {
@@ -1120,59 +830,23 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.scene.remove(state.bouldersRoot);
       disposeObject(state.bouldersRoot);
     }
-    if (state.oceanicIsland) {
-      state.scene.remove(state.oceanicIsland);
-      disposeObject(state.oceanicIsland);
-    }
-    if (state.continentalIsland) {
-      state.scene.remove(state.continentalIsland);
-      disposeObject(state.continentalIsland);
-    }
-    if (state.insideEarth) {
-      state.scene.remove(state.insideEarth);
-      disposeObject(state.insideEarth);
-    }
     if (state.shadowReceiver) {
       state.scene.remove(state.shadowReceiver);
       disposeObject(state.shadowReceiver);
     }
 
-    if (state.oceanicAction) {
-      state.oceanicAction.stop();
-    }
-
-    state.oceanicIsland = null;
-    state.continentalIsland = null;
-    state.insideEarth = null;
     state.bouldersRoot = null;
     state.floatingObject = null;
-    state.floatingObjectBaseY = 0;
-    state.floatingObjectTargetY = 0;
-    state.floatingObjectLocalToWorldScale = 1;
     state.floatingObjectBaseWorldPosition.set(0, 0, 0);
     state.floatingObjectTargetWorldPosition.set(0, 0, 0);
     state.floatingObjectPlacedAtTime = 0;
     state.floatingObjectTriggered = false;
-    state.oceanicMixer = null;
-    state.oceanicAction = null;
     state.shadowReceiver = null;
     state.placementCenter.set(0, 0, 0);
     state.planeHeight = 0;
-    state.currentSeparation = 0;
-    state.contactSeparation = CONFIG.initialSeparationMeters;
-    state.floatStartSeparation = CONFIG.initialSeparationMeters;
-    state.pinchReadySeparation = CONFIG.initialSeparationMeters;
-    state.previousPinchDistance = -1;
-    state.cubesPlaced = false;
-    state.cubesAtTargetHeight = false;
-    state.pinchEnabled = false;
-    setGestureIndicatorsVisible(false);
-    state.contactReached = false;
-    state.isSwiping = false;
+    state.bouldersPlaced = false;
     state.animationStarted = false;
     state.animationComplete = false;
-    state.interactionsFrozen = false;
-    state.holdingPinchButton = false;
     updateHud("Move the iPad to detect a plane, then tap the green grid.");
   }
 
@@ -1202,59 +876,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     panel.renderOrder = 1000;
     root.add(panel);
 
-    const indicators = new THREE.Group();
-    indicators.name = "XR Fallback Gesture Indicators";
-    indicators.visible = false;
-    indicators.add(createXrIndicatorCard(">", "SWIPE IN", -1));
-    indicators.add(createXrIndicatorCard("<", "SWIPE IN", 1));
-    root.add(indicators);
-
     state.xrHud = {
       root,
       canvas,
       context: canvas.getContext("2d"),
       texture,
       panel,
-      indicators,
       lastText: "",
       lastAspect: 0
     };
 
     refreshXrHudTexture();
     updateXrHudLayout();
-  }
-
-  function createXrIndicatorCard(arrow, label, side) {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 192;
-    const context = canvas.getContext("2d");
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    drawRoundedRect(context, 12, 20, 488, 152, 72, "rgba(17, 24, 32, 0.54)", "rgba(248, 251, 255, 0.72)", 8);
-    context.fillStyle = "rgba(248, 251, 255, 0.94)";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.font = "900 76px Arial";
-    context.fillText(arrow, side < 0 ? 334 : 178, 92);
-    context.font = "800 34px Arial";
-    context.fillText(label, side < 0 ? 180 : 330, 94);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.5, 0.19),
-      new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 0.72,
-        depthTest: false,
-        depthWrite: false
-      })
-    );
-    mesh.renderOrder = 1001;
-    mesh.userData.side = side;
-    mesh.userData.baseScale = 1;
-    return mesh;
   }
 
   function setXrHudVisible(isVisible) {
@@ -1286,15 +919,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       visibleHeight * 0.5 - panelHeight * 0.5 - margin,
       -distance
     );
-
-    const indicatorOffset = Math.min(visibleWidth * 0.24, 0.58);
-    const indicatorY = -visibleHeight * 0.08;
-    state.xrHud.indicators.children.forEach((indicator) => {
-      const side = indicator.userData.side || 1;
-      indicator.position.set(side * indicatorOffset, indicatorY, -distance);
-      const pulse = 0.94 + Math.sin(performance.now() * 0.006) * 0.12;
-      indicator.scale.setScalar(pulse);
-    });
 
     state.xrHud.lastAspect = aspect;
   }
@@ -1402,15 +1026,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       context.strokeStyle = stroke;
       context.lineWidth = lineWidth;
       context.stroke();
-    }
-  }
-
-  function setGestureIndicatorsVisible(isVisible) {
-    if (ui.gestureIndicators) {
-      ui.gestureIndicators.hidden = !isVisible;
-    }
-    if (state.xrHud) {
-      state.xrHud.indicators.visible = isVisible && shouldUseXrFallbackHud();
     }
   }
 
@@ -1542,7 +1157,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       currentHeight = Math.max(0, floatingWorldPosition.y - state.floatingObjectBaseWorldPosition.y);
     }
     ui.heightValue.textContent = currentHeight.toFixed(2);
-    ui.separationValue.textContent = state.currentSeparation.toFixed(2);
+    ui.separationValue.textContent = "0.00";
     refreshXrHudTexture();
   }
 
@@ -1657,7 +1272,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const z = Math.cos(localAzimuth) * Math.cos(elevation) * radius;
 
     state.sunDirection.set(x, y, z).normalize();
-    positionSunLightAt(state.cubesPlaced ? state.placementCenter : new THREE.Vector3());
+    positionSunLightAt(state.bouldersPlaced ? state.placementCenter : new THREE.Vector3());
     state.sunReady = true;
     if (!isCompassRefresh) {
       setXRDebug("sun shadows: elevation " + THREE.MathUtils.radToDeg(sun.elevation).toFixed(1) + " deg");
