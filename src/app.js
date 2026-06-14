@@ -600,7 +600,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const center = bounds.getCenter(new THREE.Vector3());
     model.position.x -= center.x;
     model.position.z -= center.z;
-    model.position.y -= bounds.min.y;
 
     applyModelShadowSettings(root);
     return {
