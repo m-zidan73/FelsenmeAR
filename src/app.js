@@ -13,7 +13,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   const CONFIG = {
     modelFootprintMeters: 2.5,
     floatingObjectTargetHeightMeters: 1.0,
-    floatingObjectStartDelayMs: 2000,
+    floatingObjectStartDelayMs: 0,
+    childRevealDurationSeconds: 3,
     riseSpeedMetersPerSecond: 0.2,
     allowedLocations: [
       { latitude: 49.90000549974582, longitude: 8.85554978661026 },
@@ -45,6 +46,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     floatingObjectTargetWorldPosition: new THREE.Vector3(),
     floatingObjectPlacedAtTime: 0,
     floatingObjectTriggered: false,
+    floatingObjectRevealMeshes: [],
+    floatingObjectRevealStarted: false,
+    floatingObjectRevealProgress: 0,
     modelsLoaded: false,
     modelLoadError: false,
     placementCenter: new THREE.Vector3(),
@@ -124,7 +128,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    let activeStep = 0;
+    let activeStep = 4;
     const snapThreshold = 0.16;
 
     const applySliderValue = (rawValue, shouldSnap) => {
@@ -155,6 +159,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     };
 
     ui.formationRange.addEventListener("pointerdown", () => {
+      ui.formationSlider.classList.remove("is-prompting");
       ui.formationSlider.classList.add("is-dragging");
     });
 
@@ -180,12 +185,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       applySliderValue(ui.formationRange.value, true);
     });
 
-    applySliderValue(0, true);
+    ui.formationSlider.classList.add("is-prompting");
+    applySliderValue(4, true);
   }
 
   function onFormationStepSelected(stepIndex) {
-    // Reserved for the stage-specific actions that will be added later.
     window.__formationSliderStep = stepIndex;
+    if (stepIndex === 3) {
+      startFloatingObjectChildrenReveal();
+    }
   }
 
   async function loadBoulderModel() {
@@ -494,6 +502,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     if (state.bouldersPlaced) {
       updateFloatingObject(deltaSeconds);
+      updateFloatingObjectChildrenReveal(deltaSeconds);
     }
 
     state.renderer.render(state.scene, state.camera);
@@ -631,14 +640,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateBoulderPlacement();
     state.bouldersRoot.updateMatrixWorld(true);
     if (state.floatingObject) {
+      state.floatingObjectRevealMeshes = getDirectChildMeshes(state.floatingObject);
+      setMeshesOpacity(state.floatingObjectRevealMeshes, 0);
       state.floatingObject.getWorldPosition(state.floatingObjectBaseWorldPosition);
       state.floatingObjectTargetWorldPosition.copy(state.floatingObjectBaseWorldPosition);
       state.floatingObjectTargetWorldPosition.y += CONFIG.floatingObjectTargetHeightMeters;
       state.floatingObjectPlacedAtTime = performance.now();
     }
     updateHud(state.floatingObject
-      ? "Boulders placed. Object_5 will float up in 2 seconds."
-      : "Boulders placed, but Object_5 was not found in the model.");
+      ? "Boulders placed. Object_3 will float up 1 m in 5 seconds."
+      : "Boulders placed, but Object_3 was not found in the model.");
     setXRDebug(anchor ? "anchored placement" : "raw world-space placement");
   }
 
@@ -661,7 +672,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     applyModelShadowSettings(root);
     return {
       root,
-      floatingObject: root.getObjectByName("Object_5")
+      floatingObject: root.getObjectByName("Object_3")
     };
   }
 
@@ -710,6 +721,54 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
       }
     });
+  }
+
+  function getDirectChildMeshes(object) {
+    const meshes = [];
+    object.children.forEach((child) => {
+      child.traverse((descendant) => {
+        if (descendant.isMesh) {
+          meshes.push(descendant);
+        }
+      });
+    });
+    return meshes;
+  }
+
+  function setMeshesOpacity(meshes, opacity) {
+    meshes.forEach((mesh) => {
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      materials.forEach((material) => {
+        if (!material) {
+          return;
+        }
+
+        material.transparent = opacity < 1;
+        material.opacity = opacity;
+        material.depthWrite = opacity >= 1;
+        material.needsUpdate = true;
+      });
+    });
+  }
+
+  function startFloatingObjectChildrenReveal() {
+    if (!state.floatingObjectRevealMeshes.length || state.floatingObjectRevealProgress >= 1) {
+      return;
+    }
+
+    state.floatingObjectRevealStarted = true;
+  }
+
+  function updateFloatingObjectChildrenReveal(deltaSeconds) {
+    if (!state.floatingObjectRevealStarted || state.floatingObjectRevealProgress >= 1) {
+      return;
+    }
+
+    state.floatingObjectRevealProgress = Math.min(
+      1,
+      state.floatingObjectRevealProgress + deltaSeconds / CONFIG.childRevealDurationSeconds
+    );
+    setMeshesOpacity(state.floatingObjectRevealMeshes, state.floatingObjectRevealProgress);
   }
 
   function createShadowReceiver(center, orientation) {
@@ -767,9 +826,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     if (Math.abs(state.floatingObjectTargetWorldPosition.y - state.floatingObject.getWorldPosition(new THREE.Vector3()).y) <= 0.00001) {
       state.animationComplete = true;
-      updateHud("Object_5 reached 1.00 m.");
+      updateHud("Object_3 reached 1.00 m.");
     } else {
-      updateHud("Object_5 is floating upward.");
+      updateHud("Object_3 is floating upward.");
     }
   }
 
@@ -815,7 +874,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   function triggerFloatingObject() {
     if (!state.floatingObject) {
-      updateHud("Object_5 was not found, so nothing can float.");
+      updateHud("Object_3 was not found, so nothing can float.");
       return;
     }
 
@@ -841,6 +900,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.floatingObjectTargetWorldPosition.set(0, 0, 0);
     state.floatingObjectPlacedAtTime = 0;
     state.floatingObjectTriggered = false;
+    state.floatingObjectRevealMeshes = [];
+    state.floatingObjectRevealStarted = false;
+    state.floatingObjectRevealProgress = 0;
     state.shadowReceiver = null;
     state.placementCenter.set(0, 0, 0);
     state.planeHeight = 0;
