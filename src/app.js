@@ -109,6 +109,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     startArButton: document.getElementById("startArButton"),
     resetButton: document.getElementById("resetButton"),
     gestureIndicators: document.getElementById("gestureIndicators"),
+    formationSlider: document.getElementById("formationSlider"),
+    formationRange: document.getElementById("formationRange"),
+    formationFill: document.querySelector(".formation-fill"),
+    formationStages: Array.from(document.querySelectorAll(".formation-stage")),
+    formationDots: Array.from(document.querySelectorAll(".formation-dot")),
     geoStatus: document.getElementById("geoStatus"),
     geoDistanceValue: document.getElementById("geoDistanceValue"),
     geoHeadingValue: document.getElementById("geoHeadingValue"),
@@ -138,12 +143,82 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     window.addEventListener("resize", onResize);
     ui.startArButton.addEventListener("click", startARSession);
     ui.resetButton.addEventListener("click", reset);
+    initFormationSlider();
 
     ui.startArButton.disabled = true;
     updateHud("Loading boulder model.");
     checkARSupport();
     installDebugHooks();
     state.renderer.setAnimationLoop(render);
+  }
+
+  function initFormationSlider() {
+    if (!ui.formationRange || !ui.formationSlider) {
+      return;
+    }
+
+    let activeStep = 0;
+    const snapThreshold = 0.16;
+
+    const applySliderValue = (rawValue, shouldSnap) => {
+      const numericValue = THREE.MathUtils.clamp(Number(rawValue) || 0, 0, 4);
+      const nearestStep = Math.round(numericValue);
+      const snappedValue = Math.abs(numericValue - nearestStep) <= snapThreshold || shouldSnap
+        ? nearestStep
+        : numericValue;
+      const displayStep = Math.round(snappedValue);
+      const progressPercent = (snappedValue / 4) * 100;
+
+      ui.formationRange.value = snappedValue.toFixed(3);
+      if (ui.formationFill) {
+        ui.formationFill.style.width = progressPercent + "%";
+      }
+
+      ui.formationStages.forEach((stage, index) => {
+        stage.classList.toggle("is-active", index === displayStep);
+      });
+      ui.formationDots.forEach((dot, index) => {
+        dot.classList.toggle("is-active", index === displayStep);
+      });
+
+      if (shouldSnap && displayStep !== activeStep) {
+        activeStep = displayStep;
+        onFormationStepSelected(activeStep);
+      }
+    };
+
+    ui.formationRange.addEventListener("pointerdown", () => {
+      ui.formationSlider.classList.add("is-dragging");
+    });
+
+    ui.formationRange.addEventListener("input", (event) => {
+      applySliderValue(event.target.value, false);
+    });
+
+    ui.formationRange.addEventListener("change", (event) => {
+      applySliderValue(event.target.value, true);
+    });
+
+    window.addEventListener("pointerup", () => {
+      if (!ui.formationSlider.classList.contains("is-dragging")) {
+        return;
+      }
+
+      ui.formationSlider.classList.remove("is-dragging");
+      applySliderValue(ui.formationRange.value, true);
+    });
+
+    window.addEventListener("pointercancel", () => {
+      ui.formationSlider.classList.remove("is-dragging");
+      applySliderValue(ui.formationRange.value, true);
+    });
+
+    applySliderValue(0, true);
+  }
+
+  function onFormationStepSelected(stepIndex) {
+    // Reserved for the stage-specific actions that will be added later.
+    window.__formationSliderStep = stepIndex;
   }
 
   async function loadIslandModels() {

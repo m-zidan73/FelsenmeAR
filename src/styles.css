@@ -150,14 +150,151 @@ dd {
   color: #ffb3b3;
 }
 
-.control-row {
+.bottom-ui {
   grid-row: 3;
-  justify-self: end;
+  justify-self: center;
   align-self: end;
+  width: min(76vw, 980px);
+  pointer-events: none;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.formation-slider {
+  width: 100%;
+  padding: clamp(10px, 1.4vw, 18px) clamp(14px, 2vw, 24px) clamp(12px, 1.6vw, 20px);
+  border: 1px solid rgba(248, 251, 255, 0.18);
+  border-radius: 22px;
+  background: rgba(238, 241, 242, 0.86);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(14px);
+  box-sizing: border-box;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.formation-stages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+  gap: clamp(8px, 2vw, 28px);
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.formation-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  opacity: 0.66;
+  transform: scale(0.92);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.formation-stage.is-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.formation-stage img {
+  display: block;
+  width: min(100%, clamp(68px, 9vw, 126px));
+  height: clamp(48px, 7vw, 88px);
+  object-fit: contain;
+  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.16));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.formation-track-wrap {
+  position: relative;
+  height: 34px;
+  display: grid;
+  align-items: center;
+}
+
+.formation-range {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  opacity: 0;
+  cursor: grab;
+}
+
+.formation-range:active {
+  cursor: grabbing;
+}
+
+.formation-track {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(17, 24, 32, 0.34);
+}
+
+.formation-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f17834, #7bdff2);
+}
+
+.formation-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #7bdff2;
+  border: 2px solid rgba(17, 24, 32, 0.44);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px rgba(123, 223, 242, 0.16);
+}
+
+.formation-dot:nth-child(2) {
+  left: 0%;
+}
+
+.formation-dot:nth-child(3) {
+  left: 25%;
+}
+
+.formation-dot:nth-child(4) {
+  left: 50%;
+}
+
+.formation-dot:nth-child(5) {
+  left: 75%;
+}
+
+.formation-dot:nth-child(6) {
+  left: 100%;
+}
+
+.formation-dot.is-active {
+  width: 22px;
+  height: 22px;
+  background: #f8fbff;
+  border-color: #111820;
+  box-shadow: 0 0 0 4px rgba(123, 223, 242, 0.42), 0 0 20px rgba(123, 223, 242, 0.62);
+}
+
+.formation-slider.is-dragging .formation-dot.is-active {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.control-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: flex-end;
+  justify-content: center;
   pointer-events: auto;
 }
 
@@ -231,7 +368,9 @@ button {
   cursor: pointer;
 }
 
-body.in-camera-ar:not(.has-dom-overlay) #overlay {
+body.in-camera-ar:not(.has-dom-overlay) .status-card,
+body.in-camera-ar:not(.has-dom-overlay) .control-row,
+body.in-camera-ar:not(.has-dom-overlay) .gesture-indicators {
   opacity: 0.001;
 }
 
@@ -250,6 +389,24 @@ button:active {
 
   .control-row {
     justify-content: stretch;
+  }
+
+  .bottom-ui {
+    width: 100%;
+  }
+
+  .formation-slider {
+    border-radius: 16px;
+    padding: 10px 12px 12px;
+  }
+
+  .formation-stages {
+    gap: 5px;
+  }
+
+  .formation-stage img {
+    width: min(100%, 68px);
+    height: 48px;
   }
 
   button {
@@ -277,9 +434,13 @@ button:active {
     gap: 6px;
   }
 
-  .control-row {
-    justify-self: center;
+  .bottom-ui {
+    width: min(82vw, 1000px);
     max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+
+  .formation-slider {
+    padding-top: 10px;
   }
 
   .gesture-indicators {
@@ -292,5 +453,39 @@ button:active {
 @media (orientation: landscape) and (min-aspect-ratio: 4 / 3) {
   .gesture-indicators {
     transform: translateY(4vh);
+  }
+}
+
+@media (orientation: portrait) {
+  .bottom-ui {
+    width: min(94vw, 620px);
+  }
+
+  .formation-slider {
+    padding: 10px 12px 12px;
+  }
+
+  .formation-stage img {
+    width: min(100%, 72px);
+    height: 52px;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .bottom-ui {
+    gap: 8px;
+  }
+
+  .formation-slider {
+    width: min(82vw, 900px);
+    padding: 8px 14px 10px;
+  }
+
+  .formation-stages {
+    margin-bottom: 4px;
+  }
+
+  .formation-stage img {
+    height: clamp(38px, 10vh, 58px);
   }
 }

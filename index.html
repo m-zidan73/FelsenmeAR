@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>AR Island Prototype - Web</title>
-    <link rel="stylesheet" href="src/styles.css?v=boulders-auto-float-1">
+    <link rel="stylesheet" href="src/styles.css?v=formation-slider-1">
     <script type="importmap">
       {
         "imports": {
@@ -13,7 +13,7 @@
         }
       }
     </script>
-    <script type="module" src="src/app.js?v=boulders-auto-float-1"></script>
+    <script type="module" src="src/app.js?v=formation-slider-1"></script>
   </head>
   <body>
     <main id="app">
@@ -48,9 +48,41 @@
             </div>
           </div>
         </div>
-        <div class="control-row">
-          <button id="startArButton" type="button">Start Camera AR</button>
-          <button id="resetButton" type="button">Reset</button>
+        <div class="bottom-ui">
+          <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">
+            <ol class="formation-stages" aria-hidden="true">
+              <li class="formation-stage is-active">
+                <img src="Assets/Sprites/Magma.png" alt="">
+              </li>
+              <li class="formation-stage">
+                <img src="Assets/Sprites/Solid%20Quartz%20Diorite.png" alt="">
+              </li>
+              <li class="formation-stage">
+                <img src="Assets/Sprites/Cracked%20Slab%20of%20Diorite.png" alt="">
+              </li>
+              <li class="formation-stage">
+                <img src="Assets/Sprites/Rounded%20Boulders.png" alt="">
+              </li>
+              <li class="formation-stage">
+                <img src="Assets/Sprites/Final%20Boulder.png" alt="">
+              </li>
+            </ol>
+            <div class="formation-track-wrap">
+              <input id="formationRange" class="formation-range" type="range" min="0" max="4" step="0.001" value="0" aria-label="Rock formation step">
+              <div class="formation-track" aria-hidden="true">
+                <span class="formation-fill"></span>
+                <span class="formation-dot is-active"></span>
+                <span class="formation-dot"></span>
+                <span class="formation-dot"></span>
+                <span class="formation-dot"></span>
+                <span class="formation-dot"></span>
+              </div>
+            </div>
+          </section>
+          <div class="control-row">
+            <button id="startArButton" type="button">Start Camera AR</button>
+            <button id="resetButton" type="button">Reset</button>
+          </div>
         </div>
       </section>
       <div id="canvasRoot" aria-hidden="true"></div>
