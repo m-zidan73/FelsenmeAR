@@ -15,6 +15,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     contactEpsilonMeters: 0.01,
     contactProxyScale: 0.8,
     targetCenterHeightMeters: 1.0,
+    floatingObjectTargetHeightMeters: 1.0,
     initialVisibleGapMeters: 0,
     pinchReadyVisibleGapMeters: 0.002,
     initialSeparationMeters: 1.2,
@@ -43,6 +44,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     sunLight: null,
     shadowReceiver: null,
     islandAssets: null,
+    bouldersRoot: null,
+    floatingObject: null,
+    floatingObjectBaseY: 0,
+    floatingObjectTargetY: 0,
+    floatingObjectLocalToWorldScale: 1,
+    floatingObjectTriggered: false,
     modelsLoaded: false,
     modelLoadError: false,
     contactProxySize: null,
@@ -141,7 +148,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     });
 
     ui.startArButton.disabled = true;
-    updateHud("Loading island models.");
+    updateHud("Loading boulder model.");
     checkARSupport();
     installDebugHooks();
     if (new URLSearchParams(window.location.search).has("showIndicators")) {
@@ -156,16 +163,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const assetUrl = (fileName) => "Assets/" + fileName + "?v=" + assetVersion;
 
     try {
-      const [oceanic, continental, insideEarth] = await Promise.all([
-        loader.loadAsync(assetUrl("Oceanic%20Island.glb")),
-        loader.loadAsync(assetUrl("Continental%20Island.glb")),
-        loader.loadAsync(assetUrl("Inside%20Earth.glb"))
-      ]);
+      const boulders = await loader.loadAsync(assetUrl("Boulders%20on%20Ground.glb"));
 
       state.islandAssets = {
-        oceanic,
-        continental,
-        insideEarth
+        boulders
       };
       state.modelsLoaded = true;
       ui.startArButton.disabled = false;
@@ -174,8 +175,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.modelLoadError = true;
       ui.startArButton.disabled = true;
       setXRDebug("model load failed");
-      updateHud("Could not load the island models. Check the Assets folder and refresh.");
-      window.__runtimeErrors.push("Island model load failed: " + error.message);
+      updateHud("Could not load the boulder model. Check the Assets folder and refresh.");
+      window.__runtimeErrors.push("Boulder model load failed: " + error.message);
     }
   }
 
@@ -189,7 +190,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         return {
           modelsLoaded: state.modelsLoaded,
           modelLoadError: state.modelLoadError,
-          islandsPlaced: state.cubesPlaced,
+          bouldersPlaced: state.cubesPlaced,
           currentSeparation: state.currentSeparation,
           contactSeparation: state.contactSeparation,
           contactProxySize: state.contactProxySize,
@@ -198,7 +199,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
           pinchEnabled: state.pinchEnabled,
           contactReached: state.contactReached,
           animationStarted: state.animationStarted,
-          animationComplete: state.animationComplete
+          animationComplete: state.animationComplete,
+          floatingObjectTriggered: state.floatingObjectTriggered,
+          floatingObjectY: state.floatingObject ? state.floatingObject.position.y : null,
+          floatingObjectTargetY: state.floatingObjectTargetY
         };
       },
       placeAtOrigin() {
@@ -228,33 +232,21 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         updateCubePositions();
         return true;
       },
-      pinchToContact() {
+      triggerFloat() {
         if (!state.cubesPlaced) {
           return false;
         }
 
-        state.placementCenter.y = state.planeHeight + CONFIG.targetCenterHeightMeters;
-        state.cubesAtTargetHeight = true;
-        state.pinchEnabled = true;
-        state.currentSeparation = state.pinchReadySeparation;
-        updateCubePositions();
-        applyInwardPinch(state.currentSeparation);
+        applyInwardPinch(0);
         return true;
       },
       getAlignmentSnapshot() {
-        const oceanic = getObjectSnapshot(state.oceanicIsland);
-        const continental = getObjectSnapshot(state.continentalIsland);
-        const insideEarth = getObjectSnapshot(state.insideEarth);
+        const boulders = getObjectSnapshot(state.bouldersRoot);
+        const floatingObject = getObjectSnapshot(state.floatingObject);
 
         return {
-          oceanic,
-          continental,
-          insideEarth,
-          delta: oceanic && continental ? {
-            x: continental.position.x - oceanic.position.x,
-            y: continental.position.y - oceanic.position.y,
-            z: continental.position.z - oceanic.position.z
-          } : null
+          boulders,
+          floatingObject
         };
       }
     };
@@ -489,7 +481,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     if (state.cubesPlaced) {
-      raiseCubesTowardTarget(deltaSeconds);
+      updateFloatingObject(deltaSeconds);
       applyEditorSimulationControls(deltaSeconds);
       updateOceanicAnimation(deltaSeconds);
     }
@@ -570,41 +562,27 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       }
     }
 
-    const sharedModelScale = getSharedIslandScale(state.islandAssets.oceanic.scene);
-    const oceanic = createIslandInstance(state.islandAssets.oceanic, "Oceanic Island", sharedModelScale);
-    const continental = createIslandInstance(state.islandAssets.continental, "Continental Island", sharedModelScale);
-    const insideEarth = createIslandInstance(state.islandAssets.insideEarth, "Inside Earth", sharedModelScale);
-    state.oceanicIsland = oceanic.root;
-    state.continentalIsland = continental.root;
-    state.insideEarth = insideEarth.root;
-    state.contactProxySize = getSharedContactProxySize(continental);
-    alignIslandAxesToSeparationAxis();
-    state.contactSeparation = getContactSeparation(oceanic, continental);
-    state.floatStartSeparation = getSeparationForVisibleGap(
-      oceanic,
-      continental,
-      CONFIG.initialVisibleGapMeters
-    );
-    state.pinchReadySeparation = getSeparationForVisibleGap(
-      oceanic,
-      continental,
-      CONFIG.pinchReadyVisibleGapMeters
-    );
-    state.currentSeparation = state.floatStartSeparation;
+    const sharedModelScale = getSharedIslandScale(state.islandAssets.boulders.scene);
+    const boulders = createBoulderInstance(state.islandAssets.boulders, sharedModelScale);
+    state.bouldersRoot = boulders.root;
+    state.floatingObject = boulders.floatingObject;
+    state.floatingObjectBaseY = state.floatingObject ? state.floatingObject.position.y : 0;
+    state.floatingObjectLocalToWorldScale = sharedModelScale;
+    state.floatingObjectTargetY = state.floatingObjectBaseY +
+      (CONFIG.floatingObjectTargetHeightMeters / state.floatingObjectLocalToWorldScale);
+    state.currentSeparation = CONFIG.initialSeparationMeters;
 
-    state.scene.add(state.oceanicIsland);
-    state.scene.add(state.continentalIsland);
-    state.scene.add(state.insideEarth);
-    setupOceanicAnimation(state.islandAssets.oceanic.animations);
+    state.scene.add(state.bouldersRoot);
     createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
 
     state.cubesPlaced = true;
-    state.cubesAtTargetHeight = false;
-    state.pinchEnabled = false;
+    state.cubesAtTargetHeight = true;
+    state.pinchEnabled = true;
     state.contactReached = false;
     state.isSwiping = false;
     state.animationStarted = false;
     state.animationComplete = false;
+    state.floatingObjectTriggered = false;
     state.interactionsFrozen = false;
     state.reticle.visible = false;
     state.planeIndicator.visible = false;
@@ -612,8 +590,32 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     positionSunLightAt(center);
 
     updateCubePositions();
-    updateHud("Islands placed in raw WebXR world space. They rise to 1.00 m and cast sun-position shadows.");
+    updateHud(state.floatingObject
+      ? "Boulders placed. Pinch inward to make Object_5 float up to 1.00 m."
+      : "Boulders placed, but Object_5 was not found in the model.");
     setXRDebug("raw world-space placement");
+  }
+
+  function createBoulderInstance(gltf, modelScale) {
+    const root = new THREE.Group();
+    root.name = "Boulders Root";
+
+    const model = cloneModelForScene(gltf.scene);
+    model.name = "Boulders on Ground";
+    root.add(model);
+    model.scale.setScalar(modelScale);
+
+    const bounds = new THREE.Box3().setFromObject(root);
+    const center = bounds.getCenter(new THREE.Vector3());
+    model.position.x -= center.x;
+    model.position.z -= center.z;
+    model.position.y -= bounds.min.y;
+
+    applyModelShadowSettings(root);
+    return {
+      root,
+      floatingObject: root.getObjectByName("Object_5")
+    };
   }
 
   function getSharedIslandScale(referenceScene) {
@@ -813,13 +815,33 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
   }
 
+  function updateFloatingObject(deltaSeconds) {
+    if (!state.floatingObject || !state.floatingObjectTriggered || state.animationComplete) {
+      return;
+    }
+
+    state.floatingObject.position.y = moveTowards(
+      state.floatingObject.position.y,
+      state.floatingObjectTargetY,
+      (CONFIG.riseSpeedMetersPerSecond / state.floatingObjectLocalToWorldScale) * deltaSeconds
+    );
+
+    if (Math.abs(state.floatingObject.position.y - state.floatingObjectTargetY) <= 0.00001) {
+      state.animationComplete = true;
+      state.isSwiping = false;
+      state.holdingPinchButton = false;
+      updateHud("Object_5 reached 1.00 m.");
+    } else {
+      updateHud("Object_5 is floating upward.");
+    }
+  }
+
   function applyEditorSimulationControls(deltaSeconds) {
     if (!state.holdingPinchButton || state.interactionsFrozen || !state.pinchEnabled) {
       return;
     }
 
     applyInwardPinch(CONFIG.editorKeyboardPinchSpeedMetersPerSecond * deltaSeconds);
-    updateHud(state.contactReached ? "Animation playing." : "Pinch simulation active: moving the islands closer.");
   }
 
   function onTouchMove(event) {
@@ -849,7 +871,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     setSwipeActive(true);
     applyInwardPinch(inwardPixels * CONFIG.pinchMetersPerPixel);
-    updateHud(state.contactReached ? "Animation playing." : "Pinch inward to keep pulling the islands together.");
+    updateHud("Pinch detected. Object_5 is floating upward.");
   }
 
   function onTouchEnd() {
@@ -858,18 +880,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function updateCubePositions() {
-    if (!state.oceanicIsland || !state.continentalIsland) {
+    if (!state.bouldersRoot) {
       return;
     }
 
-    state.offset.copy(state.separationAxis).multiplyScalar(state.currentSeparation * 0.5);
-    state.oceanicIsland.position.copy(state.placementCenter).sub(state.offset);
-    state.continentalIsland.position.copy(state.placementCenter).add(state.offset);
-
-    if (state.insideEarth) {
-      state.insideEarth.position.copy(state.placementCenter);
-      state.insideEarth.position.y = state.planeHeight;
-    }
+    state.bouldersRoot.position.copy(state.placementCenter);
+    state.bouldersRoot.position.y = state.planeHeight;
   }
 
   function getObjectSnapshot(object) {
@@ -908,13 +924,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    state.currentSeparation = Math.max(
-      state.contactSeparation,
-      state.currentSeparation - amountMeters
-    );
-    state.contactReached = state.currentSeparation <= state.contactSeparation + 0.0001;
-    updateCubePositions();
-    updateOceanicAnimationPlayback();
+    if (!state.floatingObject) {
+      updateHud("Object_5 was not found, so nothing can float.");
+      return;
+    }
+
+    state.floatingObjectTriggered = true;
+    state.animationStarted = true;
+    state.currentSeparation = Math.max(0, state.currentSeparation - amountMeters);
   }
 
   function setSwipeActive(isActive) {
@@ -924,7 +941,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     state.isSwiping = isActive;
-    updateOceanicAnimationPlayback();
+    if (isActive && state.pinchEnabled) {
+      applyInwardPinch(0);
+    }
   }
 
   function updateOceanicAnimationPlayback() {
@@ -955,6 +974,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function reset() {
+    if (state.bouldersRoot) {
+      state.scene.remove(state.bouldersRoot);
+      disposeObject(state.bouldersRoot);
+    }
     if (state.oceanicIsland) {
       state.scene.remove(state.oceanicIsland);
       disposeObject(state.oceanicIsland);
@@ -979,6 +1002,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.oceanicIsland = null;
     state.continentalIsland = null;
     state.insideEarth = null;
+    state.bouldersRoot = null;
+    state.floatingObject = null;
+    state.floatingObjectBaseY = 0;
+    state.floatingObjectTargetY = 0;
+    state.floatingObjectLocalToWorldScale = 1;
+    state.floatingObjectTriggered = false;
     state.oceanicMixer = null;
     state.oceanicAction = null;
     state.shadowReceiver = null;
@@ -1346,7 +1375,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       ui.statusText.textContent = message;
     }
 
-    const currentHeight = Math.max(0, state.placementCenter.y - state.planeHeight);
+    const currentHeight = state.floatingObject
+      ? Math.max(0, (state.floatingObject.position.y - state.floatingObjectBaseY) * state.floatingObjectLocalToWorldScale)
+      : Math.max(0, state.placementCenter.y - state.planeHeight);
     ui.heightValue.textContent = currentHeight.toFixed(2);
     ui.separationValue.textContent = state.currentSeparation.toFixed(2);
     refreshXrHudTexture();
