@@ -42,6 +42,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     xrReferenceSpace: null,
     xrViewerSpace: null,
     xrHitTestSource: null,
+    xrPlacementAnchor: null,
+    xrPlacementAnchorSpace: null,
     latestHit: null,
     latestHitResult: null,
     reticle: null,
@@ -491,6 +493,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.xrReferenceSpace = null;
     state.xrViewerSpace = null;
     state.xrHitTestSource = null;
+    releasePlacementAnchor();
     state.latestHit = null;
     state.latestHitResult = null;
     state.reticle.visible = false;
@@ -506,7 +509,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     setXRDebug("AR session ended");
   }
 
-  function onXRSelect() {
+  async function onXRSelect() {
     if (state.cubesPlaced) {
       return;
     }
@@ -528,7 +531,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    placeIslands(state.latestHit.position);
+    const anchor = await createPlacementAnchor();
+    placeIslands(state.latestHit.position, null, anchor);
   }
 
   function render(time, frame) {
@@ -537,6 +541,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     if (frame) {
       updateHitTest(frame);
+      updatePlacementFromAnchor(frame);
     }
 
     if (state.xrSession) {
@@ -610,9 +615,61 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     return { matrix, position, quaternion };
   }
 
-  function placeIslands(center, forcedSeparationAxis) {
+  async function createPlacementAnchor() {
+    if (!state.latestHitResult || typeof state.latestHitResult.createAnchor !== "function") {
+      return null;
+    }
+
+    try {
+      const anchor = await state.latestHitResult.createAnchor();
+      return anchor && anchor.anchorSpace ? anchor : null;
+    } catch (error) {
+      setXRDebug("anchor unavailable: " + error.name);
+      return null;
+    }
+  }
+
+  function updatePlacementFromAnchor(frame) {
+    if (!state.xrPlacementAnchorSpace || !state.xrReferenceSpace || !state.bouldersRoot) {
+      return;
+    }
+
+    const pose = frame.getPose(state.xrPlacementAnchorSpace, state.xrReferenceSpace);
+    if (!pose) {
+      return;
+    }
+
+    const anchoredPose = poseFromMatrix(pose.transform.matrix);
+    const previousPlaneHeight = state.planeHeight;
+    state.placementCenter.copy(anchoredPose.position);
+    state.planeHeight = anchoredPose.position.y;
+    updateCubePositions();
+
+    if (state.shadowReceiver) {
+      state.shadowReceiver.position.copy(anchoredPose.position);
+      state.shadowReceiver.position.y += 0.004;
+    }
+
+    if (state.floatingObject && !state.floatingObjectTriggered) {
+      const heightDelta = state.planeHeight - previousPlaneHeight;
+      state.floatingObjectBaseWorldPosition.y += heightDelta;
+      state.floatingObjectTargetWorldPosition.y += heightDelta;
+    }
+  }
+
+  function releasePlacementAnchor() {
+    if (state.xrPlacementAnchor && typeof state.xrPlacementAnchor.delete === "function") {
+      state.xrPlacementAnchor.delete();
+    }
+    state.xrPlacementAnchor = null;
+    state.xrPlacementAnchorSpace = null;
+  }
+
+  function placeIslands(center, forcedSeparationAxis, anchor) {
     state.placementCenter.copy(center);
     state.planeHeight = center.y;
+    state.xrPlacementAnchor = anchor || null;
+    state.xrPlacementAnchorSpace = anchor ? anchor.anchorSpace : null;
 
     if (forcedSeparationAxis && forcedSeparationAxis.lengthSq() > 0.001) {
       state.separationAxis.copy(forcedSeparationAxis).normalize();
@@ -663,7 +720,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateHud(state.floatingObject
       ? "Boulders placed. Object_5 will float up in 2 seconds."
       : "Boulders placed, but Object_5 was not found in the model.");
-    setXRDebug("raw world-space placement");
+    setXRDebug(anchor ? "anchored placement" : "raw world-space placement");
   }
 
   function createBoulderInstance(gltf, modelScale) {
@@ -678,7 +735,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const bounds = new THREE.Box3().setFromObject(root);
     const center = bounds.getCenter(new THREE.Vector3());
     model.position.x -= center.x;
+    model.position.y -= bounds.min.y;
     model.position.z -= center.z;
+    root.updateMatrixWorld(true);
 
     applyModelShadowSettings(root);
     return {
@@ -1055,6 +1114,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function reset() {
+    releasePlacementAnchor();
+
     if (state.bouldersRoot) {
       state.scene.remove(state.bouldersRoot);
       disposeObject(state.bouldersRoot);
