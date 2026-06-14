@@ -11,7 +11,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   });
 
   const CONFIG = {
-    modelFootprintMeters: 0.5,
+    modelFootprintMeters: 2.5,
     contactEpsilonMeters: 0.01,
     contactProxyScale: 0.8,
     targetCenterHeightMeters: 1.0,
