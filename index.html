@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>AR Island Prototype - Web</title>
-    <link rel="stylesheet" href="src/styles.css?v=xr-hud-1">
+    <link rel="stylesheet" href="src/styles.css?v=boulders-auto-float-1">
     <script type="importmap">
       {
         "imports": {
@@ -13,7 +13,7 @@
         }
       }
     </script>
-    <script type="module" src="src/app.js?v=xr-hud-1"></script>
+    <script type="module" src="src/app.js?v=boulders-auto-float-1"></script>
   </head>
   <body>
     <main id="app">
@@ -48,20 +48,9 @@
             </div>
           </div>
         </div>
-        <div id="gestureIndicators" class="gesture-indicators" hidden aria-hidden="true">
-          <div class="gesture-indicator">
-            <span class="gesture-label">Swipe inward</span>
-            <span class="gesture-arrow">&gt;</span>
-          </div>
-          <div class="gesture-indicator">
-            <span class="gesture-arrow">&lt;</span>
-            <span class="gesture-label">Swipe inward</span>
-          </div>
-        </div>
         <div class="control-row">
           <button id="startArButton" type="button">Start Camera AR</button>
           <button id="resetButton" type="button">Reset</button>
-          <button id="pinchButton" type="button">Hold C / Pinch</button>
         </div>
       </section>
       <div id="canvasRoot" aria-hidden="true"></div>
