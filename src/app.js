@@ -25,6 +25,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     editorKeyboardPinchSpeedMetersPerSecond: 0.2,
     allowedLatitude: 49.90000549974582,
     allowedLongitude: 8.85554978661026,
+    allowedLocations: [
+      { latitude: 49.90000549974582, longitude: 8.85554978661026 },
+      { latitude: 49.8686172198458, longitude: 8.649528051715288 }
+    ],
     allowedLocationRadiusMeters: 25,
     allowedHeadingMinDegrees: 0,
     allowedHeadingMaxDegrees: 360
@@ -1288,14 +1292,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function updateGeoStatus() {
-    const distanceMeters = state.userPosition
-      ? getDistanceMeters(
-          state.userPosition.latitude,
-          state.userPosition.longitude,
-          CONFIG.allowedLatitude,
-          CONFIG.allowedLongitude
-        )
-      : null;
+    const nearestLocation = state.userPosition ? getNearestAllowedLocation() : null;
+    const distanceMeters = nearestLocation ? nearestLocation.distanceMeters : null;
     const heading = typeof state.compassHeadingDegrees === "number"
       ? normalizeDegrees(state.compassHeadingDegrees)
       : null;
@@ -1344,25 +1342,44 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       };
     }
 
-    const distanceMeters = getDistanceMeters(
-      state.userPosition.latitude,
-      state.userPosition.longitude,
-      CONFIG.allowedLatitude,
-      CONFIG.allowedLongitude
-    );
+    const nearestLocation = getNearestAllowedLocation();
+    const distanceMeters = nearestLocation.distanceMeters;
     if (distanceMeters > CONFIG.allowedLocationRadiusMeters) {
       return {
         allowed: false,
-        message: "Placement locked: move closer to the required location. Distance: " + distanceMeters.toFixed(1) + " m.",
-        debug: "geo gate: " + distanceMeters.toFixed(1) + " m away"
+        message: "Placement locked: move closer to one of the required locations. Nearest distance: " + distanceMeters.toFixed(1) + " m.",
+        debug: "geo gate: nearest target " + (nearestLocation.index + 1) + ", " + distanceMeters.toFixed(1) + " m away"
       };
     }
 
     return {
       allowed: true,
       message: "Placement unlocked.",
-      debug: "geo gate passed; heading gate disabled"
+      debug: "geo gate passed at target " + (nearestLocation.index + 1) + "; heading gate disabled"
     };
+  }
+
+  function getNearestAllowedLocation() {
+    let nearest = null;
+
+    CONFIG.allowedLocations.forEach((location, index) => {
+      const distanceMeters = getDistanceMeters(
+        state.userPosition.latitude,
+        state.userPosition.longitude,
+        location.latitude,
+        location.longitude
+      );
+
+      if (!nearest || distanceMeters < nearest.distanceMeters) {
+        nearest = {
+          index,
+          location,
+          distanceMeters
+        };
+      }
+    });
+
+    return nearest;
   }
 
   function disposeObject(object) {
