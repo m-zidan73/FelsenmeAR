@@ -433,7 +433,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateSunLightFromDeviceLocation();
     updateGeoStatus();
     setXRDebug("hit-test source ready");
-    updateHud("Scanning: find a plane. Placement unlocks only at the GPS target while facing north.");
+    updateHud("Scanning: find a plane. Tap to place once a plane is detected.");
   }
 
   function onSessionEnded() {
@@ -553,7 +553,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.planeIndicator.visible = true;
 
     setXRDebug("PLANE DETECTED (" + state.hitFrames + ")");
-    ui.statusText.textContent = "PLANE DETECTED. Tap to place if GPS target + north heading are valid.";
+    ui.statusText.textContent = "PLANE DETECTED. Tap to place.";
   }
 
   function poseFromMatrix(xrMatrix) {
@@ -1138,37 +1138,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function getPlacementGateStatus() {
-    if (!navigator.geolocation) {
-      return {
-        allowed: false,
-        message: "Placement locked: this browser does not support GPS location.",
-        debug: "geo gate: geolocation unavailable"
-      };
-    }
-
-    if (!state.userPosition) {
-      startLocationTracking();
-      return {
-        allowed: false,
-        message: "Placement locked: waiting for GPS location permission/fix. Tap again after location updates.",
-        debug: state.userPositionError ? "geo gate: " + state.userPositionError : "geo gate: waiting for position"
-      };
-    }
-
-    const nearestLocation = getNearestAllowedLocation();
-    const distanceMeters = nearestLocation.distanceMeters;
-    if (distanceMeters > CONFIG.allowedLocationRadiusMeters) {
-      return {
-        allowed: false,
-        message: "Placement locked: move closer to one of the required locations. Nearest distance: " + distanceMeters.toFixed(1) + " m.",
-        debug: "geo gate: nearest target " + (nearestLocation.index + 1) + ", " + distanceMeters.toFixed(1) + " m away"
-      };
-    }
-
     return {
       allowed: true,
       message: "Placement unlocked.",
-      debug: "geo gate passed at target " + (nearestLocation.index + 1) + "; heading gate disabled"
+      debug: "placement gate disabled"
     };
   }
 
