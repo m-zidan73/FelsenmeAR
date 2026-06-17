@@ -799,10 +799,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     root.updateMatrixWorld(true);
 
     applyModelShadowSettings(root);
+    const dustObject = root.getObjectByName("Dust and Grus");
     return {
       root,
-      floatingObject: root.getObjectByName("Object_3"),
-      dustObject: root.getObjectByName("Dust and Grus")
+      floatingObject: root.getObjectByName("Object_3") || dustObject,
+      dustObject
     };
   }
 
@@ -855,8 +856,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   function prepareBoulderVisibility() {
     const foundationNames = ["Plane", "Object_2", "Object_4", "Object_5", "Object_6"];
+    const allMeshes = getDescendantMeshes(state.bouldersRoot);
     setMeshesOpacity(getDescendantMeshes(state.bouldersRoot), 0);
     state.foundationFadeMeshes = foundationNames.flatMap((name) => getSelfMeshes(state.bouldersRoot.getObjectByName(name)));
+    if (!state.foundationFadeMeshes.length) {
+      state.foundationFadeMeshes = allMeshes.filter((mesh) => mesh !== state.dustObject);
+    }
+    if (!state.foundationFadeMeshes.length && state.dustObject) {
+      state.foundationFadeMeshes = getSelfMeshes(state.dustObject);
+    }
     state.dustRevealMeshes = getSelfMeshes(state.dustObject);
     setMeshesOpacity(state.foundationFadeMeshes, 0);
     setMeshesOpacity(getSelfMeshes(state.floatingObject), 0);
