@@ -59,6 +59,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     dustRevealQueued: false,
     dustRevealMeshes: [],
     fadeTasks: [],
+    formationStep: 4,
+    childRevealRequested: false,
+    arSupportChecked: false,
+    arSupported: false,
+    assetProgress: 0,
     modelsLoaded: false,
     modelLoadError: false,
     placementCenter: new THREE.Vector3(),
@@ -82,9 +87,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   };
 
   const ui = {
+    mainMenu: document.getElementById("mainMenu"),
     canvasRoot: document.getElementById("canvasRoot"),
     overlay: document.getElementById("overlay"),
     statusText: document.getElementById("statusText"),
+    loadingFill: document.getElementById("loadingFill"),
+    loadingStateLabel: document.getElementById("loadingStateLabel"),
     scanPrompt: document.getElementById("scanPrompt"),
     startFromHereButton: document.getElementById("startFromHereButton"),
     heightValue: document.getElementById("heightValue"),
@@ -92,6 +100,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     xrDebugText: document.getElementById("xrDebugText"),
     startArButton: document.getElementById("startArButton"),
     resetButton: document.getElementById("resetButton"),
+    menuButton: document.getElementById("menuButton"),
+    bottomUi: document.querySelector(".bottom-ui"),
     formationSlider: document.getElementById("formationSlider"),
     formationRange: document.getElementById("formationRange"),
     formationFill: document.querySelector(".formation-fill"),
@@ -127,10 +137,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     ui.startArButton.addEventListener("click", startARSession);
     ui.startFromHereButton.addEventListener("click", startFromDetectedPlane);
     ui.resetButton.addEventListener("click", reset);
+    ui.menuButton.addEventListener("click", returnToMainMenu);
     initFormationSlider();
 
     ui.startArButton.disabled = true;
-    updateHud("Loading boulder model.");
+    setFormationSliderVisible(false);
+    setMenuLoading(0, "Checking", "Checking AR capability.");
     checkARSupport();
     installDebugHooks();
     state.renderer.setAnimationLoop(render);
@@ -141,7 +153,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    let activeStep = 4;
     const snapThreshold = 0.16;
 
     const applySliderValue = (rawValue, shouldSnap) => {
@@ -165,11 +176,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         dot.classList.toggle("is-active", index === displayStep);
       });
 
-      if (shouldSnap && displayStep !== activeStep) {
-        activeStep = displayStep;
-        onFormationStepSelected(activeStep);
+      if (shouldSnap && displayStep !== state.formationStep) {
+        state.formationStep = displayStep;
+        onFormationStepSelected(state.formationStep);
       }
     };
+
+    state.setFormationSliderValue = applySliderValue;
 
     ui.formationRange.addEventListener("pointerdown", () => {
       ui.formationSlider.classList.remove("is-prompting");
@@ -215,21 +228,75 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const assetUrl = (fileName) => "Assets/" + fileName + "?v=" + assetVersion;
 
     try {
-      const boulders = await loader.loadAsync(assetUrl("Boulders%20on%20Ground.glb"));
+      setMenuLoading(18, "Loading", "Downloading assets.");
+      const boulders = await loader.loadAsync(
+        assetUrl("Boulders%20on%20Ground.glb"),
+        (event) => {
+          if (!event.lengthComputable || !event.total) {
+            setMenuLoading(42, "Loading", "Downloading assets.");
+            return;
+          }
+
+          state.assetProgress = THREE.MathUtils.clamp(event.loaded / event.total, 0, 1);
+          setMenuLoading(18 + state.assetProgress * 62, "Loading", "Downloading assets.");
+        }
+      );
 
       state.modelAssets = {
         boulders
       };
       state.modelsLoaded = true;
       ui.startArButton.disabled = false;
-      updateHud("Models loaded. Start Camera AR. Placement requires GPS target + north heading.");
+      refreshReadyState();
     } catch (error) {
       state.modelLoadError = true;
       ui.startArButton.disabled = true;
       setXRDebug("model load failed");
-      updateHud("Could not load the boulder model. Check the Assets folder and refresh.");
+      setMenuLoading(100, "Error", "Could not load the boulder model. Check the Assets folder and refresh.");
       window.__runtimeErrors.push("Boulder model load failed: " + error.message);
     }
+  }
+
+  function setMenuLoading(percent, label, message) {
+    const clampedPercent = THREE.MathUtils.clamp(percent, 0, 100);
+    if (ui.loadingFill) {
+      ui.loadingFill.style.width = clampedPercent.toFixed(1) + "%";
+    }
+    if (ui.loadingStateLabel) {
+      ui.loadingStateLabel.textContent = label;
+    }
+    if (message) {
+      updateHud(message);
+    }
+  }
+
+  function refreshReadyState() {
+    if (state.modelLoadError) {
+      ui.startArButton.disabled = true;
+      setMenuLoading(100, "Error", "Could not load assets.");
+      return;
+    }
+
+    if (!state.arSupportChecked) {
+      ui.startArButton.disabled = true;
+      setMenuLoading(Math.max(12, state.assetProgress * 80), "Checking", "Checking AR capability.");
+      return;
+    }
+
+    if (!state.arSupported) {
+      ui.startArButton.disabled = true;
+      setMenuLoading(100, "Blocked", "This browser does not expose WebXR AR.");
+      return;
+    }
+
+    if (!state.modelsLoaded) {
+      ui.startArButton.disabled = true;
+      setMenuLoading(18 + state.assetProgress * 62, "Loading", "Downloading assets.");
+      return;
+    }
+
+    ui.startArButton.disabled = false;
+    setMenuLoading(100, "Ready", "You Are Ready to Go.");
   }
 
   function installDebugHooks() {
@@ -362,36 +429,48 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   function checkARSupport() {
     if (!navigator.xr || !navigator.xr.isSessionSupported) {
       setXRDebug("navigator.xr unavailable");
-      updateHud("This browser does not expose WebXR AR.");
+      state.arSupportChecked = true;
+      state.arSupported = false;
+      refreshReadyState();
       return;
     }
 
     navigator.xr.isSessionSupported("immersive-ar")
       .then((supported) => {
+        state.arSupportChecked = true;
+        state.arSupported = supported;
         setXRDebug(supported ? "immersive-ar supported" : "immersive-ar unsupported");
+        refreshReadyState();
       })
-      .catch(() => setXRDebug("immersive-ar support check failed"));
+      .catch(() => {
+        state.arSupportChecked = true;
+        state.arSupported = false;
+        setXRDebug("immersive-ar support check failed");
+        refreshReadyState();
+      });
   }
 
   async function startARSession() {
     if (state.modelLoadError) {
-      updateHud("Boulder model failed to load. Refresh after checking the Assets folder.");
+      setMenuLoading(100, "Error", "Boulder model failed to load. Refresh after checking the Assets folder.");
       return;
     }
 
     if (!state.modelsLoaded) {
-      updateHud("Loading boulder model. Wait a moment, then start Camera AR.");
+      setMenuLoading(60, "Loading", "Loading boulder model. Wait a moment, then start Camera AR.");
       return;
     }
 
     if (!navigator.xr) {
-      updateHud("WebXR is not available in this browser.");
+      setMenuLoading(100, "Blocked", "WebXR is not available in this browser.");
       return;
     }
 
     setXRDebug("requesting raw immersive-ar");
     updateHud("Requesting Camera AR. Grant camera permission.");
+    document.body.classList.add("in-camera-ar");
 
+    let waitingMessageTimer = null;
     try {
       const sessionInit = {
         requiredFeatures: ["hit-test"],
@@ -399,7 +478,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         domOverlay: { root: ui.overlay }
       };
       ui.startArButton.disabled = true;
-      const waitingMessageTimer = window.setTimeout(() => {
+      waitingMessageTimer = window.setTimeout(() => {
         updateHud("Camera permission looks active. Still waiting for WebXR to finish starting.");
         setXRDebug("requestSession still pending");
       }, 8000);
@@ -410,7 +489,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       await onSessionStarted(session);
     } catch (error) {
       setXRDebug("AR request failed: " + error.name);
-      updateHud("Camera AR request failed: " + error.name);
+      if (waitingMessageTimer) {
+        window.clearTimeout(waitingMessageTimer);
+      }
+      document.body.classList.remove("in-camera-ar");
+      setMenuLoading(state.modelsLoaded ? 100 : 60, "Error", "Camera AR request failed: " + error.name);
       ui.startArButton.disabled = false;
     }
   }
@@ -439,6 +522,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.domOverlayActive = Boolean(session.domOverlayState && session.domOverlayState.type);
     document.body.classList.add("in-camera-ar");
     document.body.classList.toggle("has-dom-overlay", state.domOverlayActive);
+    setMenuButtonVisible(true);
     setXrHudVisible(shouldUseXrFallbackHud());
     setGeoStatusVisible(true);
     captureCompassHeading();
@@ -447,7 +531,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateGeoStatus();
     setXRDebug("hit-test source ready");
     setScanPromptVisible(true);
-    setStartFromHereVisible(false);
+    setStartFromHereVisible(true);
+    setStartFromHereReady(false);
+    setFormationSliderVisible(false);
     updateHud("Scanning for a flat surface.");
   }
 
@@ -468,12 +554,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     document.body.classList.remove("in-camera-ar");
     document.body.classList.remove("has-dom-overlay");
     state.domOverlayActive = false;
+    setMenuButtonVisible(false);
     setXrHudVisible(false);
     setGeoStatusVisible(false);
     setScanPromptVisible(false);
     setStartFromHereVisible(false);
     stopLocationTracking();
     ui.startArButton.disabled = state.modelLoadError || !state.modelsLoaded;
+    refreshReadyState();
     setXRDebug("AR session ended");
   }
 
@@ -488,6 +576,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     if (!state.latestHit) {
+      bounceScanPrompt();
       updateHud("Tap ignored: no detected plane yet. Wait for the green grid.");
       return;
     }
@@ -542,6 +631,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.latestHitResult = null;
       state.reticle.visible = false;
       state.planeIndicator.visible = false;
+      setStartFromHereReady(false);
 
       if (performance.now() - state.lastScanDebugTime > 900) {
         state.lastScanDebugTime = performance.now();
@@ -573,6 +663,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     setXRDebug("PLANE DETECTED (" + state.hitFrames + ")");
     updateHud("Plane detected.");
     setStartFromHereVisible(true);
+    setStartFromHereReady(true);
   }
 
   function poseFromMatrix(xrMatrix) {
@@ -658,11 +749,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.foundationFadeMeshes = [];
     state.floatingObjectRevealMeshes = [];
     state.floatingObjectRevealStarted = false;
+    state.childRevealRequested = false;
     state.dustRevealMeshes = [];
     state.dustRevealQueued = false;
     state.fadeTasks = [];
     state.reticle.visible = false;
     state.planeIndicator.visible = false;
+    setScanPromptVisible(false);
+    setStartFromHereVisible(false);
+    resetFormationSlider();
+    setFormationSliderVisible(true);
     positionSunLightAt(center);
 
     updateBoulderPlacement();
@@ -676,6 +772,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.floatingObjectTargetWorldPosition.copy(state.floatingObjectBaseWorldPosition);
       state.floatingObjectTargetWorldPosition.y += CONFIG.floatingObjectTargetHeightMeters;
       state.floatingObjectPlacedAtTime = performance.now();
+    }
+    if (state.formationStep === 3 || state.childRevealRequested) {
+      startFloatingObjectChildrenReveal();
     }
     updateHud(state.floatingObject
       ? "Boulders placed. Object_3 will rise in 5 seconds."
@@ -858,6 +957,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function startFloatingObjectChildrenReveal() {
+    state.childRevealRequested = true;
     if (state.floatingObjectRevealStarted || !state.floatingObjectRevealMeshes.length) {
       return;
     }
@@ -1012,6 +1112,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.animationStarted = true;
   }
 
+  function returnToMainMenu() {
+    reset();
+    if (state.xrSession && typeof state.xrSession.end === "function") {
+      state.xrSession.end();
+    } else {
+      document.body.classList.remove("in-camera-ar");
+      setMenuButtonVisible(false);
+      setFormationSliderVisible(false);
+      setScanPromptVisible(false);
+      setStartFromHereVisible(false);
+      refreshReadyState();
+    }
+  }
+
   function reset() {
     releasePlacementAnchor();
 
@@ -1036,6 +1150,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.foundationFadeMeshes = [];
     state.floatingObjectRevealMeshes = [];
     state.floatingObjectRevealStarted = false;
+    state.childRevealRequested = false;
     state.dustRevealQueued = false;
     state.dustRevealMeshes = [];
     state.fadeTasks = [];
@@ -1047,6 +1162,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.animationComplete = false;
     setScanPromptVisible(Boolean(state.xrSession));
     setStartFromHereVisible(false);
+    setStartFromHereReady(false);
+    setFormationSliderVisible(false);
+    resetFormationSlider();
     updateHud("Move the iPad to detect a plane, then tap the green grid.");
   }
 
@@ -1130,11 +1248,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     const text = [
       ui.statusText.textContent,
-      "Height " + ui.heightValue.textContent + " m",
-      "Separation " + ui.separationValue.textContent + " m",
-      "Distance " + ui.geoDistanceValue.textContent,
-      "Heading " + ui.geoHeadingValue.textContent,
-      "Gate " + ui.geoGateValue.textContent,
+      ui.scanPrompt ? ui.scanPrompt.textContent : "",
       ui.xrDebugText.textContent
     ].join("|");
 
@@ -1146,38 +1260,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const context = state.xrHud.context;
     const canvas = state.xrHud.canvas;
     context.clearRect(0, 0, canvas.width, canvas.height);
-    drawRoundedRect(context, 18, 18, canvas.width - 36, canvas.height - 36, 32, "rgba(17, 24, 32, 0.80)", "rgba(123, 223, 242, 0.24)", 4);
+    drawRoundedRect(context, 18, 18, canvas.width - 36, 250, 32, "rgba(8, 10, 12, 0.72)", "rgba(246, 239, 230, 0.24)", 4);
 
-    context.fillStyle = "#7bdff2";
-    context.font = "800 34px Arial";
-    context.textAlign = "left";
+    context.fillStyle = "#f6efe6";
+    context.font = "800 46px Arial";
+    context.textAlign = "center";
     context.textBaseline = "top";
-    context.fillText("WEB PORT", 54, 48);
-
-    context.fillStyle = "#f8fbff";
-    context.font = "800 58px Arial";
-    context.fillText("AR Island Prototype", 54, 92);
-
-    context.fillStyle = "#c8d6e5";
-    context.font = "36px Arial";
-    drawWrappedText(context, ui.statusText.textContent, 54, 168, 900, 42, 2);
-
-    context.fillStyle = "#93a4b6";
-    context.font = "800 25px Arial";
-    context.fillText("HEIGHT", 54, 278);
-    context.fillText("SEPARATION", 330, 278);
-    context.fillText("DISTANCE", 606, 278);
-
-    context.fillStyle = "#f8fbff";
-    context.font = "44px Arial";
-    context.fillText(ui.heightValue.textContent + " m", 54, 312);
-    context.fillText(ui.separationValue.textContent + " m", 330, 312);
-    context.fillText(ui.geoDistanceValue.textContent, 606, 312);
-
-    context.fillStyle = "#7bdff2";
-    context.font = "30px Arial";
-    context.fillText("Heading " + ui.geoHeadingValue.textContent + " | Gate " + ui.geoGateValue.textContent, 54, 390);
-    context.fillText(ui.xrDebugText.textContent, 54, 432);
+    drawWrappedText(context, ui.scanPrompt && !ui.scanPrompt.hidden ? ui.scanPrompt.textContent : ui.statusText.textContent, canvas.width * 0.5, 62, 860, 56, 3);
 
     state.xrHud.texture.needsUpdate = true;
   }
@@ -1233,10 +1322,42 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     ui.geoStatus.dataset.active = isVisible ? "true" : "false";
   }
 
+  function setMenuButtonVisible(isVisible) {
+    if (ui.menuButton) {
+      ui.menuButton.hidden = !isVisible;
+    }
+  }
+
+  function setFormationSliderVisible(isVisible) {
+    if (ui.bottomUi) {
+      ui.bottomUi.hidden = !isVisible;
+    }
+  }
+
+  function resetFormationSlider() {
+    if (!ui.formationSlider || !state.setFormationSliderValue) {
+      return;
+    }
+
+    state.formationStep = 4;
+    ui.formationSlider.classList.add("is-prompting");
+    state.setFormationSliderValue(4, true);
+  }
+
   function setScanPromptVisible(isVisible) {
     if (ui.scanPrompt) {
       ui.scanPrompt.hidden = !isVisible;
     }
+  }
+
+  function bounceScanPrompt() {
+    if (!ui.scanPrompt) {
+      return;
+    }
+
+    ui.scanPrompt.classList.remove("is-bouncing");
+    void ui.scanPrompt.offsetWidth;
+    ui.scanPrompt.classList.add("is-bouncing");
   }
 
   function setStartFromHereVisible(isVisible) {
@@ -1245,7 +1366,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     ui.startFromHereButton.hidden = !isVisible;
-    ui.startFromHereButton.disabled = !isVisible || state.bouldersPlaced;
+    ui.startFromHereButton.disabled = state.bouldersPlaced;
+  }
+
+  function setStartFromHereReady(isReady) {
+    if (!ui.startFromHereButton) {
+      return;
+    }
+
+    ui.startFromHereButton.classList.toggle("is-ready", Boolean(isReady));
   }
 
   function shouldUseXrFallbackHud() {

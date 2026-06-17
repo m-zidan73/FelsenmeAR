@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>AR Island Prototype - Web</title>
-    <link rel="stylesheet" href="src/styles.css?v=start-flow-1">
+    <link rel="stylesheet" href="src/styles.css?v=main-menu-1">
     <script type="importmap">
       {
         "imports": {
@@ -13,44 +13,46 @@
         }
       }
     </script>
-    <script type="module" src="src/app.js?v=start-flow-1"></script>
+    <script type="module" src="src/app.js?v=main-menu-1"></script>
   </head>
   <body>
     <main id="app">
-      <section id="overlay" aria-live="polite">
-        <div class="status-card">
-          <p class="eyebrow">Web port</p>
-          <h1>AR Island Prototype</h1>
-          <p id="statusText">Enter AR, scan for a surface, then tap the detected plane.</p>
-          <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera top of on a flat surface</p>
-          <button id="startFromHereButton" class="start-from-here" type="button" hidden>Start From Here</button>
-          <dl>
+      <section id="mainMenu" class="main-menu" aria-live="polite">
+        <div class="main-menu-content">
+          <div class="brand-lockup">
+            <img class="brand-icon" src="Assets/Sprites/Main%20Menu%20Icon.png" alt="">
             <div>
-              <dt>Height</dt>
-              <dd><span id="heightValue">0.00</span> m</dd>
-            </div>
-            <div>
-              <dt>Separation</dt>
-              <dd><span id="separationValue">1.20</span> m</dd>
-            </div>
-          </dl>
-          <p id="xrDebugText" class="debug-line">XR: checking support</p>
-          <div id="geoStatus" class="geo-status">
-            <div>
-              <span>Distance</span>
-              <strong id="geoDistanceValue">waiting</strong>
-            </div>
-            <div>
-              <span>Heading</span>
-              <strong id="geoHeadingValue">waiting</strong>
-            </div>
-            <div>
-              <span>Gate</span>
-              <strong id="geoGateValue">locked</strong>
+              <h1><span>Felsenme</span><strong>AR</strong></h1>
+              <p>Rewind the rocks' memory & awaken the Felsenmeer's ancient story</p>
             </div>
           </div>
+          <div class="ready-card">
+            <div class="loading-row">
+              <div class="loading-track" aria-hidden="true">
+                <span id="loadingFill"></span>
+              </div>
+              <span id="loadingStateLabel">Checking</span>
+            </div>
+            <p id="statusText">Checking AR capability.</p>
+          </div>
+          <nav class="main-menu-actions" aria-label="Main menu">
+            <button id="startArButton" class="primary-menu-action" type="button">Start</button>
+            <button type="button" disabled>Continue</button>
+            <button id="resetButton" type="button">Restart</button>
+            <button type="button" disabled>Options</button>
+            <button type="button" disabled>Credits</button>
+          </nav>
         </div>
-        <div class="bottom-ui">
+      </section>
+      <section id="overlay" class="ar-overlay" aria-live="polite">
+        <button id="menuButton" class="menu-button" type="button" hidden aria-label="Return to main menu">
+          <img src="Assets/Sprites/Main%20Menu%20Icon.png" alt="">
+        </button>
+        <div class="placement-controls">
+          <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera on top of a flat surface</p>
+          <button id="startFromHereButton" class="start-from-here" type="button" hidden>Start From Here</button>
+        </div>
+        <div class="bottom-ui" hidden>
           <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">
             <ol class="formation-stages" aria-hidden="true">
               <li class="formation-stage">
@@ -81,9 +83,15 @@
               </div>
             </div>
           </section>
-          <div class="control-row">
-            <button id="startArButton" type="button">Start Camera AR</button>
-            <button id="resetButton" type="button">Reset</button>
+        </div>
+        <div class="telemetry" hidden>
+          <span id="heightValue">0.00</span>
+          <span id="separationValue">0.00</span>
+          <span id="xrDebugText">XR: checking support</span>
+          <div id="geoStatus">
+            <strong id="geoDistanceValue">waiting</strong>
+            <strong id="geoHeadingValue">waiting</strong>
+            <strong id="geoGateValue">locked</strong>
           </div>
         </div>
       </section>
