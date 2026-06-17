@@ -162,12 +162,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     const snapThreshold = 0.16;
 
-    const applySliderValue = (rawValue, shouldSnap) => {
+    const applySliderValue = (rawValue, shouldSnap, limitToAdjacentStep) => {
       const numericValue = THREE.MathUtils.clamp(Number(rawValue) || 0, 0, 4);
       const nearestStep = Math.round(numericValue);
-      const snappedValue = Math.abs(numericValue - nearestStep) <= snapThreshold || shouldSnap
-        ? nearestStep
-        : numericValue;
+      const requestedStep = shouldSnap && limitToAdjacentStep
+        ? THREE.MathUtils.clamp(nearestStep, state.formationStep - 1, state.formationStep + 1)
+        : nearestStep;
+      const snappedValue = shouldSnap
+        ? requestedStep
+        : Math.abs(numericValue - nearestStep) <= snapThreshold
+          ? nearestStep
+          : numericValue;
       const displayStep = Math.round(snappedValue);
       const progressPercent = (snappedValue / 4) * 100;
 
@@ -184,8 +189,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       });
 
       if (shouldSnap && displayStep !== state.formationStep) {
+        const previousStep = state.formationStep;
         state.formationStep = displayStep;
-        onFormationStepSelected(state.formationStep);
+        onFormationStepSelected(state.formationStep, previousStep);
       }
     };
 
@@ -201,7 +207,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     });
 
     ui.formationRange.addEventListener("change", (event) => {
-      applySliderValue(event.target.value, true);
+      applySliderValue(event.target.value, true, true);
     });
 
     window.addEventListener("pointerup", () => {
@@ -210,23 +216,24 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       }
 
       ui.formationSlider.classList.remove("is-dragging");
-      applySliderValue(ui.formationRange.value, true);
+      applySliderValue(ui.formationRange.value, true, true);
     });
 
     window.addEventListener("pointercancel", () => {
       ui.formationSlider.classList.remove("is-dragging");
-      applySliderValue(ui.formationRange.value, true);
+      applySliderValue(ui.formationRange.value, true, true);
     });
 
     ui.formationSlider.classList.add("is-prompting");
     applySliderValue(4, true);
   }
 
-  function onFormationStepSelected(stepIndex) {
+  function onFormationStepSelected(stepIndex, previousStep) {
     window.__formationSliderStep = stepIndex;
     if (stepIndex === 3) {
+      state.secondStageTransitionRequested = false;
       startFloatingObjectChildrenReveal();
-    } else if (stepIndex === 2) {
+    } else if (stepIndex === 2 && previousStep === 3) {
       startSecondStageTransition();
     }
   }
@@ -538,8 +545,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateSunLightFromDeviceLocation();
     updateGeoStatus();
     setXRDebug("hit-test source ready");
-    setScanPromptVisible(false);
-    setStartFromHereVisible(false);
+    setScanPromptVisible(true);
+    setStartFromHereVisible(true);
     setStartFromHereReady(false);
     setFormationSliderVisible(false);
     updateHud("Scanning for a flat surface.");
@@ -639,7 +646,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.latestHitResult = null;
       state.reticle.visible = false;
       state.planeIndicator.visible = false;
-      setStartFromHereVisible(false);
+      setScanPromptVisible(true);
+      setStartFromHereVisible(true);
       setStartFromHereReady(false);
 
       if (performance.now() - state.lastScanDebugTime > 900) {
