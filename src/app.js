@@ -61,6 +61,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     fadeTasks: [],
     formationStep: 4,
     childRevealRequested: false,
+    placementButtonReady: false,
     arSupportChecked: false,
     arSupported: false,
     assetProgress: 0,
@@ -501,7 +502,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   async function onSessionStarted(session) {
     state.xrSession = session;
     state.xrSession.addEventListener("end", onSessionEnded);
-    state.xrSession.addEventListener("select", startFromDetectedPlane);
 
     updateHud("Preparing AR world space.");
     setXRDebug("requesting local reference space");
@@ -530,8 +530,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateSunLightFromDeviceLocation();
     updateGeoStatus();
     setXRDebug("hit-test source ready");
-    setScanPromptVisible(true);
-    setStartFromHereVisible(true);
+    setScanPromptVisible(false);
+    setStartFromHereVisible(false);
     setStartFromHereReady(false);
     setFormationSliderVisible(false);
     updateHud("Scanning for a flat surface.");
@@ -631,6 +631,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.latestHitResult = null;
       state.reticle.visible = false;
       state.planeIndicator.visible = false;
+      setStartFromHereVisible(false);
       setStartFromHereReady(false);
 
       if (performance.now() - state.lastScanDebugTime > 900) {
@@ -763,11 +764,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     updateBoulderPlacement();
     state.bouldersRoot.updateMatrixWorld(true);
+    state.floatingObjectRevealMeshes = getDirectChildMeshes(state.floatingObject);
     prepareBoulderVisibility();
     queueFade(state.foundationFadeMeshes.concat(getSelfMeshes(state.floatingObject)), 0, 1, CONFIG.modelFadeInDurationSeconds);
     if (state.floatingObject) {
-      state.floatingObjectRevealMeshes = getDirectChildMeshes(state.floatingObject);
-      setMeshesOpacity(state.floatingObjectRevealMeshes, 0);
       state.floatingObject.getWorldPosition(state.floatingObjectBaseWorldPosition);
       state.floatingObjectTargetWorldPosition.copy(state.floatingObjectBaseWorldPosition);
       state.floatingObjectTargetWorldPosition.y += CONFIG.floatingObjectTargetHeightMeters;
@@ -802,7 +802,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const dustObject = root.getObjectByName("Dust and Grus");
     return {
       root,
-      floatingObject: root.getObjectByName("Object_3") || dustObject,
+      floatingObject: root.getObjectByName("Object_3"),
       dustObject
     };
   }
@@ -856,15 +856,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   function prepareBoulderVisibility() {
     const foundationNames = ["Plane", "Object_2", "Object_4", "Object_5", "Object_6"];
-    const allMeshes = getDescendantMeshes(state.bouldersRoot);
     setMeshesOpacity(getDescendantMeshes(state.bouldersRoot), 0);
     state.foundationFadeMeshes = foundationNames.flatMap((name) => getSelfMeshes(state.bouldersRoot.getObjectByName(name)));
-    if (!state.foundationFadeMeshes.length) {
-      state.foundationFadeMeshes = allMeshes.filter((mesh) => mesh !== state.dustObject);
-    }
-    if (!state.foundationFadeMeshes.length && state.dustObject) {
-      state.foundationFadeMeshes = getSelfMeshes(state.dustObject);
-    }
     state.dustRevealMeshes = getSelfMeshes(state.dustObject);
     setMeshesOpacity(state.foundationFadeMeshes, 0);
     setMeshesOpacity(getSelfMeshes(state.floatingObject), 0);
@@ -1159,6 +1152,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.floatingObjectRevealMeshes = [];
     state.floatingObjectRevealStarted = false;
     state.childRevealRequested = false;
+    state.placementButtonReady = false;
     state.dustRevealQueued = false;
     state.dustRevealMeshes = [];
     state.fadeTasks = [];
@@ -1168,12 +1162,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.bouldersPlaced = false;
     state.animationStarted = false;
     state.animationComplete = false;
-    setScanPromptVisible(Boolean(state.xrSession));
+    setScanPromptVisible(false);
     setStartFromHereVisible(false);
     setStartFromHereReady(false);
     setFormationSliderVisible(false);
     resetFormationSlider();
-    updateHud("Move the iPad to detect a plane, then tap the green grid.");
+    updateHud("Move the iPad to detect a plane, then press Start From Here.");
   }
 
   function createXrFallbackHud() {
@@ -1374,7 +1368,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     ui.startFromHereButton.hidden = !isVisible;
-    ui.startFromHereButton.disabled = state.bouldersPlaced;
+    ui.startFromHereButton.disabled = !isVisible || state.bouldersPlaced || !state.placementButtonReady;
   }
 
   function setStartFromHereReady(isReady) {
@@ -1382,7 +1376,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    ui.startFromHereButton.classList.toggle("is-ready", Boolean(isReady));
+    state.placementButtonReady = Boolean(isReady);
+    ui.startFromHereButton.classList.toggle("is-ready", state.placementButtonReady);
+    ui.startFromHereButton.disabled = state.bouldersPlaced || !state.placementButtonReady;
   }
 
   function shouldUseXrFallbackHud() {
@@ -1651,13 +1647,5 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   function toJulian(date) {
     return date.valueOf() / 86400000 - 0.5 + 2440588;
-  }
-
-  function moveTowards(current, target, maxDelta) {
-    if (Math.abs(target - current) <= maxDelta) {
-      return target;
-    }
-
-    return current + Math.sign(target - current) * maxDelta;
   }
 })();
