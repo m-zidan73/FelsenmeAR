@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>AR Island Prototype - Web</title>
-    <link rel="stylesheet" href="src/styles.css?v=object3-slider-1">
+    <link rel="stylesheet" href="src/styles.css?v=start-flow-1">
     <script type="importmap">
       {
         "imports": {
@@ -13,7 +13,7 @@
         }
       }
     </script>
-    <script type="module" src="src/app.js?v=object3-slider-1"></script>
+    <script type="module" src="src/app.js?v=start-flow-1"></script>
   </head>
   <body>
     <main id="app">
@@ -22,6 +22,8 @@
           <p class="eyebrow">Web port</p>
           <h1>AR Island Prototype</h1>
           <p id="statusText">Enter AR, scan for a surface, then tap the detected plane.</p>
+          <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera top of on a flat surface</p>
+          <button id="startFromHereButton" class="start-from-here" type="button" hidden>Start From Here</button>
           <dl>
             <div>
               <dt>Height</dt>
@@ -51,7 +53,7 @@
         <div class="bottom-ui">
           <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">
             <ol class="formation-stages" aria-hidden="true">
-              <li class="formation-stage is-active">
+              <li class="formation-stage">
                 <img src="Assets/Sprites/Magma.png" alt="">
               </li>
               <li class="formation-stage">
@@ -63,19 +65,19 @@
               <li class="formation-stage">
                 <img src="Assets/Sprites/Rounded%20Boulders.png" alt="">
               </li>
-              <li class="formation-stage">
+              <li class="formation-stage is-active">
                 <img src="Assets/Sprites/Final%20Boulder.png" alt="">
               </li>
             </ol>
             <div class="formation-track-wrap">
-              <input id="formationRange" class="formation-range" type="range" min="0" max="4" step="0.001" value="0" aria-label="Rock formation step">
+              <input id="formationRange" class="formation-range" type="range" min="0" max="4" step="0.001" value="4" aria-label="Rock formation step">
               <div class="formation-track" aria-hidden="true">
                 <span class="formation-fill"></span>
+                <span class="formation-dot"></span>
+                <span class="formation-dot"></span>
+                <span class="formation-dot"></span>
+                <span class="formation-dot"></span>
                 <span class="formation-dot is-active"></span>
-                <span class="formation-dot"></span>
-                <span class="formation-dot"></span>
-                <span class="formation-dot"></span>
-                <span class="formation-dot"></span>
               </div>
             </div>
           </section>

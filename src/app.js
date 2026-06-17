@@ -13,9 +13,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   const CONFIG = {
     modelFootprintMeters: 2.5,
     floatingObjectTargetHeightMeters: 1.0,
-    floatingObjectStartDelayMs: 0,
-    childRevealDurationSeconds: 3,
-    riseSpeedMetersPerSecond: 0.2,
+    modelFadeInDurationSeconds: 2,
+    floatingObjectStartDelayMs: 5000,
+    floatingObjectRiseDurationSeconds: 3,
+    sceneFadeOutDurationSeconds: 2,
+    childRevealDurationSeconds: 2,
+    dustRevealDelaySeconds: 3,
+    dustRevealDurationSeconds: 2,
     allowedLocations: [
       { latitude: 49.90000549974582, longitude: 8.85554978661026 },
       { latitude: 49.8686172198458, longitude: 8.649528051715288 }
@@ -46,9 +50,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     floatingObjectTargetWorldPosition: new THREE.Vector3(),
     floatingObjectPlacedAtTime: 0,
     floatingObjectTriggered: false,
+    floatingObjectRiseProgress: 0,
+    foundationFadeStarted: false,
+    foundationFadeMeshes: [],
     floatingObjectRevealMeshes: [],
     floatingObjectRevealStarted: false,
-    floatingObjectRevealProgress: 0,
+    dustObject: null,
+    dustRevealQueued: false,
+    dustRevealMeshes: [],
+    fadeTasks: [],
     modelsLoaded: false,
     modelLoadError: false,
     placementCenter: new THREE.Vector3(),
@@ -75,6 +85,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     canvasRoot: document.getElementById("canvasRoot"),
     overlay: document.getElementById("overlay"),
     statusText: document.getElementById("statusText"),
+    scanPrompt: document.getElementById("scanPrompt"),
+    startFromHereButton: document.getElementById("startFromHereButton"),
     heightValue: document.getElementById("heightValue"),
     separationValue: document.getElementById("separationValue"),
     xrDebugText: document.getElementById("xrDebugText"),
@@ -113,6 +125,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     window.addEventListener("resize", onResize);
     ui.startArButton.addEventListener("click", startARSession);
+    ui.startFromHereButton.addEventListener("click", startFromDetectedPlane);
     ui.resetButton.addEventListener("click", reset);
     initFormationSlider();
 
@@ -405,7 +418,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   async function onSessionStarted(session) {
     state.xrSession = session;
     state.xrSession.addEventListener("end", onSessionEnded);
-    state.xrSession.addEventListener("select", onXRSelect);
+    state.xrSession.addEventListener("select", startFromDetectedPlane);
 
     updateHud("Preparing AR world space.");
     setXRDebug("requesting local reference space");
@@ -433,7 +446,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateSunLightFromDeviceLocation();
     updateGeoStatus();
     setXRDebug("hit-test source ready");
-    updateHud("Scanning: find a plane. Tap to place once a plane is detected.");
+    setScanPromptVisible(true);
+    setStartFromHereVisible(false);
+    updateHud("Scanning for a flat surface.");
   }
 
   function onSessionEnded() {
@@ -455,12 +470,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.domOverlayActive = false;
     setXrHudVisible(false);
     setGeoStatusVisible(false);
+    setScanPromptVisible(false);
+    setStartFromHereVisible(false);
     stopLocationTracking();
     ui.startArButton.disabled = state.modelLoadError || !state.modelsLoaded;
     setXRDebug("AR session ended");
   }
 
-  async function onXRSelect() {
+  async function startFromDetectedPlane() {
     if (state.bouldersPlaced) {
       return;
     }
@@ -483,6 +500,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     const anchor = await createPlacementAnchor();
+    ui.startFromHereButton.disabled = true;
     placeBoulders(state.latestHit.position, anchor);
   }
 
@@ -502,7 +520,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     if (state.bouldersPlaced) {
       updateFloatingObject(deltaSeconds);
-      updateFloatingObjectChildrenReveal(deltaSeconds);
+      updateFadeTasks(deltaSeconds);
     }
 
     state.renderer.render(state.scene, state.camera);
@@ -553,7 +571,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.planeIndicator.visible = true;
 
     setXRDebug("PLANE DETECTED (" + state.hitFrames + ")");
-    ui.statusText.textContent = "PLANE DETECTED. Tap to place.";
+    updateHud("Plane detected.");
+    setStartFromHereVisible(true);
   }
 
   function poseFromMatrix(xrMatrix) {
@@ -625,6 +644,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const boulders = createBoulderInstance(state.modelAssets.boulders, modelScale);
     state.bouldersRoot = boulders.root;
     state.floatingObject = boulders.floatingObject;
+    state.dustObject = boulders.dustObject;
 
     state.scene.add(state.bouldersRoot);
     createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
@@ -633,12 +653,22 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.animationStarted = false;
     state.animationComplete = false;
     state.floatingObjectTriggered = false;
+    state.floatingObjectRiseProgress = 0;
+    state.foundationFadeStarted = false;
+    state.foundationFadeMeshes = [];
+    state.floatingObjectRevealMeshes = [];
+    state.floatingObjectRevealStarted = false;
+    state.dustRevealMeshes = [];
+    state.dustRevealQueued = false;
+    state.fadeTasks = [];
     state.reticle.visible = false;
     state.planeIndicator.visible = false;
     positionSunLightAt(center);
 
     updateBoulderPlacement();
     state.bouldersRoot.updateMatrixWorld(true);
+    prepareBoulderVisibility();
+    queueFade(state.foundationFadeMeshes.concat(getSelfMeshes(state.floatingObject)), 0, 1, CONFIG.modelFadeInDurationSeconds);
     if (state.floatingObject) {
       state.floatingObjectRevealMeshes = getDirectChildMeshes(state.floatingObject);
       setMeshesOpacity(state.floatingObjectRevealMeshes, 0);
@@ -648,7 +678,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.floatingObjectPlacedAtTime = performance.now();
     }
     updateHud(state.floatingObject
-      ? "Boulders placed. Object_3 will float up 1 m in 5 seconds."
+      ? "Boulders placed. Object_3 will rise in 5 seconds."
       : "Boulders placed, but Object_3 was not found in the model.");
     setXRDebug(anchor ? "anchored placement" : "raw world-space placement");
   }
@@ -672,7 +702,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     applyModelShadowSettings(root);
     return {
       root,
-      floatingObject: root.getObjectByName("Object_3")
+      floatingObject: root.getObjectByName("Object_3"),
+      dustObject: root.getObjectByName("Dust and Grus")
     };
   }
 
@@ -723,8 +754,41 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     });
   }
 
+  function prepareBoulderVisibility() {
+    const foundationNames = ["Plane", "Object_2", "Object_4", "Object_5", "Object_6"];
+    setMeshesOpacity(getDescendantMeshes(state.bouldersRoot), 0);
+    state.foundationFadeMeshes = foundationNames.flatMap((name) => getSelfMeshes(state.bouldersRoot.getObjectByName(name)));
+    state.dustRevealMeshes = getSelfMeshes(state.dustObject);
+    setMeshesOpacity(state.foundationFadeMeshes, 0);
+    setMeshesOpacity(getSelfMeshes(state.floatingObject), 0);
+    setMeshesOpacity(state.floatingObjectRevealMeshes, 0);
+    setMeshesOpacity(state.dustRevealMeshes, 0);
+  }
+
+  function getSelfMeshes(object) {
+    return object && object.isMesh ? [object] : [];
+  }
+
+  function getDescendantMeshes(object) {
+    const meshes = [];
+    if (!object) {
+      return meshes;
+    }
+
+    object.traverse((child) => {
+      if (child.isMesh) {
+        meshes.push(child);
+      }
+    });
+    return meshes;
+  }
+
   function getDirectChildMeshes(object) {
     const meshes = [];
+    if (!object) {
+      return meshes;
+    }
+
     object.children.forEach((child) => {
       child.traverse((descendant) => {
         if (descendant.isMesh) {
@@ -733,6 +797,48 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       });
     });
     return meshes;
+  }
+
+  function queueFade(meshes, from, to, durationSeconds, delaySeconds, onComplete) {
+    const uniqueMeshes = Array.from(new Set(meshes.filter(Boolean)));
+    if (!uniqueMeshes.length) {
+      return;
+    }
+
+    setMeshesOpacity(uniqueMeshes, from);
+    state.fadeTasks.push({
+      meshes: uniqueMeshes,
+      from,
+      to,
+      durationSeconds: Math.max(durationSeconds, 0.001),
+      delaySeconds: delaySeconds || 0,
+      elapsedSeconds: 0,
+      onComplete
+    });
+  }
+
+  function updateFadeTasks(deltaSeconds) {
+    state.fadeTasks = state.fadeTasks.filter((task) => {
+      task.elapsedSeconds += deltaSeconds;
+      if (task.elapsedSeconds < task.delaySeconds) {
+        return true;
+      }
+
+      const progress = THREE.MathUtils.clamp(
+        (task.elapsedSeconds - task.delaySeconds) / task.durationSeconds,
+        0,
+        1
+      );
+      setMeshesOpacity(task.meshes, THREE.MathUtils.lerp(task.from, task.to, progress));
+      if (progress < 1) {
+        return true;
+      }
+
+      if (task.onComplete) {
+        task.onComplete();
+      }
+      return false;
+    });
   }
 
   function setMeshesOpacity(meshes, opacity) {
@@ -752,23 +858,34 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function startFloatingObjectChildrenReveal() {
-    if (!state.floatingObjectRevealMeshes.length || state.floatingObjectRevealProgress >= 1) {
+    if (state.floatingObjectRevealStarted || !state.floatingObjectRevealMeshes.length) {
       return;
     }
 
     state.floatingObjectRevealStarted = true;
+    queueFade(
+      state.floatingObjectRevealMeshes,
+      0,
+      1,
+      CONFIG.childRevealDurationSeconds,
+      0,
+      queueDustReveal
+    );
   }
 
-  function updateFloatingObjectChildrenReveal(deltaSeconds) {
-    if (!state.floatingObjectRevealStarted || state.floatingObjectRevealProgress >= 1) {
+  function queueDustReveal() {
+    if (state.dustRevealQueued || !state.dustRevealMeshes.length) {
       return;
     }
 
-    state.floatingObjectRevealProgress = Math.min(
+    state.dustRevealQueued = true;
+    queueFade(
+      state.dustRevealMeshes,
+      0,
       1,
-      state.floatingObjectRevealProgress + deltaSeconds / CONFIG.childRevealDurationSeconds
+      CONFIG.dustRevealDurationSeconds,
+      CONFIG.dustRevealDelaySeconds
     );
-    setMeshesOpacity(state.floatingObjectRevealMeshes, state.floatingObjectRevealProgress);
   }
 
   function createShadowReceiver(center, orientation) {
@@ -810,12 +927,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.animationStarted = true;
     }
 
-    const currentWorldPosition = new THREE.Vector3();
-    state.floatingObject.getWorldPosition(currentWorldPosition);
-    currentWorldPosition.y = moveTowards(
-      currentWorldPosition.y,
+    state.floatingObjectRiseProgress = Math.min(
+      1,
+      state.floatingObjectRiseProgress + deltaSeconds / CONFIG.floatingObjectRiseDurationSeconds
+    );
+    const currentWorldPosition = state.floatingObjectBaseWorldPosition.clone();
+    currentWorldPosition.y = THREE.MathUtils.lerp(
+      state.floatingObjectBaseWorldPosition.y,
       state.floatingObjectTargetWorldPosition.y,
-      CONFIG.riseSpeedMetersPerSecond * deltaSeconds
+      state.floatingObjectRiseProgress
     );
 
     if (state.floatingObject.parent) {
@@ -824,12 +944,22 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.floatingObject.position.copy(currentWorldPosition);
     state.floatingObject.updateMatrixWorld(true);
 
-    if (Math.abs(state.floatingObjectTargetWorldPosition.y - state.floatingObject.getWorldPosition(new THREE.Vector3()).y) <= 0.00001) {
+    if (state.floatingObjectRiseProgress >= 1) {
       state.animationComplete = true;
+      fadeOutFoundationObjects();
       updateHud("Object_3 reached 1.00 m.");
     } else {
       updateHud("Object_3 is floating upward.");
     }
+  }
+
+  function fadeOutFoundationObjects() {
+    if (state.foundationFadeStarted) {
+      return;
+    }
+
+    state.foundationFadeStarted = true;
+    queueFade(state.foundationFadeMeshes, 1, 0, CONFIG.sceneFadeOutDurationSeconds);
   }
 
   function updateBoulderPlacement() {
@@ -896,19 +1026,27 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     state.bouldersRoot = null;
     state.floatingObject = null;
+    state.dustObject = null;
     state.floatingObjectBaseWorldPosition.set(0, 0, 0);
     state.floatingObjectTargetWorldPosition.set(0, 0, 0);
     state.floatingObjectPlacedAtTime = 0;
     state.floatingObjectTriggered = false;
+    state.floatingObjectRiseProgress = 0;
+    state.foundationFadeStarted = false;
+    state.foundationFadeMeshes = [];
     state.floatingObjectRevealMeshes = [];
     state.floatingObjectRevealStarted = false;
-    state.floatingObjectRevealProgress = 0;
+    state.dustRevealQueued = false;
+    state.dustRevealMeshes = [];
+    state.fadeTasks = [];
     state.shadowReceiver = null;
     state.placementCenter.set(0, 0, 0);
     state.planeHeight = 0;
     state.bouldersPlaced = false;
     state.animationStarted = false;
     state.animationComplete = false;
+    setScanPromptVisible(Boolean(state.xrSession));
+    setStartFromHereVisible(false);
     updateHud("Move the iPad to detect a plane, then tap the green grid.");
   }
 
@@ -1093,6 +1231,21 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   function setGeoStatusVisible(isVisible) {
     ui.geoStatus.dataset.active = isVisible ? "true" : "false";
+  }
+
+  function setScanPromptVisible(isVisible) {
+    if (ui.scanPrompt) {
+      ui.scanPrompt.hidden = !isVisible;
+    }
+  }
+
+  function setStartFromHereVisible(isVisible) {
+    if (!ui.startFromHereButton) {
+      return;
+    }
+
+    ui.startFromHereButton.hidden = !isVisible;
+    ui.startFromHereButton.disabled = !isVisible || state.bouldersPlaced;
   }
 
   function shouldUseXrFallbackHud() {

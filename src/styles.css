@@ -83,6 +83,25 @@ h1 {
   line-height: 1.35;
 }
 
+.scan-prompt {
+  margin: -4px 0 12px;
+  color: #f8fbff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.start-from-here {
+  width: 100%;
+  margin: 0 0 12px;
+  background: linear-gradient(135deg, #7bdff2, #8ef28e);
+  box-shadow: 0 10px 24px rgba(123, 223, 242, 0.24);
+}
+
+[hidden] {
+  display: none !important;
+}
+
 dl {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -404,12 +423,6 @@ button {
   font: inherit;
   font-weight: 750;
   cursor: pointer;
-}
-
-body.in-camera-ar:not(.has-dom-overlay) .status-card,
-body.in-camera-ar:not(.has-dom-overlay) .control-row,
-body.in-camera-ar:not(.has-dom-overlay) .gesture-indicators {
-  opacity: 0.001;
 }
 
 button:active {
