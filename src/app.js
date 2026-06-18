@@ -161,15 +161,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     const snapThreshold = 0.16;
+    let gestureStartStep = state.formationStep;
+    let gestureCommitted = false;
 
-    const applySliderValue = (rawValue, shouldSnap, limitToAdjacentStep) => {
+    const applySliderValue = (rawValue, shouldSnap) => {
       const numericValue = THREE.MathUtils.clamp(Number(rawValue) || 0, 0, 4);
       const nearestStep = Math.round(numericValue);
-      const requestedStep = shouldSnap && limitToAdjacentStep
-        ? THREE.MathUtils.clamp(nearestStep, state.formationStep - 1, state.formationStep + 1)
-        : nearestStep;
       const snappedValue = shouldSnap
-        ? requestedStep
+        ? nearestStep
         : Math.abs(numericValue - nearestStep) <= snapThreshold
           ? nearestStep
           : numericValue;
@@ -195,9 +194,26 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       }
     };
 
+    const commitSliderGesture = (rawValue) => {
+      if (gestureCommitted) {
+        return;
+      }
+
+      gestureCommitted = true;
+      const requestedStep = Math.round(THREE.MathUtils.clamp(Number(rawValue) || 0, 0, 4));
+      const adjacentStep = THREE.MathUtils.clamp(
+        requestedStep,
+        gestureStartStep - 1,
+        gestureStartStep + 1
+      );
+      applySliderValue(adjacentStep, true);
+    };
+
     state.setFormationSliderValue = applySliderValue;
 
     ui.formationRange.addEventListener("pointerdown", () => {
+      gestureStartStep = state.formationStep;
+      gestureCommitted = false;
       ui.formationSlider.classList.remove("is-prompting");
       ui.formationSlider.classList.add("is-dragging");
     });
@@ -207,7 +223,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     });
 
     ui.formationRange.addEventListener("change", (event) => {
-      applySliderValue(event.target.value, true, true);
+      if (!gestureCommitted && !ui.formationSlider.classList.contains("is-dragging")) {
+        gestureStartStep = state.formationStep;
+      }
+      commitSliderGesture(event.target.value);
+    });
+
+    ui.formationRange.addEventListener("keydown", () => {
+      gestureStartStep = state.formationStep;
+      gestureCommitted = false;
     });
 
     window.addEventListener("pointerup", () => {
@@ -216,12 +240,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       }
 
       ui.formationSlider.classList.remove("is-dragging");
-      applySliderValue(ui.formationRange.value, true, true);
+      commitSliderGesture(ui.formationRange.value);
     });
 
     window.addEventListener("pointercancel", () => {
       ui.formationSlider.classList.remove("is-dragging");
-      applySliderValue(ui.formationRange.value, true, true);
+      commitSliderGesture(ui.formationRange.value);
     });
 
     ui.formationSlider.classList.add("is-prompting");
