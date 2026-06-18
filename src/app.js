@@ -981,6 +981,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   }
 
   function updateFadeTasks(deltaSeconds) {
+    const completedCallbacks = [];
     state.fadeTasks = state.fadeTasks.filter((task) => {
       task.elapsedSeconds += deltaSeconds;
       if (task.elapsedSeconds < task.delaySeconds) {
@@ -998,10 +999,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       }
 
       if (task.onComplete) {
-        task.onComplete();
+        completedCallbacks.push(task.onComplete);
       }
       return false;
     });
+
+    completedCallbacks.forEach((callback) => callback());
   }
 
   function setMeshesOpacity(meshes, opacity) {
