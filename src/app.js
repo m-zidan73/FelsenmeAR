@@ -847,11 +847,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     root.updateMatrixWorld(true);
 
     applyModelShadowSettings(root);
-    const dustObject = root.getObjectByName("Dust and Grus");
+    const dustObject = getImportedObjectByName(root, "Dust and Grus");
     const stageRockObjects = {
-      1: root.getObjectByName("1st Stage Rock"),
-      2: root.getObjectByName("2nd Stage Rock"),
-      3: root.getObjectByName("3rd Stage Rock")
+      1: getImportedObjectByName(root, "1st Stage Rock"),
+      2: getImportedObjectByName(root, "2nd Stage Rock"),
+      3: getImportedObjectByName(root, "3rd Stage Rock")
     };
     return {
       root,
@@ -859,6 +859,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       dustObject,
       stageRockObjects
     };
+  }
+
+  function getImportedObjectByName(root, name) {
+    return root.getObjectByName(name) || root.getObjectByName(name.replaceAll(" ", "_"));
   }
 
   function getModelScale(referenceScene) {
