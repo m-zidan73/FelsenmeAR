@@ -826,7 +826,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     applyModelShadowSettings(root);
     const dustObject = root.getObjectByName("Dust and Grus");
-    const secondStageRock = root.getObjectByName("2nd Stage Rock");
+    const secondStageRock = root.getObjectByName("3nd Stage Rock");
     return {
       root,
       floatingObject: root.getObjectByName("Object_3"),
@@ -1050,7 +1050,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       .concat(state.floatingObjectRevealMeshes, state.dustRevealMeshes);
     queueFade(fadingMeshes, 1, 0, CONFIG.secondStageTransitionDurationSeconds);
     queueFade(state.secondStageRockMeshes, 0, 1, CONFIG.secondStageTransitionDurationSeconds);
-    updateHud("Stage 3 transition: 2nd Stage Rock appearing.");
+    updateHud("Stage 3 transition: 3rd Stage Rock appearing.");
   }
 
   function createShadowReceiver(center, orientation) {
