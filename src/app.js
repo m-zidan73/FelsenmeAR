@@ -1073,8 +1073,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const fadingMeshes = getSelfMeshes(state.floatingObject)
       .concat(state.floatingObjectRevealMeshes, state.dustRevealMeshes);
     queueFade(fadingMeshes, 1, 0, CONFIG.secondStageTransitionDurationSeconds);
-    queueFade(state.secondStageRockMeshes, 0, 1, CONFIG.secondStageTransitionDurationSeconds);
-    updateHud("Stage 3 transition: 3rd Stage Rock appearing.");
+    setMeshesOpacity(state.secondStageRockMeshes, 0);
+    updateHud("Stage 3 transition complete.");
   }
 
   function createShadowReceiver(center, orientation) {
