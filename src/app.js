@@ -917,6 +917,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     setMeshesOpacity(state.floatingObjectRevealMeshes, 0);
     setMeshesOpacity(state.dustRevealMeshes, 0);
     setMeshesOpacity(state.secondStageRockMeshes, 0);
+    removeAndDisposeObject(state.secondStageRock);
+    state.secondStageRock = null;
+    state.secondStageRockMeshes = [];
   }
 
   function getSelfMeshes(object) {
@@ -1065,15 +1068,27 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    if (state.secondStageTransitionStarted || !state.dustRevealComplete || !state.secondStageRockMeshes.length) {
+    if (state.secondStageTransitionStarted || !state.dustRevealComplete) {
       return;
     }
 
     state.secondStageTransitionStarted = true;
     const fadingMeshes = getSelfMeshes(state.floatingObject)
       .concat(state.floatingObjectRevealMeshes, state.dustRevealMeshes);
-    queueFade(fadingMeshes, 1, 0, CONFIG.secondStageTransitionDurationSeconds);
-    setMeshesOpacity(state.secondStageRockMeshes, 0);
+    queueFade(
+      fadingMeshes,
+      1,
+      0,
+      CONFIG.secondStageTransitionDurationSeconds,
+      0,
+      () => {
+        removeAndDisposeMeshes(fadingMeshes);
+        state.floatingObject = null;
+        state.dustObject = null;
+        state.floatingObjectRevealMeshes = [];
+        state.dustRevealMeshes = [];
+      }
+    );
     updateHud("Stage 3 transition complete.");
   }
 
@@ -1153,7 +1168,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     state.foundationFadeStarted = true;
-    queueFade(state.foundationFadeMeshes, 1, 0, CONFIG.sceneFadeOutDurationSeconds);
+    const foundationMeshes = state.foundationFadeMeshes.slice();
+    queueFade(
+      foundationMeshes,
+      1,
+      0,
+      CONFIG.sceneFadeOutDurationSeconds,
+      0,
+      () => {
+        removeAndDisposeMeshes(foundationMeshes);
+        state.foundationFadeMeshes = [];
+      }
+    );
   }
 
   function updateBoulderPlacement() {
@@ -1562,6 +1588,42 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         materials.forEach((material) => material.dispose());
       }
     });
+  }
+
+  function removeAndDisposeObject(object) {
+    if (!object) {
+      return;
+    }
+
+    if (object.parent) {
+      object.parent.remove(object);
+    }
+    disposeObject(object);
+  }
+
+  function removeAndDisposeMeshes(meshes) {
+    Array.from(new Set(meshes.filter(Boolean)))
+      .sort((a, b) => getObjectDepth(b) - getObjectDepth(a))
+      .forEach((mesh) => {
+        if (mesh.parent) {
+          mesh.parent.remove(mesh);
+        }
+        if (mesh.geometry) {
+          mesh.geometry.dispose();
+        }
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        materials.filter(Boolean).forEach((material) => material.dispose());
+      });
+  }
+
+  function getObjectDepth(object) {
+    let depth = 0;
+    let parent = object.parent;
+    while (parent) {
+      depth += 1;
+      parent = parent.parent;
+    }
+    return depth;
   }
 
   function updateHud(message) {
