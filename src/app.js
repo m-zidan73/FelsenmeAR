@@ -19,7 +19,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     sceneFadeOutDurationSeconds: 2,
     childRevealDurationSeconds: 2,
     dustRevealDurationSeconds: 2,
-    secondStageTransitionDurationSeconds: 2,
+    formationTransitionDurationSeconds: 2,
     allowedLocations: [
       { latitude: 49.90000549974582, longitude: 8.85554978661026 },
       { latitude: 49.8686172198458, longitude: 8.649528051715288 }
@@ -59,11 +59,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     dustRevealQueued: false,
     dustRevealMeshes: [],
     dustRevealComplete: false,
-    secondStageRock: null,
-    secondStageRockMeshes: [],
-    secondStageRockBaseWorldPosition: new THREE.Vector3(),
-    secondStageTransitionRequested: false,
-    secondStageTransitionStarted: false,
+    stageRockObjects: { 1: null, 2: null, 3: null },
+    stageRockMeshes: { 1: [], 2: [], 3: [] },
+    visibleFormationStage: 5,
+    stageTransitionActive: false,
     fadeTasks: [],
     formationStep: 4,
     childRevealRequested: false,
@@ -255,10 +254,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   function onFormationStepSelected(stepIndex, previousStep) {
     window.__formationSliderStep = stepIndex;
     if (stepIndex === 3) {
-      state.secondStageTransitionRequested = false;
       startFloatingObjectChildrenReveal();
-    } else if (stepIndex === 2 && previousStep === 3) {
-      startSecondStageTransition();
+    } else if (stepIndex < previousStep) {
+      processFormationStage();
     }
   }
 
@@ -755,7 +753,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       const heightDelta = state.planeHeight - previousPlaneHeight;
       state.floatingObjectBaseWorldPosition.y += heightDelta;
       state.floatingObjectTargetWorldPosition.y += heightDelta;
-      state.secondStageRockBaseWorldPosition.y += heightDelta;
     }
   }
 
@@ -778,7 +775,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.bouldersRoot = boulders.root;
     state.floatingObject = boulders.floatingObject;
     state.dustObject = boulders.dustObject;
-    state.secondStageRock = boulders.secondStageRock;
+    state.stageRockObjects = boulders.stageRockObjects;
 
     state.scene.add(state.bouldersRoot);
     createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
@@ -796,9 +793,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.dustRevealMeshes = [];
     state.dustRevealQueued = false;
     state.dustRevealComplete = false;
-    state.secondStageRockMeshes = [];
-    state.secondStageTransitionRequested = false;
-    state.secondStageTransitionStarted = false;
+    state.stageRockMeshes = { 1: [], 2: [], 3: [] };
+    state.visibleFormationStage = 5;
+    state.stageTransitionActive = false;
     state.fadeTasks = [];
     state.reticle.visible = false;
     state.planeIndicator.visible = false;
@@ -812,7 +809,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.bouldersRoot.updateMatrixWorld(true);
     state.floatingObjectRevealMeshes = getDirectChildMeshesExcept(
       state.floatingObject,
-      [state.dustObject, state.secondStageRock]
+      [state.dustObject, ...Object.values(state.stageRockObjects)]
     );
     prepareBoulderVisibility();
     queueFade(state.foundationFadeMeshes.concat(getSelfMeshes(state.floatingObject)), 0, 1, CONFIG.modelFadeInDurationSeconds);
@@ -822,13 +819,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       state.floatingObjectTargetWorldPosition.y += CONFIG.floatingObjectTargetHeightMeters;
       state.floatingObjectPlacedAtTime = performance.now();
     }
-    if (state.secondStageRock) {
-      state.secondStageRock.getWorldPosition(state.secondStageRockBaseWorldPosition);
-    }
     if (state.formationStep === 3 || state.childRevealRequested) {
       startFloatingObjectChildrenReveal();
-    } else if (state.formationStep === 2 || state.secondStageTransitionRequested) {
-      startSecondStageTransition();
+    } else if (state.formationStep < 3) {
+      processFormationStage();
     }
     updateHud(state.floatingObject
       ? "Boulders placed. Object_3 will rise in 5 seconds."
@@ -854,12 +848,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     applyModelShadowSettings(root);
     const dustObject = root.getObjectByName("Dust and Grus");
-    const secondStageRock = root.getObjectByName("3rd Stage Rock");
+    const stageRockObjects = {
+      1: root.getObjectByName("1st Stage Rock"),
+      2: root.getObjectByName("2nd Stage Rock"),
+      3: root.getObjectByName("3rd Stage Rock")
+    };
     return {
       root,
       floatingObject: root.getObjectByName("Object_3"),
       dustObject,
-      secondStageRock
+      stageRockObjects
     };
   }
 
@@ -915,12 +913,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     setMeshesOpacity(getDescendantMeshes(state.bouldersRoot), 0);
     state.foundationFadeMeshes = foundationNames.flatMap((name) => getSelfMeshes(state.bouldersRoot.getObjectByName(name)));
     state.dustRevealMeshes = getDescendantMeshes(state.dustObject);
-    state.secondStageRockMeshes = getDescendantMeshes(state.secondStageRock);
+    state.stageRockMeshes = {
+      1: getDescendantMeshes(state.stageRockObjects[1]),
+      2: getDescendantMeshes(state.stageRockObjects[2]),
+      3: getDescendantMeshes(state.stageRockObjects[3])
+    };
     setMeshesOpacity(state.foundationFadeMeshes, 0);
     setMeshesOpacity(getSelfMeshes(state.floatingObject), 0);
     setMeshesOpacity(state.floatingObjectRevealMeshes, 0);
     setMeshesOpacity(state.dustRevealMeshes, 0);
-    setMeshesOpacity(state.secondStageRockMeshes, 0);
+    Object.values(state.stageRockMeshes).forEach((meshes) => setMeshesOpacity(meshes, 0));
   }
 
   function getSelfMeshes(object) {
@@ -1053,16 +1055,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       0,
       () => {
         state.dustRevealComplete = true;
-        if (state.secondStageTransitionRequested) {
-          startSecondStageTransition();
-        }
+        state.visibleFormationStage = 4;
+        processFormationStage();
       }
     );
   }
 
-  function startSecondStageTransition() {
-    state.secondStageTransitionRequested = true;
-    if (!state.animationComplete) {
+  function processFormationStage() {
+    if (!state.animationComplete || state.stageTransitionActive) {
       return;
     }
 
@@ -1071,34 +1071,96 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    if (state.secondStageTransitionStarted || !state.dustRevealComplete || !state.secondStageRockMeshes.length) {
+    if (!state.dustRevealComplete) {
       return;
     }
 
-    state.secondStageTransitionStarted = true;
+    const targetStage = state.formationStep + 1;
+    if (targetStage >= state.visibleFormationStage || targetStage < 1) {
+      return;
+    }
+
+    if (state.visibleFormationStage === 4 && targetStage <= 3) {
+      transitionFromStageFour();
+    } else if (state.visibleFormationStage === 3 && targetStage <= 2) {
+      transitionBetweenNamedRocks(3, 2);
+    } else if (state.visibleFormationStage === 2 && targetStage <= 1) {
+      transitionBetweenNamedRocks(2, 1);
+    }
+  }
+
+  function transitionFromStageFour() {
+    const nextMeshes = state.stageRockMeshes[3];
+    if (!nextMeshes.length) {
+      return;
+    }
+
+    state.stageTransitionActive = true;
     const fadingMeshes = getSelfMeshes(state.floatingObject)
       .concat(state.floatingObjectRevealMeshes, state.dustRevealMeshes);
     queueFade(
       fadingMeshes,
       1,
       0,
-      CONFIG.secondStageTransitionDurationSeconds,
+      CONFIG.formationTransitionDurationSeconds,
       0,
       () => {
-        removeAndDisposeMeshes(fadingMeshes);
-        state.floatingObject = null;
+        removeAndDisposeMeshes(fadingMeshes, [state.floatingObject]);
         state.dustObject = null;
         state.floatingObjectRevealMeshes = [];
         state.dustRevealMeshes = [];
       }
     );
     queueFade(
-      state.secondStageRockMeshes,
+      nextMeshes,
       0,
       1,
-      CONFIG.secondStageTransitionDurationSeconds
+      CONFIG.formationTransitionDurationSeconds,
+      0,
+      () => finishFormationTransition(3)
     );
     updateHud("Stage 3 transition: 3rd Stage Rock appearing.");
+  }
+
+  function transitionBetweenNamedRocks(fromStage, toStage) {
+    const currentMeshes = state.stageRockMeshes[fromStage];
+    const nextMeshes = state.stageRockMeshes[toStage];
+    if (!currentMeshes.length || !nextMeshes.length) {
+      return;
+    }
+
+    state.stageTransitionActive = true;
+    queueFade(
+      currentMeshes,
+      1,
+      0,
+      CONFIG.formationTransitionDurationSeconds,
+      0,
+      () => {
+        removeAndDisposeMeshes(currentMeshes);
+        state.stageRockObjects[fromStage] = null;
+        state.stageRockMeshes[fromStage] = [];
+      }
+    );
+    queueFade(
+      nextMeshes,
+      0,
+      1,
+      CONFIG.formationTransitionDurationSeconds,
+      0,
+      () => finishFormationTransition(toStage)
+    );
+    updateHud("Stage " + toStage + " transition: " + ordinalStageName(toStage) + " Stage Rock appearing.");
+  }
+
+  function finishFormationTransition(stage) {
+    state.visibleFormationStage = stage;
+    state.stageTransitionActive = false;
+    processFormationStage();
+  }
+
+  function ordinalStageName(stage) {
+    return stage === 1 ? "1st" : stage === 2 ? "2nd" : "3rd";
   }
 
   function createShadowReceiver(center, orientation) {
@@ -1156,34 +1218,19 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
     state.floatingObject.position.copy(currentWorldPosition);
     state.floatingObject.updateMatrixWorld(true);
-    updateSecondStageRockPosition();
 
     if (state.floatingObjectRiseProgress >= 1) {
       state.animationComplete = true;
       fadeOutFoundationObjects();
       if (state.childRevealRequested || state.formationStep === 3) {
         startFloatingObjectChildrenReveal();
-      } else if (state.secondStageTransitionRequested || state.formationStep === 2) {
-        startSecondStageTransition();
+      } else if (state.formationStep < 3) {
+        processFormationStage();
       }
       updateHud("Object_3 reached 1.00 m.");
     } else {
       updateHud("Object_3 is floating upward.");
     }
-  }
-
-  function updateSecondStageRockPosition() {
-    if (!state.secondStageRock) {
-      return;
-    }
-
-    const worldPosition = state.secondStageRockBaseWorldPosition.clone();
-    worldPosition.y += CONFIG.floatingObjectTargetHeightMeters * state.floatingObjectRiseProgress;
-    if (state.secondStageRock.parent) {
-      state.secondStageRock.parent.worldToLocal(worldPosition);
-    }
-    state.secondStageRock.position.copy(worldPosition);
-    state.secondStageRock.updateMatrixWorld(true);
   }
 
   function fadeOutFoundationObjects() {
@@ -1285,10 +1332,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.bouldersRoot = null;
     state.floatingObject = null;
     state.dustObject = null;
-    state.secondStageRock = null;
+    state.stageRockObjects = { 1: null, 2: null, 3: null };
+    state.stageRockMeshes = { 1: [], 2: [], 3: [] };
     state.floatingObjectBaseWorldPosition.set(0, 0, 0);
     state.floatingObjectTargetWorldPosition.set(0, 0, 0);
-    state.secondStageRockBaseWorldPosition.set(0, 0, 0);
     state.floatingObjectPlacedAtTime = 0;
     state.floatingObjectTriggered = false;
     state.floatingObjectRiseProgress = 0;
@@ -1301,9 +1348,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.dustRevealQueued = false;
     state.dustRevealMeshes = [];
     state.dustRevealComplete = false;
-    state.secondStageRockMeshes = [];
-    state.secondStageTransitionRequested = false;
-    state.secondStageTransitionStarted = false;
+    state.visibleFormationStage = 5;
+    state.stageTransitionActive = false;
     state.fadeTasks = [];
     state.shadowReceiver = null;
     state.placementCenter.set(0, 0, 0);
@@ -1615,18 +1661,26 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     });
   }
 
-  function removeAndDisposeMeshes(meshes) {
+  function removeAndDisposeMeshes(meshes, retainedMeshes) {
+    const retained = new Set((retainedMeshes || []).filter(Boolean));
     Array.from(new Set(meshes.filter(Boolean)))
       .sort((a, b) => getObjectDepth(b) - getObjectDepth(a))
       .forEach((mesh) => {
-        if (mesh.parent) {
+        if (!retained.has(mesh) && mesh.parent) {
           mesh.parent.remove(mesh);
         }
         if (mesh.geometry) {
           mesh.geometry.dispose();
+          if (retained.has(mesh)) {
+            mesh.geometry = null;
+          }
         }
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         materials.filter(Boolean).forEach((material) => material.dispose());
+        if (retained.has(mesh)) {
+          mesh.geometry = new THREE.BufferGeometry();
+          mesh.material = new THREE.MeshBasicMaterial({ visible: false });
+        }
       });
   }
 
