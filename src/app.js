@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
 
 (function () {
   window.__runtimeErrors = [];
@@ -27,27 +28,56 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     allowedLocationRadiusMeters: 25
   };
 
+  const MARKER_CALIBRATION = {
+    physicalWidthMeters: 0.15,
+    positionMeters: new THREE.Vector3(-0.3048, 0, 0),
+    rotationDegrees: new THREE.Vector3(0, 0, 0),
+    scale: 1,
+    shadowPlaneSizeMeters: 4,
+    shadowPlaneYOffsetMeters: 0.004
+  };
+
+  const MARKER_TRACKING = {
+    stableDetectionFrames: 6,
+    lossTimeoutMs: 900,
+    positionSmoothing: 0.38,
+    rotationSmoothing: 0.34,
+    sourceWidth: 640,
+    sourceHeight: 480,
+    detectionWidth: 480,
+    detectionHeight: 360,
+    maxDetectionRate: 30
+  };
+
   const state = {
     scene: null,
     camera: null,
     renderer: null,
-    xrSession: null,
-    xrReferenceSpace: null,
-    xrViewerSpace: null,
-    xrHitTestSource: null,
-    xrPlacementAnchor: null,
-    xrPlacementAnchorSpace: null,
-    latestHit: null,
-    latestHitResult: null,
-    reticle: null,
-    planeIndicator: null,
+    arToolkitSource: null,
+    arToolkitContext: null,
+    markerControls: null,
+    rawMarkerRoot: null,
+    trackingRoot: null,
+    calibrationRoot: null,
+    cameraActive: false,
+    cameraInitialized: false,
+    markerStable: false,
+    hasStableMarkerPose: false,
+    markerTrackingPaused: false,
+    markerConsecutiveDetections: 0,
+    markerLastSeenAt: 0,
+    markerLossDurationMs: 0,
+    rawMarkerPosition: new THREE.Vector3(),
+    rawMarkerQuaternion: new THREE.Quaternion(),
+    smoothedMarkerPosition: new THREE.Vector3(),
+    smoothedMarkerQuaternion: new THREE.Quaternion(),
     sunLight: null,
     shadowReceiver: null,
     modelAssets: null,
     bouldersRoot: null,
     floatingObject: null,
-    floatingObjectBaseWorldPosition: new THREE.Vector3(),
-    floatingObjectTargetWorldPosition: new THREE.Vector3(),
+    floatingObjectBasePosition: new THREE.Vector3(),
+    floatingObjectTargetPosition: new THREE.Vector3(),
     floatingObjectPlacedAtTime: 0,
     floatingObjectTriggered: false,
     floatingObjectRiseProgress: 0,
@@ -66,30 +96,25 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     fadeTasks: [],
     formationStep: 4,
     childRevealRequested: false,
-    placementButtonReady: false,
     arSupportChecked: false,
     arSupported: false,
     assetProgress: 0,
     modelsLoaded: false,
     modelLoadError: false,
     placementCenter: new THREE.Vector3(),
-    planeHeight: 0,
     bouldersPlaced: false,
     animationStarted: false,
     animationComplete: false,
     lastTime: 0,
-    hitFrames: 0,
-    noHitFrames: 0,
-    lastScanDebugTime: 0,
+    debugMode: new URLSearchParams(window.location.search).has("debug"),
+    lastDebugUpdateAt: 0,
     compassHeadingDegrees: null,
     userPosition: null,
     userPositionError: null,
     geolocationWatchId: null,
     sunDirection: new THREE.Vector3(-0.3, 0.8, 0.5).normalize(),
     lastSunPosition: null,
-    sunReady: false,
-    domOverlayActive: false,
-    xrHud: null
+    sunReady: false
   };
 
   const ui = {
@@ -99,11 +124,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     statusText: document.getElementById("statusText"),
     loadingFill: document.getElementById("loadingFill"),
     loadingStateLabel: document.getElementById("loadingStateLabel"),
-    scanPrompt: document.getElementById("scanPrompt"),
-    startFromHereButton: document.getElementById("startFromHereButton"),
+    trackingStatus: document.getElementById("trackingStatus"),
+    markerGuide: document.getElementById("markerGuide"),
+    markerDebug: document.getElementById("markerDebug"),
     heightValue: document.getElementById("heightValue"),
     separationValue: document.getElementById("separationValue"),
-    xrDebugText: document.getElementById("xrDebugText"),
+    arDebugText: document.getElementById("arDebugText"),
     startArButton: document.getElementById("startArButton"),
     resetButton: document.getElementById("resetButton"),
     menuButton: document.getElementById("menuButton"),
@@ -128,27 +154,21 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     state.renderer.setPixelRatio(window.devicePixelRatio);
     state.renderer.setSize(window.innerWidth, window.innerHeight);
-    state.renderer.xr.enabled = true;
-    state.renderer.xr.setReferenceSpaceType("local");
     state.renderer.outputColorSpace = THREE.SRGBColorSpace;
     ui.canvasRoot.appendChild(state.renderer.domElement);
 
     addLights();
-    addDesktopFallbackFloor();
-    createReticleAndPlaneIndicator();
-    createXrFallbackHud();
     loadBoulderModel();
 
     window.addEventListener("resize", onResize);
-    ui.startArButton.addEventListener("click", startARSession);
-    ui.startFromHereButton.addEventListener("click", startFromDetectedPlane);
+    ui.startArButton.addEventListener("click", startMarkerCamera);
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
     initFormationSlider();
 
     ui.startArButton.disabled = true;
     setFormationSliderVisible(false);
-    setMenuLoading(0, "Checking", "Checking AR capability.");
+    setMenuLoading(0, "Checking", "Checking camera capability.");
     checkARSupport();
     installDebugHooks();
     state.renderer.setAnimationLoop(render);
@@ -289,7 +309,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     } catch (error) {
       state.modelLoadError = true;
       ui.startArButton.disabled = true;
-      setXRDebug("model load failed");
+      setARDebug("model load failed");
       setMenuLoading(100, "Error", "Could not load the boulder model. Check the Assets folder and refresh.");
       window.__runtimeErrors.push("Boulder model load failed: " + error.message);
     }
@@ -317,13 +337,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     if (!state.arSupportChecked) {
       ui.startArButton.disabled = true;
-      setMenuLoading(Math.max(12, state.assetProgress * 80), "Checking", "Checking AR capability.");
+      setMenuLoading(Math.max(12, state.assetProgress * 80), "Checking", "Checking camera capability.");
       return;
     }
 
     if (!state.arSupported) {
       ui.startArButton.disabled = true;
-      setMenuLoading(100, "Blocked", "This browser does not expose WebXR AR.");
+      setMenuLoading(100, "Blocked", "Camera AR requires HTTPS and camera permission.");
       return;
     }
 
@@ -352,7 +372,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
           animationComplete: state.animationComplete,
           floatingObjectTriggered: state.floatingObjectTriggered,
           floatingObjectY: state.floatingObject ? state.floatingObject.position.y : null,
-          floatingObjectTargetWorldY: state.floatingObjectTargetWorldPosition.y
+          floatingObjectTargetY: state.floatingObjectTargetPosition.y,
+          cameraInitialized: state.cameraInitialized,
+          markerIdDetected: state.rawMarkerRoot && state.rawMarkerRoot.visible ? 0 : null,
+          markerStable: state.markerStable,
+          markerLossDurationMs: state.markerLossDurationMs,
+          rawMarkerPosition: vectorToPlainObject(state.rawMarkerPosition),
+          smoothedMarkerPosition: vectorToPlainObject(state.smoothedMarkerPosition),
+          calibrationOffset: vectorToPlainObject(MARKER_CALIBRATION.positionMeters),
+          markerWidthMeters: MARKER_CALIBRATION.physicalWidthMeters
         };
       },
       placeAtOrigin() {
@@ -364,7 +392,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
           reset();
         }
 
-        placeBoulders(new THREE.Vector3(0, 0, 0));
+        if (!state.trackingRoot) {
+          state.trackingRoot = new THREE.Group();
+          state.calibrationRoot = new THREE.Group();
+          applyMarkerCalibration();
+          state.trackingRoot.add(state.calibrationRoot);
+          state.scene.add(state.trackingRoot);
+        }
+        state.trackingRoot.visible = true;
+        placeBoulders();
         updateBoulderPlacement();
         return true;
       },
@@ -406,89 +442,25 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   }
 
-  function addDesktopFallbackFloor() {
-    const floor = new THREE.GridHelper(8, 16, 0x7bdff2, 0x7bdff2);
-    floor.name = "Desktop Fallback Floor";
-    floor.material.transparent = true;
-    floor.material.opacity = 0.18;
-    state.scene.add(floor);
-  }
-
-  function createReticleAndPlaneIndicator() {
-    state.reticle = new THREE.Mesh(
-      new THREE.RingGeometry(0.145, 0.175, 48).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: 0x24f2a9,
-        transparent: true,
-        opacity: 0.98,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      })
-    );
-    state.reticle.visible = false;
-    state.scene.add(state.reticle);
-
-    state.planeIndicator = new THREE.Group();
-    const grid = new THREE.GridHelper(0.8, 8, 0x24f2a9, 0x24f2a9);
-    grid.material.transparent = true;
-    grid.material.opacity = 0.7;
-    grid.material.depthWrite = false;
-    state.planeIndicator.add(grid);
-
-    const dotPositions = [];
-    for (let x = -0.3; x <= 0.3; x += 0.15) {
-      for (let z = -0.3; z <= 0.3; z += 0.15) {
-        dotPositions.push(x, 0.006, z);
-      }
-    }
-    const dotsGeometry = new THREE.BufferGeometry();
-    dotsGeometry.setAttribute("position", new THREE.Float32BufferAttribute(dotPositions, 3));
-    state.planeIndicator.add(new THREE.Points(
-      dotsGeometry,
-      new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 0.025,
-        transparent: true,
-        opacity: 0.9,
-        depthWrite: false
-      })
-    ));
-
-    state.planeIndicator.visible = false;
-    state.scene.add(state.planeIndicator);
-  }
-
   function onResize() {
     state.camera.aspect = window.innerWidth / window.innerHeight;
     state.camera.updateProjectionMatrix();
     state.renderer.setSize(window.innerWidth, window.innerHeight);
+    resizeMarkerCamera();
   }
 
   function checkARSupport() {
-    if (!navigator.xr || !navigator.xr.isSessionSupported) {
-      setXRDebug("navigator.xr unavailable");
-      state.arSupportChecked = true;
-      state.arSupported = false;
-      refreshReadyState();
-      return;
-    }
-
-    navigator.xr.isSessionSupported("immersive-ar")
-      .then((supported) => {
-        state.arSupportChecked = true;
-        state.arSupported = supported;
-        setXRDebug(supported ? "immersive-ar supported" : "immersive-ar unsupported");
-        refreshReadyState();
-      })
-      .catch(() => {
-        state.arSupportChecked = true;
-        state.arSupported = false;
-        setXRDebug("immersive-ar support check failed");
-        refreshReadyState();
-      });
+    state.arSupportChecked = true;
+    state.arSupported = Boolean(
+      window.isSecureContext &&
+      navigator.mediaDevices &&
+      navigator.mediaDevices.getUserMedia
+    );
+    setARDebug(state.arSupported ? "camera API supported" : "secure camera API unavailable");
+    refreshReadyState();
   }
 
-  async function startARSession() {
+  async function startMarkerCamera() {
     if (state.modelLoadError) {
       setMenuLoading(100, "Error", "Boulder model failed to load. Refresh after checking the Assets folder.");
       return;
@@ -499,152 +471,162 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    if (!navigator.xr) {
-      setMenuLoading(100, "Blocked", "WebXR is not available in this browser.");
+    if (!state.arSupported) {
+      setMenuLoading(100, "Blocked", "Camera AR requires HTTPS and browser camera access.");
       return;
     }
 
-    setXRDebug("requesting raw immersive-ar");
-    updateHud("Requesting Camera AR. Grant camera permission.");
-    document.body.classList.add("in-camera-ar");
+    if (state.cameraActive) {
+      return;
+    }
 
-    let waitingMessageTimer = null;
+    setARDebug("starting camera");
+    updateHud("Starting camera");
+    document.body.classList.add("in-camera-ar");
+    setMenuButtonVisible(true);
+    setFormationSliderVisible(false);
+    setMarkerGuideVisible(true);
+    setTrackingStatus("Starting camera");
+    ui.startArButton.disabled = true;
+
     try {
-      const sessionInit = {
-        requiredFeatures: ["hit-test"],
-        optionalFeatures: ["anchors", "dom-overlay"],
-        domOverlay: { root: ui.overlay }
-      };
-      ui.startArButton.disabled = true;
-      waitingMessageTimer = window.setTimeout(() => {
-        updateHud("Camera permission looks active. Still waiting for WebXR to finish starting.");
-        setXRDebug("requestSession still pending");
-      }, 8000);
-      const session = await navigator.xr.requestSession("immersive-ar", sessionInit);
-      window.clearTimeout(waitingMessageTimer);
-      updateHud("Camera AR permission granted. Preparing world tracking.");
-      setXRDebug("AR session granted");
-      await onSessionStarted(session);
+      await initializeMarkerTracking();
+      state.cameraActive = true;
+      state.cameraInitialized = true;
+      captureCompassHeading();
+      startLocationTracking();
+      updateSunLightFromDeviceLocation();
+      updateGeoStatus();
+      setARDebug("camera initialized");
+      setTrackingStatus("Looking for marker");
+      updateHud("Looking for marker");
     } catch (error) {
-      setXRDebug("AR request failed: " + error.name);
-      if (waitingMessageTimer) {
-        window.clearTimeout(waitingMessageTimer);
-      }
+      stopMarkerCamera();
+      setARDebug("camera start failed: " + (error.name || "Error"));
       document.body.classList.remove("in-camera-ar");
-      setMenuLoading(state.modelsLoaded ? 100 : 60, "Error", "Camera AR request failed: " + error.name);
+      setMenuButtonVisible(false);
+      setMarkerGuideVisible(false);
+      setTrackingStatus("");
+      setMenuLoading(100, "Error", "Camera start failed: " + (error.message || error.name));
       ui.startArButton.disabled = false;
     }
   }
 
-  async function onSessionStarted(session) {
-    state.xrSession = session;
-    state.xrSession.addEventListener("end", onSessionEnded);
+  async function initializeMarkerTracking() {
+    state.rawMarkerRoot = new THREE.Group();
+    state.rawMarkerRoot.name = "Raw Marker 0";
+    state.rawMarkerRoot.visible = false;
+    state.scene.add(state.rawMarkerRoot);
 
-    updateHud("Preparing AR world space.");
-    setXRDebug("requesting local reference space");
-    state.xrReferenceSpace = await session.requestReferenceSpace("local");
-    if (state.renderer.xr.setReferenceSpace) {
-      state.renderer.xr.setReferenceSpace(state.xrReferenceSpace);
-    }
+    state.trackingRoot = new THREE.Group();
+    state.trackingRoot.name = "Smoothed Marker Root";
+    state.trackingRoot.visible = false;
+    state.scene.add(state.trackingRoot);
 
-    updateHud("Preparing AR renderer.");
-    setXRDebug("binding session to renderer");
-    await state.renderer.xr.setSession(session);
-    updateHud("Preparing plane detection.");
-    setXRDebug("requesting viewer reference space");
-    state.xrViewerSpace = await session.requestReferenceSpace("viewer");
-    setXRDebug("requesting hit-test source");
-    state.xrHitTestSource = await session.requestHitTestSource({ space: state.xrViewerSpace });
+    state.calibrationRoot = new THREE.Group();
+    state.calibrationRoot.name = "Marker Calibration Root";
+    applyMarkerCalibration();
+    state.trackingRoot.add(state.calibrationRoot);
 
-    state.domOverlayActive = Boolean(session.domOverlayState && session.domOverlayState.type);
-    document.body.classList.add("in-camera-ar");
-    document.body.classList.toggle("has-dom-overlay", state.domOverlayActive);
-    setMenuButtonVisible(true);
-    setXrHudVisible(shouldUseXrFallbackHud());
-    setGeoStatusVisible(true);
-    captureCompassHeading();
-    startLocationTracking();
-    updateSunLightFromDeviceLocation();
-    updateGeoStatus();
-    setXRDebug("hit-test source ready");
-    setScanPromptVisible(true);
-    setStartFromHereVisible(true);
-    setStartFromHereReady(false);
-    setFormationSliderVisible(false);
-    updateHud("Scanning for a flat surface.");
+    state.arToolkitSource = new ArToolkitSource({
+      sourceType: "webcam",
+      sourceWidth: MARKER_TRACKING.sourceWidth,
+      sourceHeight: MARKER_TRACKING.sourceHeight,
+      displayWidth: window.innerWidth,
+      displayHeight: window.innerHeight
+    });
+    await new Promise((resolve, reject) => {
+      state.arToolkitSource.init(resolve, reject);
+    });
+
+    state.arToolkitSource.domElement.classList.add("ar-camera-feed");
+    state.arToolkitSource.domElement.setAttribute("playsinline", "");
+    state.arToolkitSource.domElement.muted = true;
+    await waitForCameraVideo(state.arToolkitSource.domElement);
+
+    state.arToolkitContext = new ArToolkitContext({
+      cameraParametersUrl: "vendor/arjs/camera_para.dat",
+      detectionMode: "mono_and_matrix",
+      matrixCodeType: "4x4_BCH_13_5_5",
+      canvasWidth: MARKER_TRACKING.detectionWidth,
+      canvasHeight: MARKER_TRACKING.detectionHeight,
+      maxDetectionRate: MARKER_TRACKING.maxDetectionRate
+    });
+    state.markerControls = new ArMarkerControls(
+      state.arToolkitContext,
+      state.rawMarkerRoot,
+      {
+        type: "barcode",
+        barcodeValue: 0,
+        size: MARKER_CALIBRATION.physicalWidthMeters,
+        changeMatrixMode: "modelViewMatrix"
+      }
+    );
+
+    await new Promise((resolve) => state.arToolkitContext.init(resolve));
+    state.camera.projectionMatrix.copy(state.arToolkitContext.getProjectionMatrix());
+    state.camera.projectionMatrixInverse.copy(state.camera.projectionMatrix).invert();
+    resizeMarkerCamera();
   }
 
-  function onSessionEnded() {
-    if (state.xrHitTestSource && state.xrHitTestSource.cancel) {
-      state.xrHitTestSource.cancel();
+  function waitForCameraVideo(video) {
+    if (video.videoWidth && video.videoHeight) {
+      return Promise.resolve();
     }
 
-    state.xrSession = null;
-    state.xrReferenceSpace = null;
-    state.xrViewerSpace = null;
-    state.xrHitTestSource = null;
-    releasePlacementAnchor();
-    state.latestHit = null;
-    state.latestHitResult = null;
-    state.reticle.visible = false;
-    state.planeIndicator.visible = false;
-    document.body.classList.remove("in-camera-ar");
-    document.body.classList.remove("has-dom-overlay");
-    state.domOverlayActive = false;
-    setMenuButtonVisible(false);
-    setXrHudVisible(false);
-    setGeoStatusVisible(false);
-    setScanPromptVisible(false);
-    setStartFromHereVisible(false);
-    stopLocationTracking();
-    ui.startArButton.disabled = state.modelLoadError || !state.modelsLoaded;
-    refreshReadyState();
-    setXRDebug("AR session ended");
+    return new Promise((resolve) => {
+      const finish = () => {
+        video.removeEventListener("loadedmetadata", finish);
+        video.removeEventListener("canplay", finish);
+        resolve();
+      };
+      video.addEventListener("loadedmetadata", finish, { once: true });
+      video.addEventListener("canplay", finish, { once: true });
+      window.setTimeout(finish, 3000);
+    });
   }
 
-  async function startFromDetectedPlane() {
-    if (state.bouldersPlaced) {
+  function applyMarkerCalibration() {
+    if (!state.calibrationRoot) {
       return;
     }
 
-    if (!state.modelsLoaded) {
-      updateHud("Loading boulder model. Try placing after it finishes loading.");
-      return;
-    }
-
-    if (!state.latestHit) {
-      bounceScanPrompt();
-      updateHud("Tap ignored: no detected plane yet. Wait for the green grid.");
-      return;
-    }
-
-    const placementGate = getPlacementGateStatus();
-    if (!placementGate.allowed) {
-      updateHud(placementGate.message);
-      setXRDebug(placementGate.debug);
-      return;
-    }
-
-    const anchor = await createPlacementAnchor();
-    ui.startFromHereButton.disabled = true;
-    placeBoulders(state.latestHit.position, anchor);
+    state.calibrationRoot.position.copy(MARKER_CALIBRATION.positionMeters);
+    state.calibrationRoot.rotation.set(
+      THREE.MathUtils.degToRad(MARKER_CALIBRATION.rotationDegrees.x),
+      THREE.MathUtils.degToRad(MARKER_CALIBRATION.rotationDegrees.y),
+      THREE.MathUtils.degToRad(MARKER_CALIBRATION.rotationDegrees.z)
+    );
+    state.calibrationRoot.scale.setScalar(MARKER_CALIBRATION.scale);
   }
 
-  function render(time, frame) {
+  function resizeMarkerCamera() {
+    if (!state.arToolkitSource || !state.arToolkitSource.ready) {
+      return;
+    }
+
+    state.arToolkitSource.onResizeElement();
+    state.arToolkitSource.copyElementSizeTo(state.renderer.domElement);
+    if (state.arToolkitContext && state.arToolkitContext.arController) {
+      state.arToolkitSource.copyElementSizeTo(state.arToolkitContext.arController.canvas);
+    }
+  }
+
+  function render(time) {
     const deltaSeconds = state.lastTime ? Math.min((time - state.lastTime) / 1000, 0.05) : 0;
     state.lastTime = time;
 
-    if (frame) {
-      updateHitTest(frame);
-      updatePlacementFromAnchor(frame);
+    if (
+      state.cameraActive &&
+      state.arToolkitSource &&
+      state.arToolkitSource.ready &&
+      state.arToolkitContext
+    ) {
+      state.arToolkitContext.update(state.arToolkitSource.domElement);
+      updateMarkerTracking(time, deltaSeconds);
     }
 
-    if (state.xrSession) {
-      updateGeoStatus();
-      updateXrHudLayout();
-    }
-
-    if (state.bouldersPlaced) {
+    if (state.bouldersPlaced && !state.markerTrackingPaused) {
       updateFloatingObject(deltaSeconds);
       updateFadeTasks(deltaSeconds);
     }
@@ -652,123 +634,129 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.renderer.render(state.scene, state.camera);
   }
 
-  function updateHitTest(frame) {
-    if (!state.xrHitTestSource || !state.xrReferenceSpace || state.bouldersPlaced) {
-      if (!state.bouldersPlaced && performance.now() - state.lastScanDebugTime > 900) {
-        state.lastScanDebugTime = performance.now();
-        setXRDebug("waiting for hit-test setup");
+  function updateMarkerTracking(time, deltaSeconds) {
+    const markerDetected = Boolean(state.rawMarkerRoot && state.rawMarkerRoot.visible);
+
+    if (markerDetected) {
+      state.markerLastSeenAt = time;
+      state.markerLossDurationMs = 0;
+      state.markerConsecutiveDetections += 1;
+      readRawMarkerPose();
+
+      if (state.markerConsecutiveDetections < MARKER_TRACKING.stableDetectionFrames) {
+        setTrackingStatus("Stabilizing tracking");
+        updateHud("Stabilizing tracking");
+      } else {
+        const initializePose = !state.hasStableMarkerPose;
+        const firstStableDetection = !state.markerStable;
+        state.markerStable = true;
+        state.markerTrackingPaused = false;
+        smoothMarkerPose(deltaSeconds, initializePose);
+        state.hasStableMarkerPose = true;
+        state.trackingRoot.visible = true;
+        setMarkerGuideVisible(false);
+        setTrackingStatus("Tracking marker");
+        updateHud(firstStableDetection ? "Marker detected" : "Tracking marker");
+
+        if (!state.bouldersPlaced) {
+          placeBoulders();
+        }
       }
-      return;
-    }
+    } else {
+      state.markerConsecutiveDetections = 0;
+      state.markerLossDurationMs = state.markerLastSeenAt ? time - state.markerLastSeenAt : 0;
 
-    const results = frame.getHitTestResults(state.xrHitTestSource);
-    if (!results.length) {
-      state.noHitFrames += 1;
-      state.latestHit = null;
-      state.latestHitResult = null;
-      state.reticle.visible = false;
-      state.planeIndicator.visible = false;
-      setScanPromptVisible(true);
-      setStartFromHereVisible(true);
-      setStartFromHereReady(false);
-
-      if (performance.now() - state.lastScanDebugTime > 900) {
-        state.lastScanDebugTime = performance.now();
-        setXRDebug("scanning, no plane hit (" + state.noHitFrames + ")");
-        updateHud("Scanning: no plane hit yet. Move slowly over a textured desk/floor.");
+      if (state.markerStable || (state.trackingRoot && state.trackingRoot.visible)) {
+        setTrackingStatus("Marker lost");
+        updateHud("Marker lost");
+        if (state.markerLossDurationMs >= MARKER_TRACKING.lossTimeoutMs) {
+          state.markerStable = false;
+          state.markerTrackingPaused = true;
+          state.trackingRoot.visible = false;
+          setMarkerGuideVisible(true);
+        }
+      } else {
+        setTrackingStatus("Looking for marker");
+        updateHud("Looking for marker");
+        setMarkerGuideVisible(true);
       }
+    }
+
+    if (state.markerStable) {
+      state.trackingRoot.getWorldPosition(state.placementCenter);
+      positionSunLightAt(state.placementCenter);
+    }
+    updateMarkerDebug(time);
+  }
+
+  function readRawMarkerPose() {
+    state.rawMarkerRoot.updateMatrixWorld(true);
+    state.rawMarkerRoot.matrix.decompose(
+      state.rawMarkerPosition,
+      state.rawMarkerQuaternion,
+      new THREE.Vector3()
+    );
+  }
+
+  function smoothMarkerPose(deltaSeconds, initializePose) {
+    if (initializePose) {
+      state.smoothedMarkerPosition.copy(state.rawMarkerPosition);
+      state.smoothedMarkerQuaternion.copy(state.rawMarkerQuaternion);
+    } else {
+      const frameScale = Math.max(deltaSeconds * 60, 0.1);
+      const positionAlpha = 1 - Math.pow(1 - MARKER_TRACKING.positionSmoothing, frameScale);
+      const rotationAlpha = 1 - Math.pow(1 - MARKER_TRACKING.rotationSmoothing, frameScale);
+      state.smoothedMarkerPosition.lerp(state.rawMarkerPosition, positionAlpha);
+      state.smoothedMarkerQuaternion.slerp(state.rawMarkerQuaternion, rotationAlpha);
+    }
+
+    state.trackingRoot.position.copy(state.smoothedMarkerPosition);
+    state.trackingRoot.quaternion.copy(state.smoothedMarkerQuaternion);
+    state.trackingRoot.updateMatrixWorld(true);
+  }
+
+  function stopMarkerCamera() {
+    if (state.arToolkitSource && state.arToolkitSource.dispose) {
+      state.arToolkitSource.dispose();
+    }
+
+    if (state.markerControls && state.markerControls.dispose) {
+      state.markerControls.dispose();
+    }
+    if (
+      state.arToolkitContext &&
+      state.arToolkitContext.arController &&
+      state.arToolkitContext.arController.dispose
+    ) {
+      state.arToolkitContext.arController.dispose();
+    }
+    if (state.rawMarkerRoot) {
+      state.scene.remove(state.rawMarkerRoot);
+    }
+    if (state.trackingRoot) {
+      state.scene.remove(state.trackingRoot);
+    }
+
+    state.arToolkitSource = null;
+    state.arToolkitContext = null;
+    state.markerControls = null;
+    state.rawMarkerRoot = null;
+    state.trackingRoot = null;
+    state.calibrationRoot = null;
+    state.cameraActive = false;
+    state.cameraInitialized = false;
+    state.markerStable = false;
+    state.hasStableMarkerPose = false;
+    state.markerTrackingPaused = false;
+    state.markerConsecutiveDetections = 0;
+    state.markerLastSeenAt = 0;
+    state.markerLossDurationMs = 0;
+  }
+
+  function placeBoulders() {
+    if (!state.calibrationRoot || state.bouldersPlaced) {
       return;
     }
-
-    const hit = results[0];
-    const pose = hit.getPose(state.xrReferenceSpace);
-    if (!pose) {
-      return;
-    }
-
-    state.hitFrames += 1;
-    state.noHitFrames = 0;
-    state.latestHitResult = hit;
-    state.latestHit = poseFromMatrix(pose.transform.matrix);
-
-    state.reticle.position.copy(state.latestHit.position);
-    state.reticle.quaternion.copy(state.latestHit.quaternion);
-    state.reticle.visible = true;
-
-    state.planeIndicator.position.copy(state.latestHit.position);
-    state.planeIndicator.quaternion.copy(state.latestHit.quaternion);
-    state.planeIndicator.visible = true;
-
-    setXRDebug("PLANE DETECTED (" + state.hitFrames + ")");
-    updateHud("Plane detected.");
-    setStartFromHereVisible(true);
-    setStartFromHereReady(true);
-  }
-
-  function poseFromMatrix(xrMatrix) {
-    const matrix = new THREE.Matrix4().fromArray(xrMatrix);
-    const position = new THREE.Vector3();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    matrix.decompose(position, quaternion, scale);
-    return { matrix, position, quaternion };
-  }
-
-  async function createPlacementAnchor() {
-    if (!state.latestHitResult || typeof state.latestHitResult.createAnchor !== "function") {
-      return null;
-    }
-
-    try {
-      const anchor = await state.latestHitResult.createAnchor();
-      return anchor && anchor.anchorSpace ? anchor : null;
-    } catch (error) {
-      setXRDebug("anchor unavailable: " + error.name);
-      return null;
-    }
-  }
-
-  function updatePlacementFromAnchor(frame) {
-    if (!state.xrPlacementAnchorSpace || !state.xrReferenceSpace || !state.bouldersRoot) {
-      return;
-    }
-
-    const pose = frame.getPose(state.xrPlacementAnchorSpace, state.xrReferenceSpace);
-    if (!pose) {
-      return;
-    }
-
-    const anchoredPose = poseFromMatrix(pose.transform.matrix);
-    const previousPlaneHeight = state.planeHeight;
-    state.placementCenter.copy(anchoredPose.position);
-    state.planeHeight = anchoredPose.position.y;
-    updateBoulderPlacement();
-
-    if (state.shadowReceiver) {
-      state.shadowReceiver.position.copy(anchoredPose.position);
-      state.shadowReceiver.position.y += 0.004;
-    }
-
-    if (state.floatingObject && !state.floatingObjectTriggered) {
-      const heightDelta = state.planeHeight - previousPlaneHeight;
-      state.floatingObjectBaseWorldPosition.y += heightDelta;
-      state.floatingObjectTargetWorldPosition.y += heightDelta;
-    }
-  }
-
-  function releasePlacementAnchor() {
-    if (state.xrPlacementAnchor && typeof state.xrPlacementAnchor.delete === "function") {
-      state.xrPlacementAnchor.delete();
-    }
-    state.xrPlacementAnchor = null;
-    state.xrPlacementAnchorSpace = null;
-  }
-
-  function placeBoulders(center, anchor) {
-    state.placementCenter.copy(center);
-    state.planeHeight = center.y;
-    state.xrPlacementAnchor = anchor || null;
-    state.xrPlacementAnchorSpace = anchor ? anchor.anchorSpace : null;
 
     const modelScale = getModelScale(state.modelAssets.boulders.scene);
     const boulders = createBoulderInstance(state.modelAssets.boulders, modelScale);
@@ -777,8 +765,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.dustObject = boulders.dustObject;
     state.stageRockObjects = boulders.stageRockObjects;
 
-    state.scene.add(state.bouldersRoot);
-    createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
+    state.calibrationRoot.add(state.bouldersRoot);
+    createShadowReceiver();
 
     state.bouldersPlaced = true;
     state.animationStarted = false;
@@ -797,13 +785,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.visibleFormationStage = 5;
     state.stageTransitionActive = false;
     state.fadeTasks = [];
-    state.reticle.visible = false;
-    state.planeIndicator.visible = false;
-    setScanPromptVisible(false);
-    setStartFromHereVisible(false);
     resetFormationSlider();
     setFormationSliderVisible(true);
-    positionSunLightAt(center);
 
     updateBoulderPlacement();
     state.bouldersRoot.updateMatrixWorld(true);
@@ -814,9 +797,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     prepareBoulderVisibility();
     queueFade(state.foundationFadeMeshes.concat(getSelfMeshes(state.floatingObject)), 0, 1, CONFIG.modelFadeInDurationSeconds);
     if (state.floatingObject) {
-      state.floatingObject.getWorldPosition(state.floatingObjectBaseWorldPosition);
-      state.floatingObjectTargetWorldPosition.copy(state.floatingObjectBaseWorldPosition);
-      state.floatingObjectTargetWorldPosition.y += CONFIG.floatingObjectTargetHeightMeters;
+      state.floatingObjectBasePosition.copy(state.floatingObject.position);
+      state.floatingObjectTargetPosition.copy(state.floatingObjectBasePosition);
+      state.floatingObjectTargetPosition.y += CONFIG.floatingObjectTargetHeightMeters;
       state.floatingObjectPlacedAtTime = performance.now();
     }
     if (state.formationStep === 3 || state.childRevealRequested) {
@@ -827,7 +810,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     updateHud(state.floatingObject
       ? "Boulders placed. Object_3 will rise in 5 seconds."
       : "Boulders placed, but Object_3 was not found in the model.");
-    setXRDebug(anchor ? "anchored placement" : "raw world-space placement");
+    setARDebug("tracking barcode marker 0");
   }
 
   function createBoulderInstance(gltf, modelScale) {
@@ -1167,14 +1150,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     return stage === 1 ? "1st" : stage === 2 ? "2nd" : "3rd";
   }
 
-  function createShadowReceiver(center, orientation) {
+  function createShadowReceiver() {
     if (state.shadowReceiver) {
-      state.scene.remove(state.shadowReceiver);
+      state.shadowReceiver.removeFromParent();
       disposeObject(state.shadowReceiver);
     }
 
     state.shadowReceiver = new THREE.Mesh(
-      new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI * 0.5),
+      new THREE.PlaneGeometry(
+        MARKER_CALIBRATION.shadowPlaneSizeMeters,
+        MARKER_CALIBRATION.shadowPlaneSizeMeters
+      ).rotateX(-Math.PI * 0.5),
       new THREE.ShadowMaterial({
         color: 0x000000,
         opacity: 0.38,
@@ -1182,14 +1168,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         depthWrite: false
       })
     );
-    state.shadowReceiver.name = "Detected Plane Shadow Receiver";
+    state.shadowReceiver.name = "Marker Relative Shadow Receiver";
     state.shadowReceiver.receiveShadow = true;
-    state.shadowReceiver.position.copy(center);
-    state.shadowReceiver.position.y += 0.004;
-    if (orientation) {
-      state.shadowReceiver.quaternion.copy(orientation);
-    }
-    state.scene.add(state.shadowReceiver);
+    state.shadowReceiver.position.y = MARKER_CALIBRATION.shadowPlaneYOffsetMeters;
+    state.calibrationRoot.add(state.shadowReceiver);
   }
 
   function updateFloatingObject(deltaSeconds) {
@@ -1210,17 +1192,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       1,
       state.floatingObjectRiseProgress + deltaSeconds / CONFIG.floatingObjectRiseDurationSeconds
     );
-    const currentWorldPosition = state.floatingObjectBaseWorldPosition.clone();
-    currentWorldPosition.y = THREE.MathUtils.lerp(
-      state.floatingObjectBaseWorldPosition.y,
-      state.floatingObjectTargetWorldPosition.y,
+    state.floatingObject.position.lerpVectors(
+      state.floatingObjectBasePosition,
+      state.floatingObjectTargetPosition,
       state.floatingObjectRiseProgress
     );
-
-    if (state.floatingObject.parent) {
-      state.floatingObject.parent.worldToLocal(currentWorldPosition);
-    }
-    state.floatingObject.position.copy(currentWorldPosition);
     state.floatingObject.updateMatrixWorld(true);
 
     if (state.floatingObjectRiseProgress >= 1) {
@@ -1262,8 +1238,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       return;
     }
 
-    state.bouldersRoot.position.copy(state.placementCenter);
-    state.bouldersRoot.position.y = state.planeHeight;
+    state.bouldersRoot.position.set(0, 0, 0);
   }
 
   function getObjectSnapshot(object) {
@@ -1309,27 +1284,23 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   function returnToMainMenu() {
     reset();
-    if (state.xrSession && typeof state.xrSession.end === "function") {
-      state.xrSession.end();
-    } else {
-      document.body.classList.remove("in-camera-ar");
-      setMenuButtonVisible(false);
-      setFormationSliderVisible(false);
-      setScanPromptVisible(false);
-      setStartFromHereVisible(false);
-      refreshReadyState();
-    }
+    stopMarkerCamera();
+    stopLocationTracking();
+    document.body.classList.remove("in-camera-ar");
+    setMenuButtonVisible(false);
+    setFormationSliderVisible(false);
+    setMarkerGuideVisible(false);
+    setTrackingStatus("");
+    refreshReadyState();
   }
 
   function reset() {
-    releasePlacementAnchor();
-
     if (state.bouldersRoot) {
-      state.scene.remove(state.bouldersRoot);
+      state.bouldersRoot.removeFromParent();
       disposeObject(state.bouldersRoot);
     }
     if (state.shadowReceiver) {
-      state.scene.remove(state.shadowReceiver);
+      state.shadowReceiver.removeFromParent();
       disposeObject(state.shadowReceiver);
     }
 
@@ -1338,8 +1309,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.dustObject = null;
     state.stageRockObjects = { 1: null, 2: null, 3: null };
     state.stageRockMeshes = { 1: [], 2: [], 3: [] };
-    state.floatingObjectBaseWorldPosition.set(0, 0, 0);
-    state.floatingObjectTargetWorldPosition.set(0, 0, 0);
+    state.floatingObjectBasePosition.set(0, 0, 0);
+    state.floatingObjectTargetPosition.set(0, 0, 0);
     state.floatingObjectPlacedAtTime = 0;
     state.floatingObjectTriggered = false;
     state.floatingObjectRiseProgress = 0;
@@ -1348,7 +1319,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.floatingObjectRevealMeshes = [];
     state.floatingObjectRevealStarted = false;
     state.childRevealRequested = false;
-    state.placementButtonReady = false;
     state.dustRevealQueued = false;
     state.dustRevealMeshes = [];
     state.dustRevealComplete = false;
@@ -1357,170 +1327,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.fadeTasks = [];
     state.shadowReceiver = null;
     state.placementCenter.set(0, 0, 0);
-    state.planeHeight = 0;
     state.bouldersPlaced = false;
     state.animationStarted = false;
     state.animationComplete = false;
-    setScanPromptVisible(false);
-    setStartFromHereVisible(false);
-    setStartFromHereReady(false);
     setFormationSliderVisible(false);
     resetFormationSlider();
-    updateHud("Move the iPad to detect a plane, then press Start From Here.");
-  }
-
-  function createXrFallbackHud() {
-    state.scene.add(state.camera);
-
-    const root = new THREE.Group();
-    root.name = "XR Fallback HUD";
-    root.visible = false;
-    state.camera.add(root);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = 512;
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-
-    const panel = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false
-      })
-    );
-    panel.renderOrder = 1000;
-    root.add(panel);
-
-    state.xrHud = {
-      root,
-      canvas,
-      context: canvas.getContext("2d"),
-      texture,
-      panel,
-      lastText: "",
-      lastAspect: 0
-    };
-
-    refreshXrHudTexture();
-    updateXrHudLayout();
-  }
-
-  function setXrHudVisible(isVisible) {
-    if (!state.xrHud) {
-      return;
+    if (state.cameraActive) {
+      setMarkerGuideVisible(!state.markerStable);
+      setTrackingStatus(state.markerStable ? "Tracking marker" : "Looking for marker");
+      updateHud(state.markerStable ? "Tracking marker" : "Looking for marker");
+    } else {
+      updateHud("Ready to start marker tracking.");
     }
-
-    state.xrHud.root.visible = isVisible;
-    refreshXrHudTexture();
-    updateXrHudLayout();
-  }
-
-  function updateXrHudLayout() {
-    if (!state.xrHud || !state.xrHud.root.visible) {
-      return;
-    }
-
-    const distance = 1.25;
-    const aspect = Math.max(0.55, state.camera.aspect || (window.innerWidth / window.innerHeight));
-    const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(state.camera.fov) * 0.5) * distance;
-    const visibleWidth = visibleHeight * aspect;
-    const margin = Math.max(0.08, Math.min(0.16, visibleWidth * 0.045));
-    const panelWidth = Math.min(1.12, visibleWidth - margin * 2);
-    const panelHeight = panelWidth * 0.45;
-
-    state.xrHud.panel.scale.set(panelWidth, panelHeight, 1);
-    state.xrHud.panel.position.set(
-      -visibleWidth * 0.5 + panelWidth * 0.5 + margin,
-      visibleHeight * 0.5 - panelHeight * 0.5 - margin,
-      -distance
-    );
-
-    state.xrHud.lastAspect = aspect;
-  }
-
-  function refreshXrHudTexture() {
-    if (!state.xrHud) {
-      return;
-    }
-
-    const text = [
-      ui.statusText.textContent,
-      ui.scanPrompt ? ui.scanPrompt.textContent : "",
-      ui.xrDebugText.textContent
-    ].join("|");
-
-    if (text === state.xrHud.lastText) {
-      return;
-    }
-
-    state.xrHud.lastText = text;
-    const context = state.xrHud.context;
-    const canvas = state.xrHud.canvas;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    drawRoundedRect(context, 18, 18, canvas.width - 36, 250, 32, "rgba(8, 10, 12, 0.72)", "rgba(246, 239, 230, 0.24)", 4);
-
-    context.fillStyle = "#f6efe6";
-    context.font = "800 46px Arial";
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    drawWrappedText(context, ui.scanPrompt && !ui.scanPrompt.hidden ? ui.scanPrompt.textContent : ui.statusText.textContent, canvas.width * 0.5, 62, 860, 56, 3);
-
-    state.xrHud.texture.needsUpdate = true;
-  }
-
-  function drawWrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
-    const words = String(text || "").split(/\s+/);
-    let line = "";
-    let lineCount = 0;
-
-    for (let index = 0; index < words.length; index += 1) {
-      const testLine = line ? line + " " + words[index] : words[index];
-      if (context.measureText(testLine).width > maxWidth && line) {
-        context.fillText(line, x, y + lineCount * lineHeight);
-        line = words[index];
-        lineCount += 1;
-        if (lineCount >= maxLines) {
-          return;
-        }
-      } else {
-        line = testLine;
-      }
-    }
-
-    if (line && lineCount < maxLines) {
-      context.fillText(line, x, y + lineCount * lineHeight);
-    }
-  }
-
-  function drawRoundedRect(context, x, y, width, height, radius, fill, stroke, lineWidth) {
-    const right = x + width;
-    const bottom = y + height;
-    context.beginPath();
-    context.moveTo(x + radius, y);
-    context.lineTo(right - radius, y);
-    context.quadraticCurveTo(right, y, right, y + radius);
-    context.lineTo(right, bottom - radius);
-    context.quadraticCurveTo(right, bottom, right - radius, bottom);
-    context.lineTo(x + radius, bottom);
-    context.quadraticCurveTo(x, bottom, x, bottom - radius);
-    context.lineTo(x, y + radius);
-    context.quadraticCurveTo(x, y, x + radius, y);
-    context.closePath();
-    context.fillStyle = fill;
-    context.fill();
-    if (stroke && lineWidth > 0) {
-      context.strokeStyle = stroke;
-      context.lineWidth = lineWidth;
-      context.stroke();
-    }
-  }
-
-  function setGeoStatusVisible(isVisible) {
-    ui.geoStatus.dataset.active = isVisible ? "true" : "false";
   }
 
   function setMenuButtonVisible(isVisible) {
@@ -1545,48 +1363,19 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     state.setFormationSliderValue(4, true);
   }
 
-  function setScanPromptVisible(isVisible) {
-    if (ui.scanPrompt) {
-      ui.scanPrompt.hidden = !isVisible;
+  function setMarkerGuideVisible(isVisible) {
+    if (ui.markerGuide) {
+      ui.markerGuide.hidden = !isVisible;
     }
   }
 
-  function bounceScanPrompt() {
-    if (!ui.scanPrompt) {
+  function setTrackingStatus(message) {
+    if (!ui.trackingStatus) {
       return;
     }
 
-    ui.scanPrompt.classList.remove("is-bouncing");
-    void ui.scanPrompt.offsetWidth;
-    ui.scanPrompt.classList.add("is-bouncing");
-  }
-
-  function setStartFromHereVisible(isVisible) {
-    if (!ui.startFromHereButton) {
-      return;
-    }
-
-    ui.startFromHereButton.hidden = !isVisible;
-    ui.startFromHereButton.disabled = !isVisible || state.bouldersPlaced || !state.placementButtonReady;
-  }
-
-  function setStartFromHereReady(isReady) {
-    if (!ui.startFromHereButton) {
-      return;
-    }
-
-    state.placementButtonReady = Boolean(isReady);
-    ui.startFromHereButton.classList.toggle("is-ready", state.placementButtonReady);
-    ui.startFromHereButton.disabled = state.bouldersPlaced || !state.placementButtonReady;
-  }
-
-  function shouldUseXrFallbackHud() {
-    return Boolean(state.xrSession) && (!state.domOverlayActive || isLikelyIpadDevice());
-  }
-
-  function isLikelyIpadDevice() {
-    const userAgent = navigator.userAgent || "";
-    return /iPad/.test(userAgent) || (/Macintosh/.test(userAgent) && navigator.maxTouchPoints > 1);
+    ui.trackingStatus.textContent = message;
+    ui.trackingStatus.hidden = !message;
   }
 
   function updateGeoStatus() {
@@ -1619,15 +1408,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     ui.geoHeadingValue.classList.toggle("is-locked", !isHeadingOk);
     ui.geoGateValue.classList.toggle("is-ok", isDistanceOk && isHeadingOk);
     ui.geoGateValue.classList.toggle("is-locked", !(isDistanceOk && isHeadingOk));
-    refreshXrHudTexture();
-  }
-
-  function getPlacementGateStatus() {
-    return {
-      allowed: true,
-      message: "Placement unlocked.",
-      debug: "placement gate disabled"
-    };
   }
 
   function getNearestAllowedLocation() {
@@ -1703,19 +1483,38 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
       ui.statusText.textContent = message;
     }
 
-    let currentHeight = Math.max(0, state.placementCenter.y - state.planeHeight);
-    if (state.floatingObject) {
-      const floatingWorldPosition = new THREE.Vector3();
-      state.floatingObject.getWorldPosition(floatingWorldPosition);
-      currentHeight = Math.max(0, floatingWorldPosition.y - state.floatingObjectBaseWorldPosition.y);
-    }
+    const currentHeight = state.floatingObject
+      ? Math.max(0, state.floatingObject.position.y - state.floatingObjectBasePosition.y)
+      : 0;
     ui.heightValue.textContent = currentHeight.toFixed(2);
     ui.separationValue.textContent = "0.00";
-    refreshXrHudTexture();
   }
 
-  function setXRDebug(message) {
-    ui.xrDebugText.textContent = "XR: " + message;
+  function setARDebug(message) {
+    ui.arDebugText.textContent = "AR: " + message;
+  }
+
+  function updateMarkerDebug(time) {
+    if (!state.debugMode || !ui.markerDebug || time - state.lastDebugUpdateAt < 120) {
+      return;
+    }
+
+    state.lastDebugUpdateAt = time;
+    ui.markerDebug.hidden = false;
+    ui.markerDebug.textContent = [
+      "Camera initialized: " + state.cameraInitialized,
+      "Marker ID detected: " + (state.rawMarkerRoot && state.rawMarkerRoot.visible ? "0" : "none"),
+      "Stable tracking: " + state.markerStable,
+      "Marker-loss duration: " + state.markerLossDurationMs.toFixed(0) + " ms",
+      "Raw position: " + formatVector(state.rawMarkerPosition),
+      "Smoothed position: " + formatVector(state.smoothedMarkerPosition),
+      "Calibration offset: " + formatVector(MARKER_CALIBRATION.positionMeters),
+      "Effective marker width: " + MARKER_CALIBRATION.physicalWidthMeters.toFixed(3) + " m"
+    ].join("\n");
+  }
+
+  function formatVector(vector) {
+    return [vector.x, vector.y, vector.z].map((value) => value.toFixed(3)).join(", ");
   }
 
   function captureCompassHeading() {
@@ -1781,7 +1580,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
   function updateSunLightFromDeviceLocation() {
     if (!navigator.geolocation) {
-      setXRDebug("sun uses fallback light: no geolocation");
+      setARDebug("sun uses fallback light: no geolocation");
       return;
     }
 
@@ -1791,7 +1590,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         applySunPosition(sun);
       },
       () => {
-        setXRDebug("sun uses fallback light: location denied");
+        setARDebug("sun uses fallback light: location denied");
       },
       { enableHighAccuracy: false, maximumAge: 600000, timeout: 8000 }
     );
@@ -1828,7 +1627,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     positionSunLightAt(state.bouldersPlaced ? state.placementCenter : new THREE.Vector3());
     state.sunReady = true;
     if (!isCompassRefresh) {
-      setXRDebug("sun shadows: elevation " + THREE.MathUtils.radToDeg(sun.elevation).toFixed(1) + " deg");
+      setARDebug("sun shadows: elevation " + THREE.MathUtils.radToDeg(sun.elevation).toFixed(1) + " deg");
     }
   }
 

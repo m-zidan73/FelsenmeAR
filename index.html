@@ -4,16 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>AR Island Prototype - Web</title>
-    <link rel="stylesheet" href="src/styles.css?v=main-menu-2">
+    <link rel="stylesheet" href="src/styles.css?v=marker-tracking-1">
     <script type="importmap">
       {
         "imports": {
           "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+          "threex": "./vendor/arjs/ar-threex.mjs"
         }
       }
     </script>
-    <script type="module" src="src/app.js?v=main-menu-2"></script>
+    <script type="module" src="src/app.js?v=marker-tracking-1"></script>
   </head>
   <body>
     <main id="app">
@@ -42,10 +43,15 @@
         <button id="menuButton" class="menu-button" type="button" hidden aria-label="Return to main menu">
           <img src="Assets/Sprites/Main%20Menu%20Icon.png" alt="">
         </button>
-        <div class="placement-controls">
-          <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera on top of a flat surface</p>
-          <button id="startFromHereButton" class="start-from-here" type="button" hidden>Start From Here</button>
+        <div id="trackingStatus" class="tracking-status" hidden>Starting camera</div>
+        <div id="markerGuide" class="marker-guide" hidden>
+          <img
+            src="Assets/Photos/Marker/artoolkit-barcode-markers-collection-master/4x4_bch_13_5_5/0.png"
+            alt="ARToolKit barcode marker 0"
+          >
+          <strong>Find This Marker</strong>
         </div>
+        <pre id="markerDebug" class="marker-debug" hidden></pre>
         <div class="bottom-ui" hidden>
           <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">
             <ol class="formation-stages" aria-hidden="true">
@@ -81,7 +87,7 @@
         <div class="telemetry" hidden>
           <span id="heightValue">0.00</span>
           <span id="separationValue">0.00</span>
-          <span id="xrDebugText">XR: checking support</span>
+          <span id="arDebugText">AR: checking support</span>
           <div id="geoStatus">
             <strong id="geoDistanceValue">waiting</strong>
             <strong id="geoHeadingValue">waiting</strong>

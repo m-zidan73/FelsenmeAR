@@ -8,6 +8,7 @@ const root = process.cwd();
 const mimeTypes = new Map([
   [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
+  [".mjs", "text/javascript; charset=utf-8"],
   [".css", "text/css; charset=utf-8"],
   [".png", "image/png"],
   [".glb", "model/gltf-binary"],
@@ -18,7 +19,7 @@ function sendFile(response, filePath) {
   response.writeHead(200, {
     "content-type": mimeTypes.get(extname(filePath).toLowerCase()) || "application/octet-stream",
     "cache-control": "no-store",
-    "permissions-policy": "camera=(self), geolocation=(self), accelerometer=(self), gyroscope=(self), magnetometer=(self), xr-spatial-tracking=(self)"
+    "permissions-policy": "camera=(self), geolocation=(self), accelerometer=(self), gyroscope=(self), magnetometer=(self)"
   });
   createReadStream(filePath).pipe(response);
 }

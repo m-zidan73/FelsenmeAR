@@ -32,10 +32,24 @@ canvas {
 #canvasRoot {
   position: fixed;
   inset: 0;
+  z-index: 1;
 }
 
 canvas {
   display: block;
+}
+
+.ar-camera-feed {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 0 !important;
+}
+
+#canvasRoot canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
 }
 
 button {
@@ -187,6 +201,7 @@ body.in-camera-ar .main-menu {
 
 .menu-button {
   grid-row: 1;
+  grid-column: 1;
   justify-self: start;
   align-self: start;
   width: clamp(48px, 8vw, 68px);
@@ -206,75 +221,82 @@ body.in-camera-ar .main-menu {
   border-radius: inherit;
 }
 
-.placement-controls {
-  grid-row: 3;
+.tracking-status {
+  grid-row: 1;
+  grid-column: 1;
   justify-self: center;
-  align-self: end;
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  width: min(520px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
-  max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
-  margin-bottom: max(16px, env(safe-area-inset-bottom));
-  pointer-events: none;
-}
-
-.scan-prompt {
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0;
-  padding: 12px 18px;
+  align-self: start;
+  max-width: min(72vw, 560px);
+  margin-top: 4px;
+  padding: 10px 18px;
+  border: 1px solid rgba(246, 239, 230, 0.32);
   border-radius: 999px;
-  background: rgba(8, 10, 12, 0.62);
+  background: rgba(8, 10, 12, 0.66);
   color: #f6efe6;
-  font-size: clamp(0.9rem, 2.4vw, 1.28rem);
+  font-size: clamp(0.88rem, 2vw, 1.15rem);
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(8px);
+  pointer-events: none;
 }
 
-.scan-prompt.is-bouncing {
-  animation: promptBounce 420ms ease;
-}
-
-@keyframes promptBounce {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-
-  36% {
-    transform: translateY(-8px) scale(1.04);
-  }
-
-  68% {
-    transform: translateY(2px) scale(0.98);
-  }
-}
-
-.start-from-here {
+.marker-guide {
+  grid-row: 2;
+  grid-column: 1;
+  justify-self: center;
+  align-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: clamp(148px, 24vw, 238px);
+  padding: clamp(12px, 2vw, 18px);
   box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  padding: 0 28px;
-  pointer-events: auto;
-  background: linear-gradient(180deg, #d4381b, #9e1d0c);
+  border: 1px solid rgba(246, 239, 230, 0.28);
+  border-radius: 18px;
+  background: rgba(8, 10, 12, 0.54);
   color: #f6efe6;
-  font-size: clamp(1rem, 2.8vw, 1.45rem);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36);
-  opacity: 0.46;
-  transition: opacity 180ms ease, filter 180ms ease, transform 180ms ease;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
 }
 
-.start-from-here.is-ready {
-  opacity: 1;
-  filter: drop-shadow(0 0 16px rgba(221, 52, 23, 0.45));
+.marker-guide img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  opacity: 0.62;
+  background: #fff;
+}
+
+.marker-guide strong {
+  font-size: clamp(0.92rem, 2.2vw, 1.24rem);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.marker-debug {
+  position: fixed;
+  top: calc(74px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  z-index: 25;
+  max-width: min(52vw, 460px);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #9fffd6;
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre-wrap;
+  pointer-events: none;
 }
 
 .bottom-ui {
   grid-row: 3;
+  grid-column: 1;
   justify-self: center;
   align-self: end;
   width: min(72vw, 860px);
@@ -536,6 +558,11 @@ body.in-camera-ar .main-menu {
 }
 
 @media (orientation: portrait) {
+  .marker-guide {
+    width: clamp(144px, 38vw, 218px);
+    transform: translateY(-4vh);
+  }
+
   .bottom-ui {
     width: min(84vw, 520px);
     max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
@@ -554,6 +581,15 @@ body.in-camera-ar .main-menu {
 }
 
 @media (max-height: 560px) and (orientation: landscape) {
+  .marker-guide {
+    width: clamp(126px, 21vh, 174px);
+  }
+
+  .tracking-status {
+    max-width: 58vw;
+    padding-block: 8px;
+  }
+
   .bottom-ui {
     width: min(82vw, 900px);
   }
