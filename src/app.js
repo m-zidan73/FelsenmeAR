@@ -40,6 +40,10 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
   const MARKER_TRACKING = {
     stableDetectionFrames: 6,
     lossTimeoutMs: 900,
+    minPoseDistanceMeters: 0.12,
+    maxPoseDistanceMeters: 5,
+    maxPoseJumpMeters: 0.75,
+    maxRotationJumpDegrees: 75,
     positionSmoothing: 0.38,
     rotationSmoothing: 0.34,
     sourceWidth: 640,
@@ -68,6 +72,7 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
     markerConsecutiveDetections: 0,
     markerLastSeenAt: 0,
     markerLossDurationMs: 0,
+    markerRejectedReason: "",
     rawMarkerPosition: new THREE.Vector3(),
     rawMarkerQuaternion: new THREE.Quaternion(),
     smoothedMarkerPosition: new THREE.Vector3(),
@@ -662,48 +667,45 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
     const markerDetected = Boolean(state.rawMarkerRoot && state.rawMarkerRoot.visible);
 
     if (markerDetected) {
-      state.markerLastSeenAt = time;
-      state.markerLossDurationMs = 0;
-      state.markerConsecutiveDetections += 1;
       readRawMarkerPose();
+      const poseStatus = getMarkerPoseStatus();
 
-      if (state.markerConsecutiveDetections < MARKER_TRACKING.stableDetectionFrames) {
-        setTrackingStatus("Stabilizing tracking");
-        updateHud("Stabilizing tracking");
+      if (!poseStatus.valid) {
+        rejectMarkerFrame(time, poseStatus.reason);
       } else {
-        const initializePose = !state.hasStableMarkerPose;
-        const firstStableDetection = !state.markerStable;
-        state.markerStable = true;
-        state.markerTrackingPaused = false;
-        smoothMarkerPose(deltaSeconds, initializePose);
-        state.hasStableMarkerPose = true;
-        state.trackingRoot.visible = true;
-        setMarkerGuideVisible(false);
-        setTrackingStatus("Tracking marker");
-        updateHud(firstStableDetection ? "Marker detected" : "Tracking marker");
+        state.markerLastSeenAt = time;
+        state.markerLossDurationMs = 0;
+        state.markerRejectedReason = "";
+        state.markerConsecutiveDetections += 1;
 
-        if (!state.bouldersPlaced) {
-          placeBoulders();
+        if (state.markerConsecutiveDetections < MARKER_TRACKING.stableDetectionFrames) {
+          state.markerStable = false;
+          state.markerTrackingPaused = true;
+          if (state.trackingRoot) {
+            state.trackingRoot.visible = false;
+          }
+          setMarkerGuideVisible(true);
+          setTrackingStatus("Stabilizing tracking");
+          updateHud("Stabilizing tracking");
+        } else {
+          const initializePose = !state.hasStableMarkerPose || !state.markerStable;
+          const firstStableDetection = !state.markerStable;
+          state.markerStable = true;
+          state.markerTrackingPaused = false;
+          smoothMarkerPose(deltaSeconds, initializePose);
+          state.hasStableMarkerPose = true;
+          state.trackingRoot.visible = true;
+          setMarkerGuideVisible(false);
+          setTrackingStatus("Tracking marker");
+          updateHud(firstStableDetection ? "Marker detected" : "Tracking marker");
+
+          if (!state.bouldersPlaced) {
+            placeBoulders();
+          }
         }
       }
     } else {
-      state.markerConsecutiveDetections = 0;
-      state.markerLossDurationMs = state.markerLastSeenAt ? time - state.markerLastSeenAt : 0;
-
-      if (state.markerStable || (state.trackingRoot && state.trackingRoot.visible)) {
-        setTrackingStatus("Marker lost");
-        updateHud("Marker lost");
-        if (state.markerLossDurationMs >= MARKER_TRACKING.lossTimeoutMs) {
-          state.markerStable = false;
-          state.markerTrackingPaused = true;
-          state.trackingRoot.visible = false;
-          setMarkerGuideVisible(true);
-        }
-      } else {
-        setTrackingStatus("Looking for marker");
-        updateHud("Looking for marker");
-        setMarkerGuideVisible(true);
-      }
+      handleMarkerLoss(time, "not visible");
     }
 
     if (state.markerStable) {
@@ -712,7 +714,6 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
     }
     updateMarkerDebug(time);
   }
-
   function readRawMarkerPose() {
     state.rawMarkerRoot.updateMatrixWorld(true);
     state.rawMarkerRoot.matrix.decompose(
@@ -720,6 +721,70 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
       state.rawMarkerQuaternion,
       new THREE.Vector3()
     );
+  }
+
+
+  function getMarkerPoseStatus() {
+    const distanceMeters = state.rawMarkerPosition.length();
+    if (!Number.isFinite(distanceMeters)) {
+      return { valid: false, reason: "invalid numbers" };
+    }
+
+    if (
+      distanceMeters < MARKER_TRACKING.minPoseDistanceMeters ||
+      distanceMeters > MARKER_TRACKING.maxPoseDistanceMeters
+    ) {
+      return { valid: false, reason: "distance " + distanceMeters.toFixed(2) + "m" };
+    }
+
+    if (state.markerStable || state.hasStableMarkerPose) {
+      const poseJumpMeters = state.rawMarkerPosition.distanceTo(state.smoothedMarkerPosition);
+      if (poseJumpMeters > MARKER_TRACKING.maxPoseJumpMeters) {
+        return { valid: false, reason: "position jump " + poseJumpMeters.toFixed(2) + "m" };
+      }
+
+      const rotationJumpDegrees = THREE.MathUtils.radToDeg(
+        state.rawMarkerQuaternion.angleTo(state.smoothedMarkerQuaternion)
+      );
+      if (rotationJumpDegrees > MARKER_TRACKING.maxRotationJumpDegrees) {
+        return { valid: false, reason: "rotation jump " + rotationJumpDegrees.toFixed(0) + "deg" };
+      }
+    }
+
+    return { valid: true, reason: "" };
+  }
+
+  function rejectMarkerFrame(time, reason) {
+    state.markerRejectedReason = reason;
+    handleMarkerLoss(time, "unstable: " + reason);
+  }
+
+  function handleMarkerLoss(time, reason) {
+    state.markerConsecutiveDetections = 0;
+    state.markerLossDurationMs = state.markerLastSeenAt ? time - state.markerLastSeenAt : 0;
+
+    if (state.markerStable || (state.trackingRoot && state.trackingRoot.visible)) {
+      state.markerStable = false;
+      state.markerTrackingPaused = true;
+      if (state.trackingRoot) {
+        state.trackingRoot.visible = false;
+      }
+      setMarkerGuideVisible(true);
+      setTrackingStatus(reason === "not visible" ? "Marker lost" : "Stabilizing tracking");
+      updateHud(reason === "not visible" ? "Marker lost" : "Stabilizing tracking");
+      return;
+    }
+
+    if (state.markerLossDurationMs >= MARKER_TRACKING.lossTimeoutMs || reason !== "not visible") {
+      if (state.trackingRoot) {
+        state.trackingRoot.visible = false;
+      }
+      state.markerTrackingPaused = true;
+      setMarkerGuideVisible(true);
+    }
+
+    setTrackingStatus(reason === "not visible" ? "Looking for marker" : "Stabilizing tracking");
+    updateHud(reason === "not visible" ? "Looking for marker" : "Stabilizing tracking");
   }
 
   function smoothMarkerPose(deltaSeconds, initializePose) {
@@ -1550,6 +1615,7 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
       "Marker ID detected: " + (state.rawMarkerRoot && state.rawMarkerRoot.visible ? "0" : "none"),
       "Stable tracking: " + state.markerStable,
       "Marker-loss duration: " + state.markerLossDurationMs.toFixed(0) + " ms",
+      "Rejected pose: " + (state.markerRejectedReason || "none"),
       "Raw position: " + formatVector(state.rawMarkerPosition),
       "Smoothed position: " + formatVector(state.smoothedMarkerPosition),
       "Calibration offset: " + formatVector(MARKER_CALIBRATION.positionMeters),
