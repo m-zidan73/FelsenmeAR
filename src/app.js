@@ -59,6 +59,7 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
     rawMarkerRoot: null,
     trackingRoot: null,
     calibrationRoot: null,
+    markerAxisHelper: null,
     cameraActive: false,
     cameraInitialized: false,
     markerStable: false,
@@ -107,6 +108,8 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
     animationComplete: false,
     lastTime: 0,
     debugMode: new URLSearchParams(window.location.search).has("debug"),
+    debugAxisMode: new URLSearchParams(window.location.search).has("debug") ||
+      new URLSearchParams(window.location.search).has("axis"),
     lastDebugUpdateAt: 0,
     compassHeadingDegrees: null,
     userPosition: null,
@@ -377,6 +380,7 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
           markerIdDetected: state.rawMarkerRoot && state.rawMarkerRoot.visible ? 0 : null,
           markerStable: state.markerStable,
           markerLossDurationMs: state.markerLossDurationMs,
+          markerAxisVisible: Boolean(state.markerAxisHelper && state.markerAxisHelper.visible),
           bouldersParentChain: getParentChain(state.bouldersRoot),
           rawMarkerPosition: vectorToPlainObject(state.rawMarkerPosition),
           smoothedMarkerPosition: vectorToPlainObject(state.smoothedMarkerPosition),
@@ -526,6 +530,10 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
     state.trackingRoot.visible = false;
     state.scene.add(state.trackingRoot);
 
+    state.markerAxisHelper = createMarkerAxisHelper();
+    state.markerAxisHelper.visible = state.debugAxisMode;
+    state.trackingRoot.add(state.markerAxisHelper);
+
     state.calibrationRoot = new THREE.Group();
     state.calibrationRoot.name = "Marker Calibration Root";
     applyMarkerCalibration();
@@ -601,6 +609,19 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
       THREE.MathUtils.degToRad(MARKER_CALIBRATION.rotationDegrees.z)
     );
     state.calibrationRoot.scale.setScalar(MARKER_CALIBRATION.scale);
+  }
+
+  function createMarkerAxisHelper() {
+    const helper = new THREE.AxesHelper(0.18);
+    helper.name = "Marker Axis Helper";
+    helper.renderOrder = 20;
+    helper.traverse((child) => {
+      if (child.material) {
+        child.material.depthTest = false;
+        child.material.depthWrite = false;
+      }
+    });
+    return helper;
   }
 
   function resizeMarkerCamera() {
@@ -746,6 +767,7 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
     state.rawMarkerRoot = null;
     state.trackingRoot = null;
     state.calibrationRoot = null;
+    state.markerAxisHelper = null;
     state.cameraActive = false;
     state.cameraInitialized = false;
     state.markerStable = false;
