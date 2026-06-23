@@ -377,8 +377,11 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
           markerIdDetected: state.rawMarkerRoot && state.rawMarkerRoot.visible ? 0 : null,
           markerStable: state.markerStable,
           markerLossDurationMs: state.markerLossDurationMs,
+          bouldersParentChain: getParentChain(state.bouldersRoot),
           rawMarkerPosition: vectorToPlainObject(state.rawMarkerPosition),
           smoothedMarkerPosition: vectorToPlainObject(state.smoothedMarkerPosition),
+          bouldersWorldPosition: getWorldPositionSnapshot(state.bouldersRoot),
+          calibrationWorldPosition: getWorldPositionSnapshot(state.calibrationRoot),
           calibrationOffset: vectorToPlainObject(MARKER_CALIBRATION.positionMeters),
           markerWidthMeters: MARKER_CALIBRATION.physicalWidthMeters
         };
@@ -1270,6 +1273,25 @@ import { ArMarkerControls, ArToolkitContext, ArToolkitSource } from "threex";
       y: Number(vector.y.toFixed(6)),
       z: Number(vector.z.toFixed(6))
     };
+  }
+
+  function getWorldPositionSnapshot(object) {
+    if (!object) {
+      return null;
+    }
+
+    object.updateMatrixWorld(true);
+    return vectorToPlainObject(object.getWorldPosition(new THREE.Vector3()));
+  }
+
+  function getParentChain(object) {
+    const names = [];
+    let current = object;
+    while (current) {
+      names.push(current.name || current.type || "Object3D");
+      current = current.parent;
+    }
+    return names.join(" <- ");
   }
 
   function triggerFloatingObject() {
