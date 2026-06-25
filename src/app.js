@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { createBoulderModelFactory } from "./boulders/model-factory.js";
+import { createBoulderModelLoader } from "./boulders/model-loader.js";
 import { CONFIG } from "./config.js";
 import { getUiElements } from "./dom.js";
 import { installRuntimeErrorCapture } from "./runtime-errors.js";
@@ -7,12 +8,9 @@ import { createAppState } from "./state.js";
 import { createSceneController } from "./scene.js";
 import { getDistanceMeters, getSunPosition, normalizeDegrees } from "./geo.js";
 import {
-  applyModelShadowSettings,
-  cloneModelForScene,
   disposeObject,
   getDescendantMeshes,
   getDirectChildMeshesExcept,
-  getImportedObjectByName,
   getObjectSnapshot,
   getSelfMeshes,
   removeAndDisposeMeshes,
@@ -70,6 +68,21 @@ import { createMenuUi } from "./ui/menu.js";
   });
   const { createShadowReceiver, initializeScene, onResize } = sceneController;
 
+  const boulderModelFactory = createBoulderModelFactory({
+    config: CONFIG,
+    THREE
+  });
+  const { createBoulderInstance, getModelScale } = boulderModelFactory;
+  const boulderModelLoader = createBoulderModelLoader({
+    state,
+    ui,
+    THREE,
+    setMenuLoading,
+    refreshReadyState,
+    setXRDebug
+  });
+  const { loadBoulderModel } = boulderModelLoader;
+
   init();
 
   function init() {
@@ -99,44 +112,7 @@ import { createMenuUi } from "./ui/menu.js";
     } else if (stepIndex < previousStep) {
       processFormationStage();
     }
-  }
-
-  async function loadBoulderModel() {
-    const loader = new GLTFLoader();
-    const assetVersion = Date.now();
-    const assetUrl = (fileName) => "Assets/" + fileName + "?v=" + assetVersion;
-
-    try {
-      setMenuLoading(18, "Loading", "Downloading assets.");
-      const boulders = await loader.loadAsync(
-        assetUrl("Boulders%20on%20Ground.glb"),
-        (event) => {
-          if (!event.lengthComputable || !event.total) {
-            setMenuLoading(42, "Loading", "Downloading assets.");
-            return;
-          }
-
-          state.assetProgress = THREE.MathUtils.clamp(event.loaded / event.total, 0, 1);
-          setMenuLoading(18 + state.assetProgress * 62, "Loading", "Downloading assets.");
-        }
-      );
-
-      state.modelAssets = {
-        boulders
-      };
-      state.modelsLoaded = true;
-      ui.startArButton.disabled = false;
-      refreshReadyState();
-    } catch (error) {
-      state.modelLoadError = true;
-      ui.startArButton.disabled = true;
-      setXRDebug("model load failed");
-      setMenuLoading(100, "Error", "Could not load the boulder model. Check the Assets folder and refresh.");
-      window.__runtimeErrors.push("Boulder model load failed: " + error.message);
-    }
-  }
-
-  function installDebugHooks() {
+  }  function installDebugHooks() {
     if (!new URLSearchParams(window.location.search).has("debug")) {
       return;
     }
@@ -549,48 +525,7 @@ import { createMenuUi } from "./ui/menu.js";
       ? "Boulders placed. Object_3 will rise in 5 seconds."
       : "Boulders placed, but Object_3 was not found in the model.");
     setXRDebug(anchor ? "anchored placement" : "raw world-space placement");
-  }
-
-  function createBoulderInstance(gltf, modelScale) {
-    const root = new THREE.Group();
-    root.name = "Boulders Root";
-
-    const model = cloneModelForScene(gltf.scene);
-    model.name = "Boulders on Ground";
-    root.add(model);
-    model.scale.setScalar(modelScale);
-
-    const bounds = new THREE.Box3().setFromObject(root);
-    const center = bounds.getCenter(new THREE.Vector3());
-    model.position.x -= center.x;
-    model.position.y -= bounds.min.y;
-    model.position.z -= center.z;
-    root.updateMatrixWorld(true);
-
-    applyModelShadowSettings(root);
-    const dustObject = getImportedObjectByName(root, "Dust and Grus");
-    const stageRockObjects = {
-      1: getImportedObjectByName(root, "1st Stage Rock"),
-      2: getImportedObjectByName(root, "2nd Stage Rock"),
-      3: getImportedObjectByName(root, "3rd Stage Rock")
-    };
-    return {
-      root,
-      floatingObject: root.getObjectByName("Object_3"),
-      dustObject,
-      stageRockObjects
-    };
-  }
-
-  function getModelScale(referenceScene) {
-    const bounds = new THREE.Box3().setFromObject(referenceScene);
-    const size = bounds.getSize(new THREE.Vector3());
-    const footprint = Math.max(size.x, size.z, 0.001);
-
-    return CONFIG.modelFootprintMeters / footprint;
-  }
-
-  function prepareBoulderVisibility() {
+  }  function prepareBoulderVisibility() {
     const foundationNames = ["Plane", "Object_2", "Object_4", "Object_5", "Object_6"];
     setMeshesOpacity(getDescendantMeshes(state.bouldersRoot), 0);
     state.foundationFadeMeshes = foundationNames.flatMap((name) => getSelfMeshes(state.bouldersRoot.getObjectByName(name)));
