@@ -1,123 +1,15 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { CONFIG } from "./config.js";
+import { getUiElements } from "./dom.js";
+import { installRuntimeErrorCapture } from "./runtime-errors.js";
+import { createAppState } from "./state.js";
 
 (function () {
-  window.__runtimeErrors = [];
-  window.addEventListener("error", (event) => {
-    window.__runtimeErrors.push(event.message);
-  });
-  window.addEventListener("unhandledrejection", (event) => {
-    window.__runtimeErrors.push(String(event.reason));
-  });
+  installRuntimeErrorCapture();
 
-  const CONFIG = {
-    modelFootprintMeters: 2.5,
-    floatingObjectTargetHeightMeters: 1.0,
-    modelFadeInDurationSeconds: 2,
-    floatingObjectStartDelayMs: 5000,
-    floatingObjectRiseDurationSeconds: 3,
-    sceneFadeOutDurationSeconds: 2,
-    childRevealDurationSeconds: 2,
-    dustRevealDurationSeconds: 2,
-    formationTransitionDurationSeconds: 2,
-    allowedLocations: [
-      { latitude: 49.90000549974582, longitude: 8.85554978661026 },
-      { latitude: 49.8686172198458, longitude: 8.649528051715288 }
-    ],
-    allowedLocationRadiusMeters: 25
-  };
-
-  const state = {
-    scene: null,
-    camera: null,
-    renderer: null,
-    xrSession: null,
-    xrReferenceSpace: null,
-    xrViewerSpace: null,
-    xrHitTestSource: null,
-    xrPlacementAnchor: null,
-    xrPlacementAnchorSpace: null,
-    latestHit: null,
-    latestHitResult: null,
-    reticle: null,
-    planeIndicator: null,
-    sunLight: null,
-    shadowReceiver: null,
-    modelAssets: null,
-    bouldersRoot: null,
-    floatingObject: null,
-    floatingObjectBaseWorldPosition: new THREE.Vector3(),
-    floatingObjectTargetWorldPosition: new THREE.Vector3(),
-    floatingObjectPlacedAtTime: 0,
-    floatingObjectTriggered: false,
-    floatingObjectRiseProgress: 0,
-    foundationFadeStarted: false,
-    foundationFadeMeshes: [],
-    floatingObjectRevealMeshes: [],
-    floatingObjectRevealStarted: false,
-    dustObject: null,
-    dustRevealQueued: false,
-    dustRevealMeshes: [],
-    dustRevealComplete: false,
-    stageRockObjects: { 1: null, 2: null, 3: null },
-    stageRockMeshes: { 1: [], 2: [], 3: [] },
-    visibleFormationStage: 5,
-    stageTransitionActive: false,
-    fadeTasks: [],
-    formationStep: 4,
-    childRevealRequested: false,
-    placementButtonReady: false,
-    arSupportChecked: false,
-    arSupported: false,
-    assetProgress: 0,
-    modelsLoaded: false,
-    modelLoadError: false,
-    placementCenter: new THREE.Vector3(),
-    planeHeight: 0,
-    bouldersPlaced: false,
-    animationStarted: false,
-    animationComplete: false,
-    lastTime: 0,
-    hitFrames: 0,
-    noHitFrames: 0,
-    lastScanDebugTime: 0,
-    compassHeadingDegrees: null,
-    userPosition: null,
-    userPositionError: null,
-    geolocationWatchId: null,
-    sunDirection: new THREE.Vector3(-0.3, 0.8, 0.5).normalize(),
-    lastSunPosition: null,
-    sunReady: false,
-    domOverlayActive: false,
-    xrHud: null
-  };
-
-  const ui = {
-    mainMenu: document.getElementById("mainMenu"),
-    canvasRoot: document.getElementById("canvasRoot"),
-    overlay: document.getElementById("overlay"),
-    statusText: document.getElementById("statusText"),
-    loadingFill: document.getElementById("loadingFill"),
-    loadingStateLabel: document.getElementById("loadingStateLabel"),
-    scanPrompt: document.getElementById("scanPrompt"),
-    startFromHereButton: document.getElementById("startFromHereButton"),
-    heightValue: document.getElementById("heightValue"),
-    separationValue: document.getElementById("separationValue"),
-    xrDebugText: document.getElementById("xrDebugText"),
-    startArButton: document.getElementById("startArButton"),
-    resetButton: document.getElementById("resetButton"),
-    menuButton: document.getElementById("menuButton"),
-    bottomUi: document.querySelector(".bottom-ui"),
-    formationSlider: document.getElementById("formationSlider"),
-    formationRange: document.getElementById("formationRange"),
-    formationFill: document.querySelector(".formation-fill"),
-    formationStages: Array.from(document.querySelectorAll(".formation-stage")),
-    formationDots: Array.from(document.querySelectorAll(".formation-dot")),
-    geoStatus: document.getElementById("geoStatus"),
-    geoDistanceValue: document.getElementById("geoDistanceValue"),
-    geoHeadingValue: document.getElementById("geoHeadingValue"),
-    geoGateValue: document.getElementById("geoGateValue")
-  };
+  const state = createAppState();
+  const ui = getUiElements();
 
   init();
 
