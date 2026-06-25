@@ -17,12 +17,49 @@ import {
   removeAndDisposeMeshes,
   setMeshesOpacity
 } from "./three-utils.js";
+import { createFormationSlider } from "./ui/formation-slider.js";
+import { createHudUi } from "./ui/hud.js";
+import { createMenuUi } from "./ui/menu.js";
 
 (function () {
   installRuntimeErrorCapture();
 
   const state = createAppState();
   const ui = getUiElements();
+  const hudUi = createHudUi({ state, ui, THREE });
+  const {
+    createXrFallbackHud,
+    refreshXrHudTexture,
+    setXRDebug,
+    setXrHudVisible,
+    shouldUseXrFallbackHud,
+    updateHud,
+    updateXrHudLayout
+  } = hudUi;
+  const menuUi = createMenuUi({
+    state,
+    ui,
+    clamp: THREE.MathUtils.clamp,
+    updateHud
+  });
+  const {
+    bounceScanPrompt,
+    refreshReadyState,
+    setFormationSliderVisible,
+    setGeoStatusVisible,
+    setMenuButtonVisible,
+    setMenuLoading,
+    setScanPromptVisible,
+    setStartFromHereReady,
+    setStartFromHereVisible
+  } = menuUi;
+  const formationSliderUi = createFormationSlider({
+    state,
+    ui,
+    clamp: THREE.MathUtils.clamp,
+    onStepSelected: onFormationStepSelected
+  });
+  const { initFormationSlider, resetFormationSlider } = formationSliderUi;
 
   init();
 
@@ -57,103 +94,6 @@ import {
     checkARSupport();
     installDebugHooks();
     state.renderer.setAnimationLoop(render);
-  }
-
-  function initFormationSlider() {
-    if (!ui.formationRange || !ui.formationSlider) {
-      return;
-    }
-
-    const snapThreshold = 0.16;
-    let gestureStartStep = state.formationStep;
-    let gestureCommitted = false;
-
-    const applySliderValue = (rawValue, shouldSnap) => {
-      const numericValue = THREE.MathUtils.clamp(Number(rawValue) || 0, 0, 4);
-      const nearestStep = Math.round(numericValue);
-      const snappedValue = shouldSnap
-        ? nearestStep
-        : Math.abs(numericValue - nearestStep) <= snapThreshold
-          ? nearestStep
-          : numericValue;
-      const displayStep = Math.round(snappedValue);
-      const progressPercent = (snappedValue / 4) * 100;
-
-      ui.formationRange.value = snappedValue.toFixed(3);
-      if (ui.formationFill) {
-        ui.formationFill.style.width = progressPercent + "%";
-      }
-
-      ui.formationStages.forEach((stage, index) => {
-        stage.classList.toggle("is-active", index === displayStep);
-      });
-      ui.formationDots.forEach((dot, index) => {
-        dot.classList.toggle("is-active", index === displayStep);
-      });
-
-      if (shouldSnap && displayStep !== state.formationStep) {
-        const previousStep = state.formationStep;
-        state.formationStep = displayStep;
-        onFormationStepSelected(state.formationStep, previousStep);
-      }
-    };
-
-    const commitSliderGesture = (rawValue) => {
-      if (gestureCommitted) {
-        return;
-      }
-
-      gestureCommitted = true;
-      const requestedStep = Math.round(THREE.MathUtils.clamp(Number(rawValue) || 0, 0, 4));
-      const adjacentStep = THREE.MathUtils.clamp(
-        requestedStep,
-        gestureStartStep - 1,
-        gestureStartStep + 1
-      );
-      applySliderValue(adjacentStep, true);
-    };
-
-    state.setFormationSliderValue = applySliderValue;
-
-    ui.formationRange.addEventListener("pointerdown", () => {
-      gestureStartStep = state.formationStep;
-      gestureCommitted = false;
-      ui.formationSlider.classList.remove("is-prompting");
-      ui.formationSlider.classList.add("is-dragging");
-    });
-
-    ui.formationRange.addEventListener("input", (event) => {
-      applySliderValue(event.target.value, false);
-    });
-
-    ui.formationRange.addEventListener("change", (event) => {
-      if (!gestureCommitted && !ui.formationSlider.classList.contains("is-dragging")) {
-        gestureStartStep = state.formationStep;
-      }
-      commitSliderGesture(event.target.value);
-    });
-
-    ui.formationRange.addEventListener("keydown", () => {
-      gestureStartStep = state.formationStep;
-      gestureCommitted = false;
-    });
-
-    window.addEventListener("pointerup", () => {
-      if (!ui.formationSlider.classList.contains("is-dragging")) {
-        return;
-      }
-
-      ui.formationSlider.classList.remove("is-dragging");
-      commitSliderGesture(ui.formationRange.value);
-    });
-
-    window.addEventListener("pointercancel", () => {
-      ui.formationSlider.classList.remove("is-dragging");
-      commitSliderGesture(ui.formationRange.value);
-    });
-
-    ui.formationSlider.classList.add("is-prompting");
-    applySliderValue(4, true);
   }
 
   function onFormationStepSelected(stepIndex, previousStep) {
@@ -198,48 +138,6 @@ import {
       setMenuLoading(100, "Error", "Could not load the boulder model. Check the Assets folder and refresh.");
       window.__runtimeErrors.push("Boulder model load failed: " + error.message);
     }
-  }
-
-  function setMenuLoading(percent, label, message) {
-    const clampedPercent = THREE.MathUtils.clamp(percent, 0, 100);
-    if (ui.loadingFill) {
-      ui.loadingFill.style.width = clampedPercent.toFixed(1) + "%";
-    }
-    if (ui.loadingStateLabel) {
-      ui.loadingStateLabel.textContent = label;
-    }
-    if (message) {
-      updateHud(message);
-    }
-  }
-
-  function refreshReadyState() {
-    if (state.modelLoadError) {
-      ui.startArButton.disabled = true;
-      setMenuLoading(100, "Error", "Could not load assets.");
-      return;
-    }
-
-    if (!state.arSupportChecked) {
-      ui.startArButton.disabled = true;
-      setMenuLoading(Math.max(12, state.assetProgress * 80), "Checking", "Checking AR capability.");
-      return;
-    }
-
-    if (!state.arSupported) {
-      ui.startArButton.disabled = true;
-      setMenuLoading(100, "Blocked", "This browser does not expose WebXR AR.");
-      return;
-    }
-
-    if (!state.modelsLoaded) {
-      ui.startArButton.disabled = true;
-      setMenuLoading(18 + state.assetProgress * 62, "Loading", "Downloading assets.");
-      return;
-    }
-
-    ui.startArButton.disabled = false;
-    setMenuLoading(100, "Ready", "You Are Ready to Go.");
   }
 
   function installDebugHooks() {
@@ -1145,226 +1043,6 @@ import {
     updateHud("Move the iPad to detect a plane, then press Start From Here.");
   }
 
-  function createXrFallbackHud() {
-    state.scene.add(state.camera);
-
-    const root = new THREE.Group();
-    root.name = "XR Fallback HUD";
-    root.visible = false;
-    state.camera.add(root);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = 512;
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-
-    const panel = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false
-      })
-    );
-    panel.renderOrder = 1000;
-    root.add(panel);
-
-    state.xrHud = {
-      root,
-      canvas,
-      context: canvas.getContext("2d"),
-      texture,
-      panel,
-      lastText: "",
-      lastAspect: 0
-    };
-
-    refreshXrHudTexture();
-    updateXrHudLayout();
-  }
-
-  function setXrHudVisible(isVisible) {
-    if (!state.xrHud) {
-      return;
-    }
-
-    state.xrHud.root.visible = isVisible;
-    refreshXrHudTexture();
-    updateXrHudLayout();
-  }
-
-  function updateXrHudLayout() {
-    if (!state.xrHud || !state.xrHud.root.visible) {
-      return;
-    }
-
-    const distance = 1.25;
-    const aspect = Math.max(0.55, state.camera.aspect || (window.innerWidth / window.innerHeight));
-    const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(state.camera.fov) * 0.5) * distance;
-    const visibleWidth = visibleHeight * aspect;
-    const margin = Math.max(0.08, Math.min(0.16, visibleWidth * 0.045));
-    const panelWidth = Math.min(1.12, visibleWidth - margin * 2);
-    const panelHeight = panelWidth * 0.45;
-
-    state.xrHud.panel.scale.set(panelWidth, panelHeight, 1);
-    state.xrHud.panel.position.set(
-      -visibleWidth * 0.5 + panelWidth * 0.5 + margin,
-      visibleHeight * 0.5 - panelHeight * 0.5 - margin,
-      -distance
-    );
-
-    state.xrHud.lastAspect = aspect;
-  }
-
-  function refreshXrHudTexture() {
-    if (!state.xrHud) {
-      return;
-    }
-
-    const text = [
-      ui.statusText.textContent,
-      ui.scanPrompt ? ui.scanPrompt.textContent : "",
-      ui.xrDebugText.textContent
-    ].join("|");
-
-    if (text === state.xrHud.lastText) {
-      return;
-    }
-
-    state.xrHud.lastText = text;
-    const context = state.xrHud.context;
-    const canvas = state.xrHud.canvas;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    drawRoundedRect(context, 18, 18, canvas.width - 36, 250, 32, "rgba(8, 10, 12, 0.72)", "rgba(246, 239, 230, 0.24)", 4);
-
-    context.fillStyle = "#f6efe6";
-    context.font = "800 46px Arial";
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    drawWrappedText(context, ui.scanPrompt && !ui.scanPrompt.hidden ? ui.scanPrompt.textContent : ui.statusText.textContent, canvas.width * 0.5, 62, 860, 56, 3);
-
-    state.xrHud.texture.needsUpdate = true;
-  }
-
-  function drawWrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
-    const words = String(text || "").split(/\s+/);
-    let line = "";
-    let lineCount = 0;
-
-    for (let index = 0; index < words.length; index += 1) {
-      const testLine = line ? line + " " + words[index] : words[index];
-      if (context.measureText(testLine).width > maxWidth && line) {
-        context.fillText(line, x, y + lineCount * lineHeight);
-        line = words[index];
-        lineCount += 1;
-        if (lineCount >= maxLines) {
-          return;
-        }
-      } else {
-        line = testLine;
-      }
-    }
-
-    if (line && lineCount < maxLines) {
-      context.fillText(line, x, y + lineCount * lineHeight);
-    }
-  }
-
-  function drawRoundedRect(context, x, y, width, height, radius, fill, stroke, lineWidth) {
-    const right = x + width;
-    const bottom = y + height;
-    context.beginPath();
-    context.moveTo(x + radius, y);
-    context.lineTo(right - radius, y);
-    context.quadraticCurveTo(right, y, right, y + radius);
-    context.lineTo(right, bottom - radius);
-    context.quadraticCurveTo(right, bottom, right - radius, bottom);
-    context.lineTo(x + radius, bottom);
-    context.quadraticCurveTo(x, bottom, x, bottom - radius);
-    context.lineTo(x, y + radius);
-    context.quadraticCurveTo(x, y, x + radius, y);
-    context.closePath();
-    context.fillStyle = fill;
-    context.fill();
-    if (stroke && lineWidth > 0) {
-      context.strokeStyle = stroke;
-      context.lineWidth = lineWidth;
-      context.stroke();
-    }
-  }
-
-  function setGeoStatusVisible(isVisible) {
-    ui.geoStatus.dataset.active = isVisible ? "true" : "false";
-  }
-
-  function setMenuButtonVisible(isVisible) {
-    if (ui.menuButton) {
-      ui.menuButton.hidden = !isVisible;
-    }
-  }
-
-  function setFormationSliderVisible(isVisible) {
-    if (ui.bottomUi) {
-      ui.bottomUi.hidden = !isVisible;
-    }
-  }
-
-  function resetFormationSlider() {
-    if (!ui.formationSlider || !state.setFormationSliderValue) {
-      return;
-    }
-
-    state.formationStep = 4;
-    ui.formationSlider.classList.add("is-prompting");
-    state.setFormationSliderValue(4, true);
-  }
-
-  function setScanPromptVisible(isVisible) {
-    if (ui.scanPrompt) {
-      ui.scanPrompt.hidden = !isVisible;
-    }
-  }
-
-  function bounceScanPrompt() {
-    if (!ui.scanPrompt) {
-      return;
-    }
-
-    ui.scanPrompt.classList.remove("is-bouncing");
-    void ui.scanPrompt.offsetWidth;
-    ui.scanPrompt.classList.add("is-bouncing");
-  }
-
-  function setStartFromHereVisible(isVisible) {
-    if (!ui.startFromHereButton) {
-      return;
-    }
-
-    ui.startFromHereButton.hidden = !isVisible;
-    ui.startFromHereButton.disabled = !isVisible || state.bouldersPlaced || !state.placementButtonReady;
-  }
-
-  function setStartFromHereReady(isReady) {
-    if (!ui.startFromHereButton) {
-      return;
-    }
-
-    state.placementButtonReady = Boolean(isReady);
-    ui.startFromHereButton.classList.toggle("is-ready", state.placementButtonReady);
-    ui.startFromHereButton.disabled = state.bouldersPlaced || !state.placementButtonReady;
-  }
-
-  function shouldUseXrFallbackHud() {
-    return Boolean(state.xrSession) && (!state.domOverlayActive || isLikelyIpadDevice());
-  }
-
-  function isLikelyIpadDevice() {
-    const userAgent = navigator.userAgent || "";
-    return /iPad/.test(userAgent) || (/Macintosh/.test(userAgent) && navigator.maxTouchPoints > 1);
-  }
-
   function updateGeoStatus() {
     const nearestLocation = state.userPosition ? getNearestAllowedLocation() : null;
     const distanceMeters = nearestLocation ? nearestLocation.distanceMeters : null;
@@ -1427,26 +1105,6 @@ import {
     });
 
     return nearest;
-  }
-
-  function updateHud(message) {
-    if (message) {
-      ui.statusText.textContent = message;
-    }
-
-    let currentHeight = Math.max(0, state.placementCenter.y - state.planeHeight);
-    if (state.floatingObject) {
-      const floatingWorldPosition = new THREE.Vector3();
-      state.floatingObject.getWorldPosition(floatingWorldPosition);
-      currentHeight = Math.max(0, floatingWorldPosition.y - state.floatingObjectBaseWorldPosition.y);
-    }
-    ui.heightValue.textContent = currentHeight.toFixed(2);
-    ui.separationValue.textContent = "0.00";
-    refreshXrHudTexture();
-  }
-
-  function setXRDebug(message) {
-    ui.xrDebugText.textContent = "XR: " + message;
   }
 
   function captureCompassHeading() {
