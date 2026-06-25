@@ -4,6 +4,19 @@ import { CONFIG } from "./config.js";
 import { getUiElements } from "./dom.js";
 import { installRuntimeErrorCapture } from "./runtime-errors.js";
 import { createAppState } from "./state.js";
+import { getDistanceMeters, getSunPosition, normalizeDegrees } from "./geo.js";
+import {
+  applyModelShadowSettings,
+  cloneModelForScene,
+  disposeObject,
+  getDescendantMeshes,
+  getDirectChildMeshesExcept,
+  getImportedObjectByName,
+  getObjectSnapshot,
+  getSelfMeshes,
+  removeAndDisposeMeshes,
+  setMeshesOpacity
+} from "./three-utils.js";
 
 (function () {
   installRuntimeErrorCapture();
@@ -753,55 +766,12 @@ import { createAppState } from "./state.js";
     };
   }
 
-  function getImportedObjectByName(root, name) {
-    return root.getObjectByName(name) || root.getObjectByName(name.replaceAll(" ", "_"));
-  }
-
   function getModelScale(referenceScene) {
     const bounds = new THREE.Box3().setFromObject(referenceScene);
     const size = bounds.getSize(new THREE.Vector3());
     const footprint = Math.max(size.x, size.z, 0.001);
 
     return CONFIG.modelFootprintMeters / footprint;
-  }
-
-  function cloneModelForScene(source) {
-    const clone = source.clone(true);
-    clone.traverse((child) => {
-      if (!child.isMesh) {
-        return;
-      }
-
-      if (child.geometry) {
-        child.geometry = child.geometry.clone();
-      }
-
-      if (Array.isArray(child.material)) {
-        child.material = child.material.map((material) => material.clone());
-      } else if (child.material) {
-        child.material = child.material.clone();
-      }
-    });
-
-    return clone;
-  }
-
-  function applyModelShadowSettings(root) {
-    root.traverse((child) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-
-        if (child.material) {
-          const materials = Array.isArray(child.material) ? child.material : [child.material];
-          materials.forEach((material) => {
-            if ("envMapIntensity" in material) {
-              material.envMapIntensity = 0.25;
-            }
-          });
-        }
-      }
-    });
   }
 
   function prepareBoulderVisibility() {
@@ -819,45 +789,6 @@ import { createAppState } from "./state.js";
     setMeshesOpacity(state.floatingObjectRevealMeshes, 0);
     setMeshesOpacity(state.dustRevealMeshes, 0);
     Object.values(state.stageRockMeshes).forEach((meshes) => setMeshesOpacity(meshes, 0));
-  }
-
-  function getSelfMeshes(object) {
-    return object && object.isMesh ? [object] : [];
-  }
-
-  function getDescendantMeshes(object) {
-    const meshes = [];
-    if (!object) {
-      return meshes;
-    }
-
-    object.traverse((child) => {
-      if (child.isMesh) {
-        meshes.push(child);
-      }
-    });
-    return meshes;
-  }
-
-  function getDirectChildMeshesExcept(object, excludedObjects) {
-    const meshes = [];
-    if (!object) {
-      return meshes;
-    }
-
-    const excluded = new Set(excludedObjects.filter(Boolean));
-    object.children.forEach((child) => {
-      if (excluded.has(child)) {
-        return;
-      }
-
-      child.traverse((descendant) => {
-        if (descendant.isMesh) {
-          meshes.push(descendant);
-        }
-      });
-    });
-    return meshes;
   }
 
   function queueFade(meshes, from, to, durationSeconds, delaySeconds, onComplete) {
@@ -903,22 +834,6 @@ import { createAppState } from "./state.js";
     });
 
     completedCallbacks.forEach((callback) => callback());
-  }
-
-  function setMeshesOpacity(meshes, opacity) {
-    meshes.forEach((mesh) => {
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      materials.forEach((material) => {
-        if (!material) {
-          return;
-        }
-
-        material.transparent = opacity < 1;
-        material.opacity = opacity;
-        material.depthWrite = opacity >= 1;
-        material.needsUpdate = true;
-      });
-    });
   }
 
   function startFloatingObjectChildrenReveal() {
@@ -1156,37 +1071,6 @@ import { createAppState } from "./state.js";
 
     state.bouldersRoot.position.copy(state.placementCenter);
     state.bouldersRoot.position.y = state.planeHeight;
-  }
-
-  function getObjectSnapshot(object) {
-    if (!object) {
-      return null;
-    }
-
-    const bounds = new THREE.Box3().setFromObject(object);
-    const center = bounds.getCenter(new THREE.Vector3());
-    const size = bounds.getSize(new THREE.Vector3());
-    const child = object.children[0] || null;
-
-    return {
-      position: vectorToPlainObject(object.position),
-      scale: vectorToPlainObject(object.scale),
-      childPosition: child ? vectorToPlainObject(child.position) : null,
-      childScale: child ? vectorToPlainObject(child.scale) : null,
-      boundsCenter: vectorToPlainObject(center),
-      boundsSize: vectorToPlainObject(size),
-      localXWorldDirection: vectorToPlainObject(
-        new THREE.Vector3(1, 0, 0).applyQuaternion(object.quaternion).normalize()
-      )
-    };
-  }
-
-  function vectorToPlainObject(vector) {
-    return {
-      x: Number(vector.x.toFixed(6)),
-      y: Number(vector.y.toFixed(6)),
-      z: Number(vector.z.toFixed(6))
-    };
   }
 
   function triggerFloatingObject() {
@@ -1545,51 +1429,6 @@ import { createAppState } from "./state.js";
     return nearest;
   }
 
-  function disposeObject(object) {
-    object.traverse((child) => {
-      if (child.geometry) {
-        child.geometry.dispose();
-      }
-      if (child.material) {
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
-        materials.forEach((material) => material.dispose());
-      }
-    });
-  }
-
-  function removeAndDisposeMeshes(meshes, retainedMeshes) {
-    const retained = new Set((retainedMeshes || []).filter(Boolean));
-    Array.from(new Set(meshes.filter(Boolean)))
-      .sort((a, b) => getObjectDepth(b) - getObjectDepth(a))
-      .forEach((mesh) => {
-        if (!retained.has(mesh) && mesh.parent) {
-          mesh.parent.remove(mesh);
-        }
-        if (mesh.geometry) {
-          mesh.geometry.dispose();
-          if (retained.has(mesh)) {
-            mesh.geometry = null;
-          }
-        }
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        materials.filter(Boolean).forEach((material) => material.dispose());
-        if (retained.has(mesh)) {
-          mesh.geometry = new THREE.BufferGeometry();
-          mesh.material = new THREE.MeshBasicMaterial({ visible: false });
-        }
-      });
-  }
-
-  function getObjectDepth(object) {
-    let depth = 0;
-    let parent = object.parent;
-    while (parent) {
-      depth += 1;
-      parent = parent.parent;
-    }
-    return depth;
-  }
-
   function updateHud(message) {
     if (message) {
       ui.statusText.textContent = message;
@@ -1689,21 +1528,6 @@ import { createAppState } from "./state.js";
     );
   }
 
-  function getDistanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) {
-    const earthRadiusMeters = 6371000;
-    const phiA = THREE.MathUtils.degToRad(latitudeA);
-    const phiB = THREE.MathUtils.degToRad(latitudeB);
-    const deltaPhi = THREE.MathUtils.degToRad(latitudeB - latitudeA);
-    const deltaLambda = THREE.MathUtils.degToRad(longitudeB - longitudeA);
-    const a = Math.sin(deltaPhi * 0.5) ** 2 +
-      Math.cos(phiA) * Math.cos(phiB) * Math.sin(deltaLambda * 0.5) ** 2;
-    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-
-  function normalizeDegrees(degrees) {
-    return ((degrees % 360) + 360) % 360;
-  }
-
   function applySunPosition(sun, isCompassRefresh) {
     state.lastSunPosition = sun;
     const elevation = Math.max(sun.elevation, THREE.MathUtils.degToRad(5));
@@ -1735,41 +1559,4 @@ import { createAppState } from "./state.js";
     state.sunLight.updateMatrixWorld();
   }
 
-  function getSunPosition(date, latitudeDegrees, longitudeDegrees) {
-    const rad = Math.PI / 180;
-    const latitude = latitudeDegrees * rad;
-    const day = toJulian(date) - 2451545;
-    const meanAnomaly = rad * (357.5291 + 0.98560028 * day);
-    const equationOfCenter = rad * (
-      1.9148 * Math.sin(meanAnomaly) +
-      0.02 * Math.sin(2 * meanAnomaly) +
-      0.0003 * Math.sin(3 * meanAnomaly)
-    );
-    const eclipticLongitude = meanAnomaly + equationOfCenter + rad * 102.9372 + Math.PI;
-    const declination = Math.asin(Math.sin(eclipticLongitude) * Math.sin(rad * 23.4397));
-    const rightAscension = Math.atan2(
-      Math.sin(eclipticLongitude) * Math.cos(rad * 23.4397),
-      Math.cos(eclipticLongitude)
-    );
-    const siderealTime = rad * (280.16 + 360.9856235 * day) - longitudeDegrees * rad;
-    const hourAngle = siderealTime - rightAscension;
-    const elevation = Math.asin(
-      Math.sin(latitude) * Math.sin(declination) +
-      Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle)
-    );
-    const azimuthSouthBased = Math.atan2(
-      Math.sin(hourAngle),
-      Math.cos(hourAngle) * Math.sin(latitude) - Math.tan(declination) * Math.cos(latitude)
-    );
-    const azimuthNorthBased = azimuthSouthBased + Math.PI;
-
-    return {
-      elevation,
-      azimuth: azimuthNorthBased
-    };
-  }
-
-  function toJulian(date) {
-    return date.valueOf() / 86400000 - 0.5 + 2440588;
-  }
 })();
