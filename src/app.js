@@ -86,7 +86,7 @@ import { createMenuUi } from "./ui/menu.js";
     THREE,
     disposeObject
   });
-  const { createShadowReceiver, initializeScene, onResize } = sceneController;
+  const { createShadowReceiver, initializeScene, onResize, setPlacementReticleModel } = sceneController;
 
   const boulderModelFactory = createBoulderModelFactory({
     config: CONFIG,
@@ -100,6 +100,7 @@ import { createMenuUi } from "./ui/menu.js";
     THREE,
     setMenuLoading,
     refreshReadyState,
+    setPlacementReticleModel,
     setXRDebug
   });
   const { loadBoulderModel } = boulderModelLoader;

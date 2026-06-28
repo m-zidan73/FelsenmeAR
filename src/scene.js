@@ -13,7 +13,7 @@
 
     addLights();
     addDesktopFallbackFloor();
-    createReticleAndPlaneIndicator();
+    createPlacementReticle();
   }
 
   function addLights() {
@@ -42,48 +42,46 @@
     state.scene.add(floor);
   }
 
-  function createReticleAndPlaneIndicator() {
-    state.reticle = new THREE.Mesh(
-      new THREE.RingGeometry(0.145, 0.175, 48).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: 0x24f2a9,
-        transparent: true,
-        opacity: 0.98,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      })
-    );
-    state.reticle.visible = false;
-    state.scene.add(state.reticle);
+  function createPlacementReticle() {
+    state.placementReticle = new THREE.Group();
+    state.placementReticle.name = "Placement Reticle";
 
-    state.planeIndicator = new THREE.Group();
     const grid = new THREE.GridHelper(0.8, 8, 0x24f2a9, 0x24f2a9);
     grid.material.transparent = true;
     grid.material.opacity = 0.7;
     grid.material.depthWrite = false;
-    state.planeIndicator.add(grid);
+    state.placementReticle.add(grid);
 
-    const dotPositions = [];
-    for (let x = -0.3; x <= 0.3; x += 0.15) {
-      for (let z = -0.3; z <= 0.3; z += 0.15) {
-        dotPositions.push(x, 0.006, z);
+    state.placementReticle.visible = false;
+    state.scene.add(state.placementReticle);
+  }
+
+  function setPlacementReticleModel(source) {
+    const model = source.clone(true);
+    model.name = "PolyCam Rock Sample";
+    model.traverse((child) => {
+      if (!child.isMesh) {
+        return;
       }
-    }
-    const dotsGeometry = new THREE.BufferGeometry();
-    dotsGeometry.setAttribute("position", new THREE.Float32BufferAttribute(dotPositions, 3));
-    state.planeIndicator.add(new THREE.Points(
-      dotsGeometry,
-      new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 0.025,
-        transparent: true,
-        opacity: 0.9,
-        depthWrite: false
-      })
-    ));
 
-    state.planeIndicator.visible = false;
-    state.scene.add(state.planeIndicator);
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      const transparentMaterials = materials.map((material) => {
+        const transparentMaterial = material.clone();
+        transparentMaterial.transparent = true;
+        transparentMaterial.opacity = 0.7;
+        transparentMaterial.depthWrite = false;
+        return transparentMaterial;
+      });
+      child.material = Array.isArray(child.material) ? transparentMaterials : transparentMaterials[0];
+    });
+
+    const bounds = new THREE.Box3().setFromObject(model);
+    const size = bounds.getSize(new THREE.Vector3());
+    model.scale.setScalar(0.5 / Math.max(size.x, size.z, 0.001));
+    bounds.setFromObject(model);
+    const center = bounds.getCenter(new THREE.Vector3());
+    model.position.set(-center.x, -bounds.min.y + 0.01, -center.z);
+    state.placementReticle.add(model);
   }
 
   function onResize() {
@@ -120,6 +118,7 @@
   return {
     createShadowReceiver,
     initializeScene,
-    onResize
+    onResize,
+    setPlacementReticleModel
   };
 }

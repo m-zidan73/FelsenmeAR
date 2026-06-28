@@ -34,8 +34,7 @@
     state.scene.add(state.bouldersRoot);
     createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
 
-    state.reticle.visible = false;
-    state.planeIndicator.visible = false;
+    state.placementReticle.visible = false;
     setScanPromptVisible(false);
     setStartFromHereVisible(false);
     resetFormationSlider();

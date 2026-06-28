@@ -146,8 +146,7 @@
     releasePlacementAnchor();
     state.latestHit = null;
     state.latestHitResult = null;
-    state.reticle.visible = false;
-    state.planeIndicator.visible = false;
+    state.placementReticle.visible = false;
     document.body.classList.remove("in-camera-ar");
     document.body.classList.remove("has-dom-overlay");
     state.domOverlayActive = false;
@@ -209,8 +208,7 @@
       state.noHitFrames += 1;
       state.latestHit = null;
       state.latestHitResult = null;
-      state.reticle.visible = false;
-      state.planeIndicator.visible = false;
+      state.placementReticle.visible = false;
       setScanPromptVisible(true);
       setStartFromHereVisible(true);
       setStartFromHereReady(false);
@@ -234,13 +232,9 @@
     state.latestHitResult = hit;
     state.latestHit = poseFromMatrix(pose.transform.matrix);
 
-    state.reticle.position.copy(state.latestHit.position);
-    state.reticle.quaternion.copy(state.latestHit.quaternion);
-    state.reticle.visible = true;
-
-    state.planeIndicator.position.copy(state.latestHit.position);
-    state.planeIndicator.quaternion.copy(state.latestHit.quaternion);
-    state.planeIndicator.visible = true;
+    state.placementReticle.position.copy(state.latestHit.position);
+    state.placementReticle.quaternion.copy(state.latestHit.quaternion);
+    state.placementReticle.visible = true;
 
     setXRDebug("PLANE DETECTED (" + state.hitFrames + ")");
     updateHud("Plane detected.");
