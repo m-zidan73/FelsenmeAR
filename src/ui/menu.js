@@ -1,4 +1,4 @@
-﻿export function createMenuUi({ state, ui, clamp, updateHud }) {
+export function createMenuUi({ state, ui, clamp, updateHud }) {
   function setMenuLoading(percent, label, message) {
     const clampedPercent = clamp(percent, 0, 100);
     if (ui.loadingFill) {
@@ -18,19 +18,16 @@
       setMenuLoading(100, "Error", "Could not load assets.");
       return;
     }
-
     if (!state.arSupportChecked) {
       ui.startArButton.disabled = true;
       setMenuLoading(Math.max(12, state.assetProgress * 80), "Checking", "Checking AR capability.");
       return;
     }
-
     if (!state.arSupported) {
       ui.startArButton.disabled = true;
       setMenuLoading(100, "Blocked", "This browser does not expose WebXR AR.");
       return;
     }
-
     if (!state.modelsLoaded) {
       ui.startArButton.disabled = true;
       setMenuLoading(18 + state.assetProgress * 62, "Loading", "Downloading assets.");
@@ -67,29 +64,9 @@
     if (!ui.scanPrompt) {
       return;
     }
-
     ui.scanPrompt.classList.remove("is-bouncing");
     void ui.scanPrompt.offsetWidth;
     ui.scanPrompt.classList.add("is-bouncing");
-  }
-
-  function setStartFromHereVisible(isVisible) {
-    if (!ui.startFromHereButton) {
-      return;
-    }
-
-    ui.startFromHereButton.hidden = !isVisible;
-    ui.startFromHereButton.disabled = !isVisible || state.bouldersPlaced || !state.placementButtonReady;
-  }
-
-  function setStartFromHereReady(isReady) {
-    if (!ui.startFromHereButton) {
-      return;
-    }
-
-    state.placementButtonReady = Boolean(isReady);
-    ui.startFromHereButton.classList.toggle("is-ready", state.placementButtonReady);
-    ui.startFromHereButton.disabled = state.bouldersPlaced || !state.placementButtonReady;
   }
 
   return {
@@ -99,8 +76,6 @@
     setGeoStatusVisible,
     setMenuButtonVisible,
     setMenuLoading,
-    setScanPromptVisible,
-    setStartFromHereReady,
-    setStartFromHereVisible
+    setScanPromptVisible
   };
 }

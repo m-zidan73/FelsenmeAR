@@ -163,14 +163,6 @@
       ui.statusText.textContent = message;
     }
 
-    let currentHeight = Math.max(0, state.placementCenter.y - state.planeHeight);
-    if (state.floatingObject) {
-      const floatingWorldPosition = new THREE.Vector3();
-      state.floatingObject.getWorldPosition(floatingWorldPosition);
-      currentHeight = Math.max(0, floatingWorldPosition.y - state.floatingObjectBaseWorldPosition.y);
-    }
-    ui.heightValue.textContent = currentHeight.toFixed(2);
-    ui.separationValue.textContent = "0.00";
     refreshXrHudTexture();
   }
 

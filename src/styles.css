@@ -254,25 +254,6 @@ body.in-camera-ar .main-menu {
   }
 }
 
-.start-from-here {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  padding: 0 28px;
-  pointer-events: auto;
-  background: linear-gradient(180deg, #d4381b, #9e1d0c);
-  color: #f6efe6;
-  font-size: clamp(1rem, 2.8vw, 1.45rem);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36);
-  opacity: 0.46;
-  transition: opacity 180ms ease, filter 180ms ease, transform 180ms ease;
-}
-
-.start-from-here.is-ready {
-  opacity: 1;
-  filter: drop-shadow(0 0 16px rgba(221, 52, 23, 0.45));
-}
-
 .bottom-ui {
   grid-row: 3;
   justify-self: center;

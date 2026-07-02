@@ -157,7 +157,7 @@ export function createLocationController({ state, ui, config, THREE, refreshXrHu
     const z = Math.cos(localAzimuth) * Math.cos(elevation) * radius;
 
     state.sunDirection.set(x, y, z).normalize();
-    positionSunLightAt(state.bouldersPlaced ? state.placementCenter : new THREE.Vector3());
+    positionSunLightAt(state.formationPlaced ? state.placementCenter : new THREE.Vector3());
     state.sunReady = true;
     if (!isCompassRefresh) {
       setXRDebug("sun shadows: elevation " + THREE.MathUtils.radToDeg(sun.elevation).toFixed(1) + " deg");

@@ -1,29 +1,30 @@
-﻿export function createArController({
+export function createArController({
   state,
   ui,
   THREE,
   bounceScanPrompt,
   captureCompassHeading,
   getPlacementGateStatus,
-  placeBoulders,
+  placeFormation,
   refreshReadyState,
+  resetInput,
   setFormationSliderVisible,
   setGeoStatusVisible,
   setMenuButtonVisible,
   setMenuLoading,
   setScanPromptVisible,
-  setStartFromHereReady,
-  setStartFromHereVisible,
   setXRDebug,
   setXrHudVisible,
   shouldUseXrFallbackHud,
   startLocationTracking,
   stopLocationTracking,
-  updateBoulderPlacement,
+  updateFormationPlacement,
   updateGeoStatus,
   updateHud,
   updateSunLightFromDeviceLocation
 }) {
+  let placementPending = false;
+
   function checkARSupport() {
     if (!navigator.xr || !navigator.xr.isSessionSupported) {
       setXRDebug("navigator.xr unavailable");
@@ -50,15 +51,13 @@
 
   async function startARSession() {
     if (state.modelLoadError) {
-      setMenuLoading(100, "Error", "Boulder model failed to load. Refresh after checking the Assets folder.");
+      setMenuLoading(100, "Error", "The 3D models failed to load. Refresh after checking the Assets folder.");
       return;
     }
-
     if (!state.modelsLoaded) {
-      setMenuLoading(60, "Loading", "Loading boulder model. Wait a moment, then start Camera AR.");
+      setMenuLoading(60, "Loading", "Loading 3D models. Wait a moment, then start Camera AR.");
       return;
     }
-
     if (!navigator.xr) {
       setMenuLoading(100, "Blocked", "WebXR is not available in this browser.");
       return;
@@ -128,10 +127,8 @@
     updateGeoStatus();
     setXRDebug("hit-test source ready");
     setScanPromptVisible(true);
-    setStartFromHereVisible(true);
-    setStartFromHereReady(false);
     setFormationSliderVisible(false);
-    updateHud("Scanning for a flat surface.");
+    updateHud("Scanning for a flat surface. Tap the screen when the green reticle appears.");
   }
 
   function onSessionEnded() {
@@ -143,6 +140,8 @@
     state.xrReferenceSpace = null;
     state.xrViewerSpace = null;
     state.xrHitTestSource = null;
+    placementPending = false;
+    resetInput();
     releasePlacementAnchor();
     state.latestHit = null;
     state.latestHitResult = null;
@@ -154,23 +153,20 @@
     setXrHudVisible(false);
     setGeoStatusVisible(false);
     setScanPromptVisible(false);
-    setStartFromHereVisible(false);
     stopLocationTracking();
     ui.startArButton.disabled = state.modelLoadError || !state.modelsLoaded;
     refreshReadyState();
     setXRDebug("AR session ended");
   }
 
-  async function startFromDetectedPlane() {
-    if (state.bouldersPlaced) {
+  async function placeAtDetectedPlane() {
+    if (!state.xrSession || state.formationPlaced || placementPending) {
       return;
     }
-
     if (!state.modelsLoaded) {
-      updateHud("Loading boulder model. Try placing after it finishes loading.");
+      updateHud("Loading 3D models. Try placing after they finish loading.");
       return;
     }
-
     if (!state.latestHit) {
       bounceScanPrompt();
       updateHud("Tap ignored: no detected plane yet. Wait for the green grid.");
@@ -184,9 +180,14 @@
       return;
     }
 
-    const anchor = await createPlacementAnchor();
-    ui.startFromHereButton.disabled = true;
-    placeBoulders(state.latestHit.position, anchor);
+    placementPending = true;
+    const placementPosition = state.latestHit.position.clone();
+    try {
+      const anchor = await createPlacementAnchor();
+      placeFormation(placementPosition, anchor);
+    } finally {
+      placementPending = false;
+    }
   }
 
   function updateFrame(frame) {
@@ -195,8 +196,8 @@
   }
 
   function updateHitTest(frame) {
-    if (!state.xrHitTestSource || !state.xrReferenceSpace || state.bouldersPlaced) {
-      if (!state.bouldersPlaced && performance.now() - state.lastScanDebugTime > 900) {
+    if (!state.xrHitTestSource || !state.xrReferenceSpace || state.formationPlaced) {
+      if (!state.formationPlaced && performance.now() - state.lastScanDebugTime > 900) {
         state.lastScanDebugTime = performance.now();
         setXRDebug("waiting for hit-test setup");
       }
@@ -210,13 +211,11 @@
       state.latestHitResult = null;
       state.placementReticle.visible = false;
       setScanPromptVisible(true);
-      setStartFromHereVisible(true);
-      setStartFromHereReady(false);
 
       if (performance.now() - state.lastScanDebugTime > 900) {
         state.lastScanDebugTime = performance.now();
         setXRDebug("scanning, no plane hit (" + state.noHitFrames + ")");
-        updateHud("Scanning: no plane hit yet. Move slowly over a textured desk/floor.");
+        updateHud("Scanning: no plane hit yet. Move slowly over a textured desk or floor.");
       }
       return;
     }
@@ -231,15 +230,12 @@
     state.noHitFrames = 0;
     state.latestHitResult = hit;
     state.latestHit = poseFromMatrix(pose.transform.matrix);
-
     state.placementReticle.position.copy(state.latestHit.position);
     state.placementReticle.quaternion.copy(state.latestHit.quaternion);
     state.placementReticle.visible = true;
 
     setXRDebug("PLANE DETECTED (" + state.hitFrames + ")");
-    updateHud("Plane detected.");
-    setStartFromHereVisible(true);
-    setStartFromHereReady(true);
+    updateHud("Plane detected. Tap the screen to place the model.");
   }
 
   function poseFromMatrix(xrMatrix) {
@@ -255,7 +251,6 @@
     if (!state.latestHitResult || typeof state.latestHitResult.createAnchor !== "function") {
       return null;
     }
-
     try {
       const anchor = await state.latestHitResult.createAnchor();
       return anchor && anchor.anchorSpace ? anchor : null;
@@ -266,7 +261,7 @@
   }
 
   function updatePlacementFromAnchor(frame) {
-    if (!state.xrPlacementAnchorSpace || !state.xrReferenceSpace || !state.bouldersRoot) {
+    if (!state.xrPlacementAnchorSpace || !state.xrReferenceSpace || !state.formationRoot) {
       return;
     }
 
@@ -276,20 +271,13 @@
     }
 
     const anchoredPose = poseFromMatrix(pose.transform.matrix);
-    const previousPlaneHeight = state.planeHeight;
     state.placementCenter.copy(anchoredPose.position);
     state.planeHeight = anchoredPose.position.y;
-    updateBoulderPlacement();
+    updateFormationPlacement();
 
     if (state.shadowReceiver) {
       state.shadowReceiver.position.copy(anchoredPose.position);
       state.shadowReceiver.position.y += 0.004;
-    }
-
-    if (state.floatingObject && !state.floatingObjectTriggered) {
-      const heightDelta = state.planeHeight - previousPlaneHeight;
-      state.floatingObjectBaseWorldPosition.y += heightDelta;
-      state.floatingObjectTargetWorldPosition.y += heightDelta;
     }
   }
 
@@ -303,9 +291,9 @@
 
   return {
     checkARSupport,
+    placeAtDetectedPlane,
     releasePlacementAnchor,
     startARSession,
-    startFromDetectedPlane,
     updateFrame
   };
 }

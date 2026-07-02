@@ -14,10 +14,18 @@ const mimeTypes = new Map([
   [".json", "application/json; charset=utf-8"]
 ]);
 
-function sendFile(response, filePath) {
+const immutableModelPaths = new Set([
+  "/Assets/Models/Gelifluction.glb",
+  "/Assets/Models/PolyCam Rock Sample.glb"
+]);
+
+function sendFile(response, filePath, requestPath) {
+  const cacheControl = immutableModelPaths.has(requestPath)
+    ? "public, max-age=31536000, immutable"
+    : "no-store";
   response.writeHead(200, {
     "content-type": mimeTypes.get(extname(filePath).toLowerCase()) || "application/octet-stream",
-    "cache-control": "no-store",
+    "cache-control": cacheControl,
     "permissions-policy": "camera=(self), geolocation=(self), accelerometer=(self), gyroscope=(self), magnetometer=(self), xr-spatial-tracking=(self)"
   });
   createReadStream(filePath).pipe(response);
@@ -51,7 +59,7 @@ createServer((request, response) => {
     return;
   }
 
-  sendFile(response, filePath);
+  sendFile(response, filePath, decodedPath);
 }).listen(port, "0.0.0.0", () => {
   console.log(`Serving ${root} at http://0.0.0.0:${port}/`);
 });

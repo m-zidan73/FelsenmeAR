@@ -1,16 +1,17 @@
-﻿import * as THREE from "three";
+import * as THREE from "three";
 import { createArController } from "./ar-controller.js";
-import { createFormationController } from "./boulders/formation-controller.js";
-import { createBoulderModelFactory } from "./boulders/model-factory.js";
-import { createBoulderModelLoader } from "./boulders/model-loader.js";
-import { createPlacementController } from "./boulders/placement-controller.js";
 import { CONFIG } from "./config.js";
 import { installDebugHooks } from "./debug-hooks.js";
 import { getUiElements } from "./dom.js";
+import { createFormationModelLoader } from "./formation/model-loader.js";
+import { createGelifluctionModelFactory } from "./formation/model-factory.js";
+import { createPlacementController } from "./formation/placement-controller.js";
+import { createGelifluctionStageController } from "./formation/stage-controller.js";
+import { createCanvasInteractionController } from "./interaction-controller.js";
 import { createLocationController } from "./location-controller.js";
 import { installRuntimeErrorCapture } from "./runtime-errors.js";
-import { createAppState } from "./state.js";
 import { createSceneController } from "./scene.js";
+import { createAppState } from "./state.js";
 import { disposeObject } from "./three-utils.js";
 import { createFormationSlider } from "./ui/formation-slider.js";
 import { createHudUi } from "./ui/hud.js";
@@ -45,37 +46,28 @@ import { createMenuUi } from "./ui/menu.js";
     setGeoStatusVisible,
     setMenuButtonVisible,
     setMenuLoading,
-    setScanPromptVisible,
-    setStartFromHereReady,
-    setStartFromHereVisible
+    setScanPromptVisible
   } = menuUi;
 
-  const formationController = createFormationController({
-    state,
+  const stageController = createGelifluctionStageController({
     config: CONFIG,
     THREE,
     updateHud
   });
   const {
+    getCurrentStage,
     preparePlacement: prepareFormationPlacement,
-    processStage: processFormationStage,
+    requestStage,
     reset: resetFormationState,
-    startChildrenReveal: startFloatingObjectChildrenReveal,
-    triggerFloatingObject,
+    setPinchActive,
     update: updateFormationAnimation
-  } = formationController;
+  } = stageController;
 
   const formationSliderUi = createFormationSlider({
-    state,
     ui,
     clamp: THREE.MathUtils.clamp,
-    onStepSelected(stepIndex, previousStep) {
-      window.__formationSliderStep = stepIndex;
-      if (stepIndex === 3) {
-        startFloatingObjectChildrenReveal();
-      } else if (stepIndex < previousStep) {
-        processFormationStage();
-      }
+    onStepSelected(stepIndex) {
+      return requestStage(stepIndex + 1);
     }
   });
   const { initFormationSlider, resetFormationSlider } = formationSliderUi;
@@ -88,22 +80,21 @@ import { createMenuUi } from "./ui/menu.js";
   });
   const { createShadowReceiver, initializeScene, onResize, setPlacementReticleModel } = sceneController;
 
-  const boulderModelFactory = createBoulderModelFactory({
-    config: CONFIG,
-    THREE
-  });
-  const { createBoulderInstance, getModelScale } = boulderModelFactory;
+  const modelFactory = createGelifluctionModelFactory({ config: CONFIG, THREE });
+  const { createGelifluctionInstance, validateGelifluctionAsset } = modelFactory;
 
-  const boulderModelLoader = createBoulderModelLoader({
+  const modelLoader = createFormationModelLoader({
+    config: CONFIG,
     state,
     ui,
     THREE,
     setMenuLoading,
     refreshReadyState,
     setPlacementReticleModel,
-    setXRDebug
+    setXRDebug,
+    validateGelifluctionAsset
   });
-  const { loadBoulderModel } = boulderModelLoader;
+  const { loadModels } = modelLoader;
 
   const locationController = createLocationController({
     state,
@@ -123,6 +114,7 @@ import { createMenuUi } from "./ui/menu.js";
     updateSunLightFromDeviceLocation
   } = locationController;
 
+  let interactionController;
   let placementController;
   const arController = createArController({
     state,
@@ -131,65 +123,69 @@ import { createMenuUi } from "./ui/menu.js";
     bounceScanPrompt,
     captureCompassHeading,
     getPlacementGateStatus,
-    placeBoulders: (center, anchor) => placementController.placeBoulders(center, anchor),
+    placeFormation: (center, anchor) => placementController.placeFormation(center, anchor),
     refreshReadyState,
+    resetInput: () => interactionController && interactionController.reset(),
     setFormationSliderVisible,
     setGeoStatusVisible,
     setMenuButtonVisible,
     setMenuLoading,
     setScanPromptVisible,
-    setStartFromHereReady,
-    setStartFromHereVisible,
     setXRDebug,
     setXrHudVisible,
     shouldUseXrFallbackHud,
     startLocationTracking,
     stopLocationTracking,
-    updateBoulderPlacement: () => placementController.updateBoulderPlacement(),
+    updateFormationPlacement: () => placementController.updateFormationPlacement(),
     updateGeoStatus,
     updateHud,
     updateSunLightFromDeviceLocation
   });
   const {
     checkARSupport,
+    placeAtDetectedPlane,
     releasePlacementAnchor,
     startARSession,
-    startFromDetectedPlane,
     updateFrame: updateArFrame
   } = arController;
 
+  interactionController = createCanvasInteractionController({
+    pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
+    pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
+    onPinchChange: setPinchActive,
+    onPlacementTap: placeAtDetectedPlane
+  });
+
   placementController = createPlacementController({
     state,
-    createBoulderInstance,
+    createGelifluctionInstance,
     createShadowReceiver,
     disposeObject,
-    getModelScale,
     positionSunLightAt,
     prepareFormationPlacement,
     refreshReadyState,
     releasePlacementAnchor,
     resetFormationSlider,
     resetFormationState,
+    resetInput: interactionController.reset,
     setFormationSliderVisible,
     setMenuButtonVisible,
     setScanPromptVisible,
-    setStartFromHereReady,
-    setStartFromHereVisible,
     setXRDebug,
     updateHud
   });
-  const { placeBoulders, reset, returnToMainMenu, updateBoulderPlacement } = placementController;
+  const { placeFormation, reset, returnToMainMenu, updateFormationPlacement } = placementController;
 
   init();
 
   function init() {
     initializeScene();
+    interactionController.attach(state.renderer.domElement);
     createXrFallbackHud();
-    loadBoulderModel();
+    loadModels();
 
     window.addEventListener("resize", onResize);
     ui.startArButton.addEventListener("click", startARSession);
-    ui.startFromHereButton.addEventListener("click", startFromDetectedPlane);
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
     initFormationSlider();
@@ -201,10 +197,10 @@ import { createMenuUi } from "./ui/menu.js";
     installDebugHooks({
       state,
       THREE,
-      placeBoulders,
+      getCurrentStage,
+      placeFormation,
       reset,
-      triggerFloatingObject,
-      updateBoulderPlacement
+      updateFormationPlacement
     });
     state.renderer.setAnimationLoop(render);
   }
@@ -212,17 +208,16 @@ import { createMenuUi } from "./ui/menu.js";
   function render(time, frame) {
     const deltaSeconds = state.lastTime ? Math.min((time - state.lastTime) / 1000, 0.05) : 0;
     state.lastTime = time;
+    interactionController.update(performance.now());
 
     if (frame) {
       updateArFrame(frame);
     }
-
     if (state.xrSession) {
       updateGeoStatus();
       updateXrHudLayout();
     }
-
-    if (state.bouldersPlaced) {
+    if (state.formationPlaced) {
       updateFormationAnimation(deltaSeconds);
     }
 

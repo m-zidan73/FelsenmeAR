@@ -1,4 +1,4 @@
-﻿export function getUiElements() {
+export function getUiElements() {
   return {
     mainMenu: document.getElementById("mainMenu"),
     canvasRoot: document.getElementById("canvasRoot"),
@@ -7,9 +7,6 @@
     loadingFill: document.getElementById("loadingFill"),
     loadingStateLabel: document.getElementById("loadingStateLabel"),
     scanPrompt: document.getElementById("scanPrompt"),
-    startFromHereButton: document.getElementById("startFromHereButton"),
-    heightValue: document.getElementById("heightValue"),
-    separationValue: document.getElementById("separationValue"),
     xrDebugText: document.getElementById("xrDebugText"),
     startArButton: document.getElementById("startArButton"),
     resetButton: document.getElementById("resetButton"),

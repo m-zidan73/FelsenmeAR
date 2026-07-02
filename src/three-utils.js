@@ -43,10 +43,6 @@ export function applyModelShadowSettings(root) {
   });
 }
 
-export function getSelfMeshes(object) {
-  return object && object.isMesh ? [object] : [];
-}
-
 export function getDescendantMeshes(object) {
   const meshes = [];
   if (!object) {
@@ -57,27 +53,6 @@ export function getDescendantMeshes(object) {
     if (child.isMesh) {
       meshes.push(child);
     }
-  });
-  return meshes;
-}
-
-export function getDirectChildMeshesExcept(object, excludedObjects) {
-  const meshes = [];
-  if (!object) {
-    return meshes;
-  }
-
-  const excluded = new Set(excludedObjects.filter(Boolean));
-  object.children.forEach((child) => {
-    if (excluded.has(child)) {
-      return;
-    }
-
-    child.traverse((descendant) => {
-      if (descendant.isMesh) {
-        meshes.push(descendant);
-      }
-    });
   });
   return meshes;
 }
@@ -108,39 +83,6 @@ export function disposeObject(object) {
       materials.forEach((material) => material.dispose());
     }
   });
-}
-
-export function removeAndDisposeMeshes(meshes, retainedMeshes) {
-  const retained = new Set((retainedMeshes || []).filter(Boolean));
-  Array.from(new Set(meshes.filter(Boolean)))
-    .sort((a, b) => getObjectDepth(b) - getObjectDepth(a))
-    .forEach((mesh) => {
-      if (!retained.has(mesh) && mesh.parent) {
-        mesh.parent.remove(mesh);
-      }
-      if (mesh.geometry) {
-        mesh.geometry.dispose();
-        if (retained.has(mesh)) {
-          mesh.geometry = null;
-        }
-      }
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      materials.filter(Boolean).forEach((material) => material.dispose());
-      if (retained.has(mesh)) {
-        mesh.geometry = new THREE.BufferGeometry();
-        mesh.material = new THREE.MeshBasicMaterial({ visible: false });
-      }
-    });
-}
-
-export function getObjectDepth(object) {
-  let depth = 0;
-  let parent = object.parent;
-  while (parent) {
-    depth += 1;
-    parent = parent.parent;
-  }
-  return depth;
 }
 
 export function getObjectSnapshot(object) {

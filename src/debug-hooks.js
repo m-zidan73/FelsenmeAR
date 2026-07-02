@@ -1,59 +1,39 @@
-﻿import { getObjectSnapshot } from "./three-utils.js";
+import { getObjectSnapshot } from "./three-utils.js";
 
 export function installDebugHooks({
   state,
   THREE,
-  placeBoulders,
+  getCurrentStage,
+  placeFormation,
   reset,
-  triggerFloatingObject,
-  updateBoulderPlacement
+  updateFormationPlacement
 }) {
   if (!new URLSearchParams(window.location.search).has("debug")) {
     return;
   }
 
-  window.__arBoulderDebug = {
+  window.__arFormationDebug = {
     getState() {
       return {
         modelsLoaded: state.modelsLoaded,
         modelLoadError: state.modelLoadError,
-        bouldersPlaced: state.bouldersPlaced,
-        animationStarted: state.animationStarted,
-        animationComplete: state.animationComplete,
-        floatingObjectTriggered: state.floatingObjectTriggered,
-        floatingObjectY: state.floatingObject ? state.floatingObject.position.y : null,
-        floatingObjectTargetWorldY: state.floatingObjectTargetWorldPosition.y
+        formationPlaced: state.formationPlaced,
+        currentStage: getCurrentStage()
       };
     },
     placeAtOrigin() {
       if (!state.modelsLoaded) {
         return false;
       }
-
-      if (state.bouldersPlaced) {
+      if (state.formationPlaced) {
         reset();
       }
-
-      placeBoulders(new THREE.Vector3(0, 0, 0));
-      updateBoulderPlacement();
-      return true;
-    },
-    triggerFloat() {
-      if (!state.bouldersPlaced) {
-        return false;
-      }
-
-      triggerFloatingObject();
+      placeFormation(new THREE.Vector3(0, 0, 0));
+      updateFormationPlacement();
       return true;
     },
     getAlignmentSnapshot() {
-      const boulders = getObjectSnapshot(state.bouldersRoot);
-      const floatingObject = getObjectSnapshot(state.floatingObject);
-
-      return {
-        boulders,
-        floatingObject
-      };
+      return getObjectSnapshot(state.formationRoot);
     }
   };
 }
