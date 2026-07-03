@@ -6,20 +6,34 @@ export function createCanvasInteractionController({
 }) {
   const touchPointers = new Map();
   let canvas = null;
+  let xrSession = null;
   let previousPinchDistance = null;
   let pinchActive = false;
   let lastInwardMovementTime = 0;
 
   function attach(nextCanvas) {
     canvas = nextCanvas;
-    canvas.addEventListener("click", handleClick);
+    canvas.addEventListener("click", handlePlacementInput);
     canvas.addEventListener("pointerdown", handlePointerDown);
     canvas.addEventListener("pointermove", handlePointerMove);
     canvas.addEventListener("pointerup", handlePointerEnd);
     canvas.addEventListener("pointercancel", handlePointerEnd);
   }
 
-  function handleClick() {
+  function setXrSession(nextSession) {
+    if (xrSession === nextSession) {
+      return;
+    }
+    if (xrSession) {
+      xrSession.removeEventListener("select", handlePlacementInput);
+    }
+    xrSession = nextSession;
+    if (xrSession) {
+      xrSession.addEventListener("select", handlePlacementInput);
+    }
+  }
+
+  function handlePlacementInput() {
     onPlacementTap();
   }
 
@@ -94,5 +108,5 @@ export function createCanvasInteractionController({
     setPinchActive(false);
   }
 
-  return { attach, reset, update };
+  return { attach, reset, setXrSession, update };
 }

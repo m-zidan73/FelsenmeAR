@@ -8,6 +8,7 @@ export function createArController({
   placeFormation,
   refreshReadyState,
   resetInput,
+  setInputSession,
   setFormationSliderVisible,
   setGeoStatusVisible,
   setMenuButtonVisible,
@@ -114,6 +115,7 @@ export function createArController({
     state.xrViewerSpace = await session.requestReferenceSpace("viewer");
     setXRDebug("requesting hit-test source");
     state.xrHitTestSource = await session.requestHitTestSource({ space: state.xrViewerSpace });
+    setInputSession(session);
 
     state.domOverlayActive = Boolean(session.domOverlayState && session.domOverlayState.type);
     document.body.classList.add("in-camera-ar");
@@ -141,6 +143,7 @@ export function createArController({
     state.xrViewerSpace = null;
     state.xrHitTestSource = null;
     placementPending = false;
+    setInputSession(null);
     resetInput();
     releasePlacementAnchor();
     state.latestHit = null;

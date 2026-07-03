@@ -125,6 +125,37 @@ Please remove:
 Do not remove unrelated code. Verify that the app still loads and that nearby features still work.
 ```
 
+Fixing a problem:
+
+```text
+Fix [problem or error].
+
+Observed behavior:
+- ...
+
+Expected behavior:
+- ...
+
+How to reproduce:
+1. ...
+2. ...
+
+Safety requirements:
+- Identify the root cause before editing.
+- Keep the fix in the smallest appropriate owner module.
+- Preserve unrelated behavior and public interfaces.
+- Use explicit dependencies; do not add hidden coupling or global state.
+- Remove any obsolete workaround, dead branch, or stale comment replaced by the fix.
+- Add or update a focused regression check when practical.
+
+Verification:
+- Reproduce the problem before the fix when possible.
+- Confirm the reproduction no longer fails after the fix.
+- Run syntax and import checks.
+- Smoke-test the affected flow and nearby behavior.
+- Report the root cause, changed files, and verification results.
+```
+
 Refactoring only:
 
 ```text

@@ -126,6 +126,7 @@ import { createMenuUi } from "./ui/menu.js";
     placeFormation: (center, anchor) => placementController.placeFormation(center, anchor),
     refreshReadyState,
     resetInput: () => interactionController && interactionController.reset(),
+    setInputSession: (session) => interactionController && interactionController.setXrSession(session),
     setFormationSliderVisible,
     setGeoStatusVisible,
     setMenuButtonVisible,
