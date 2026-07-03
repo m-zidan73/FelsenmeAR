@@ -51,15 +51,16 @@ export function createGelifluctionModelFactory({ config, THREE }) {
     const footprint = Math.max(sourceSize.x, sourceSize.z, 0.001);
     model.scale.setScalar(config.modelFootprintMeters / footprint);
 
-    const bounds = new THREE.Box3().setFromObject(root);
-    const center = bounds.getCenter(new THREE.Vector3());
-    model.position.set(-center.x, -bounds.min.y, -center.z);
-    root.updateMatrixWorld(true);
-    applyModelShadowSettings(root);
-
     const nodes = Object.fromEntries(
       REQUIRED_NODE_NAMES.map((name) => [name, getImportedObjectByName(root, name)])
     );
+    const bounds = new THREE.Box3().setFromObject(root);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const startingRockBounds = new THREE.Box3().setFromObject(nodes.Starting_Rock);
+    model.position.set(-center.x, -startingRockBounds.min.y, -center.z);
+    root.updateMatrixWorld(true);
+    applyModelShadowSettings(root);
+
     return {
       root,
       model,
