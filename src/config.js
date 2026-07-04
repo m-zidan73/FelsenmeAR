@@ -1,5 +1,4 @@
 export const CONFIG = {
-  modelFootprintMeters: 2.5,
   stageFiveRevealDelaySeconds: 2,
   formationFadeDurationSeconds: 1,
   pinchDistanceThresholdPixels: 1,

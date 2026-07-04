@@ -80,7 +80,7 @@ import { createMenuUi } from "./ui/menu.js";
   });
   const { createShadowReceiver, initializeScene, onResize, setPlacementReticleModel } = sceneController;
 
-  const modelFactory = createGelifluctionModelFactory({ config: CONFIG, THREE });
+  const modelFactory = createGelifluctionModelFactory({ THREE });
   const { createGelifluctionInstance, validateGelifluctionAsset } = modelFactory;
 
   const modelLoader = createFormationModelLoader({

@@ -15,7 +15,7 @@ const REQUIRED_NODE_NAMES = [
   "1st Stage Rock"
 ];
 
-export function createGelifluctionModelFactory({ config, THREE }) {
+export function createGelifluctionModelFactory({ THREE }) {
   function validateGelifluctionAsset(gltf) {
     const missingNodes = REQUIRED_NODE_NAMES.filter((name) => !getImportedObjectByName(gltf.scene, name));
     if (missingNodes.length) {
@@ -46,10 +46,7 @@ export function createGelifluctionModelFactory({ config, THREE }) {
     model.name = "Gelifluction";
     root.add(model);
 
-    const sourceBounds = new THREE.Box3().setFromObject(model);
-    const sourceSize = sourceBounds.getSize(new THREE.Vector3());
-    const footprint = Math.max(sourceSize.x, sourceSize.z, 0.001);
-    model.scale.setScalar(config.modelFootprintMeters / footprint);
+    model.scale.setScalar(1);
 
     const nodes = Object.fromEntries(
       REQUIRED_NODE_NAMES.map((name) => [name, getImportedObjectByName(root, name)])
