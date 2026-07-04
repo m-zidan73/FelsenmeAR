@@ -4,6 +4,7 @@
     state.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 30);
 
     state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    state.renderer.setClearColor(0x000000, 0);
     state.renderer.setPixelRatio(window.devicePixelRatio);
     state.renderer.setSize(window.innerWidth, window.innerHeight);
     state.renderer.xr.enabled = true;
