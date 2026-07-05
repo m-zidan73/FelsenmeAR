@@ -7,6 +7,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   let revealDelaySeconds = null;
   let crossfade = null;
   let stageFourMixer = null;
+  let stageFourActions = [];
   let stageFourTime = 0;
   let stageFourDuration = 0;
   let stageFourDirection = 0;
@@ -30,13 +31,14 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
     stageFourDuration = Math.max(...instance.stageFourClips.map((clip) => clip.duration));
     stageFourMixer = new THREE.AnimationMixer(instance.model);
-    instance.stageFourClips.forEach((clip) => {
+    stageFourActions = instance.stageFourClips.map((clip) => {
       const action = stageFourMixer.clipAction(clip);
       action.setLoop(THREE.LoopOnce, 1);
       action.clampWhenFinished = true;
       action.play();
+      return action;
     });
-    stageFourMixer.setTime(0);
+    seekStageFourAnimation(0);
 
     subductionMixer = new THREE.AnimationMixer(instance.model);
     const subductionAction = subductionMixer.clipAction(instance.subductionClip);
@@ -104,7 +106,15 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   function startStageFourAnimation(direction) {
     stageFourDirection = direction;
     stageFourTime = direction > 0 ? 0 : stageFourDuration;
-    stageFourMixer.setTime(stageFourTime);
+    seekStageFourAnimation(stageFourTime);
+  }
+
+  function seekStageFourAnimation(time) {
+    stageFourActions.forEach((action) => {
+      action.enabled = true;
+      action.paused = false;
+    });
+    stageFourMixer.setTime(time);
   }
 
   function startCrossfade(outgoing, incoming) {
@@ -181,14 +191,13 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       0,
       stageFourDuration
     );
-    stageFourMixer.setTime(stageFourTime);
+    seekStageFourAnimation(stageFourTime);
 
     const endpointTolerance = 0.000001;
     const reachedEnd = stageFourDirection > 0 && stageFourTime >= stageFourDuration - endpointTolerance;
     const reachedStart = stageFourDirection < 0 && stageFourTime <= endpointTolerance;
     if (reachedEnd || reachedStart) {
       stageFourTime = reachedEnd ? stageFourDuration : 0;
-      stageFourMixer.setTime(stageFourTime);
       stageFourDirection = 0;
       busy = false;
       updateHud("Stage " + currentStage + " ready.");
@@ -257,6 +266,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     revealDelaySeconds = null;
     crossfade = null;
     stageFourMixer = null;
+    stageFourActions = [];
     stageFourTime = 0;
     stageFourDuration = 0;
     stageFourDirection = 0;
