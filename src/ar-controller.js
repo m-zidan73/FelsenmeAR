@@ -69,8 +69,8 @@ export function createArController({
     let waitingMessageTimer = null;
     try {
       const sessionInit = {
-        requiredFeatures: ["hit-test"],
-        optionalFeatures: ["anchors", "dom-overlay"],
+        requiredFeatures: ["hit-test", "dom-overlay"],
+        optionalFeatures: ["anchors"],
         domOverlay: { root: ui.overlay }
       };
       ui.startArButton.disabled = true;
@@ -89,7 +89,10 @@ export function createArController({
         window.clearTimeout(waitingMessageTimer);
       }
       document.body.classList.remove("in-camera-ar");
-      setMenuLoading(state.modelsLoaded ? 100 : 60, "Error", "Camera AR request failed: " + error.name);
+      const failureMessage = error.name === "NotSupportedError"
+        ? "This XR viewer does not support the required on-screen controls."
+        : "Camera AR request failed: " + error.name;
+      setMenuLoading(state.modelsLoaded ? 100 : 60, "Error", failureMessage);
       ui.startArButton.disabled = false;
     }
   }
