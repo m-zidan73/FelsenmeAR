@@ -1,6 +1,6 @@
 ﻿import { getDistanceMeters, getSunPosition, normalizeDegrees } from "./geo.js";
 
-export function createLocationController({ state, ui, config, THREE, refreshXrHudTexture, setXRDebug }) {
+export function createLocationController({ state, ui, config, THREE, setXRDebug }) {
   function updateGeoStatus() {
     const nearestLocation = state.userPosition ? getNearestAllowedLocation() : null;
     const distanceMeters = nearestLocation ? nearestLocation.distanceMeters : null;
@@ -31,7 +31,6 @@ export function createLocationController({ state, ui, config, THREE, refreshXrHu
     ui.geoHeadingValue.classList.toggle("is-locked", !isHeadingOk);
     ui.geoGateValue.classList.toggle("is-ok", isDistanceOk && isHeadingOk);
     ui.geoGateValue.classList.toggle("is-locked", !(isDistanceOk && isHeadingOk));
-    refreshXrHudTexture();
   }
 
   function getPlacementGateStatus() {

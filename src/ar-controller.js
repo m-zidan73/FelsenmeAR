@@ -15,8 +15,6 @@ export function createArController({
   setMenuLoading,
   setScanPromptVisible,
   setXRDebug,
-  setXrHudVisible,
-  shouldUseXrFallbackHud,
   startLocationTracking,
   stopLocationTracking,
   updateFormationPlacement,
@@ -117,11 +115,8 @@ export function createArController({
     state.xrHitTestSource = await session.requestHitTestSource({ space: state.xrViewerSpace });
     setInputSession(session);
 
-    state.domOverlayActive = Boolean(session.domOverlayState && session.domOverlayState.type);
     document.body.classList.add("in-camera-ar");
-    document.body.classList.toggle("has-dom-overlay", state.domOverlayActive);
     setMenuButtonVisible(true);
-    setXrHudVisible(shouldUseXrFallbackHud());
     setGeoStatusVisible(true);
     captureCompassHeading();
     startLocationTracking();
@@ -150,10 +145,7 @@ export function createArController({
     state.latestHitResult = null;
     state.placementReticle.visible = false;
     document.body.classList.remove("in-camera-ar");
-    document.body.classList.remove("has-dom-overlay");
-    state.domOverlayActive = false;
     setMenuButtonVisible(false);
-    setXrHudVisible(false);
     setGeoStatusVisible(false);
     setScanPromptVisible(false);
     stopLocationTracking();

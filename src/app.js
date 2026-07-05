@@ -22,16 +22,8 @@ import { createMenuUi } from "./ui/menu.js";
 
   const state = createAppState();
   const ui = getUiElements();
-  const hudUi = createHudUi({ state, ui, THREE });
-  const {
-    createXrFallbackHud,
-    refreshXrHudTexture,
-    setXRDebug,
-    setXrHudVisible,
-    shouldUseXrFallbackHud,
-    updateHud,
-    updateXrHudLayout
-  } = hudUi;
+  const hudUi = createHudUi({ ui });
+  const { setXRDebug, updateHud } = hudUi;
 
   const menuUi = createMenuUi({
     state,
@@ -101,7 +93,6 @@ import { createMenuUi } from "./ui/menu.js";
     ui,
     config: CONFIG,
     THREE,
-    refreshXrHudTexture,
     setXRDebug
   });
   const {
@@ -133,8 +124,6 @@ import { createMenuUi } from "./ui/menu.js";
     setMenuLoading,
     setScanPromptVisible,
     setXRDebug,
-    setXrHudVisible,
-    shouldUseXrFallbackHud,
     startLocationTracking,
     stopLocationTracking,
     updateFormationPlacement: () => placementController.updateFormationPlacement(),
@@ -182,7 +171,6 @@ import { createMenuUi } from "./ui/menu.js";
   function init() {
     initializeScene();
     interactionController.attach(state.renderer.domElement);
-    createXrFallbackHud();
     loadModels();
 
     window.addEventListener("resize", onResize);
@@ -216,7 +204,6 @@ import { createMenuUi } from "./ui/menu.js";
     }
     if (state.xrSession) {
       updateGeoStatus();
-      updateXrHudLayout();
     }
     if (state.formationPlaced) {
       updateFormationAnimation(deltaSeconds);

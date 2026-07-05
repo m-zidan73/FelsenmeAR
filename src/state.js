@@ -36,8 +36,6 @@ export function createAppState() {
     geolocationWatchId: null,
     sunDirection: new THREE.Vector3(-0.3, 0.8, 0.5).normalize(),
     lastSunPosition: null,
-    sunReady: false,
-    domOverlayActive: false,
-    xrHud: null
+    sunReady: false
   };
 }

@@ -13,7 +13,6 @@
     ui.canvasRoot.appendChild(state.renderer.domElement);
 
     addLights();
-    addDesktopFallbackFloor();
     createPlacementReticle();
   }
 
@@ -33,14 +32,6 @@
     state.scene.add(state.sunLight.target);
     state.renderer.shadowMap.enabled = true;
     state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  }
-
-  function addDesktopFallbackFloor() {
-    const floor = new THREE.GridHelper(8, 16, 0x7bdff2, 0x7bdff2);
-    floor.name = "Desktop Fallback Floor";
-    floor.material.transparent = true;
-    floor.material.opacity = 0.18;
-    state.scene.add(floor);
   }
 
   function createPlacementReticle() {
