@@ -65,9 +65,11 @@ export function setMeshesOpacity(meshes, opacity) {
         return;
       }
 
-      material.transparent = opacity < 1;
-      material.opacity = opacity;
-      material.depthWrite = opacity >= 1;
+      const opacityScale = material.userData.opacityScale ?? 1;
+      const effectiveOpacity = opacity * opacityScale;
+      material.transparent = effectiveOpacity < 1;
+      material.opacity = effectiveOpacity;
+      material.depthWrite = effectiveOpacity >= 1;
       material.needsUpdate = true;
     });
   });

@@ -1,8 +1,12 @@
 import {
   applyModelShadowSettings,
   cloneModelForScene,
+  getDescendantMeshes,
   getImportedObjectByName
 } from "../three-utils.js";
+
+const STARTING_ROCK_OUTLINE_SCALE = 1.025;
+const STARTING_ROCK_OUTLINE_OPACITY = 0.3;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -57,6 +61,7 @@ export function createGelifluctionModelFactory({ THREE }) {
     model.position.set(-center.x, -startingRockBounds.min.y, -center.z);
     root.updateMatrixWorld(true);
     applyModelShadowSettings(root);
+    addStartingRockOutline(nodes.Starting_Rock);
 
     return {
       root,
@@ -65,6 +70,29 @@ export function createGelifluctionModelFactory({ THREE }) {
       stageFourClips,
       subductionClip
     };
+  }
+
+  function addStartingRockOutline(startingRock) {
+    getDescendantMeshes(startingRock).forEach((mesh) => {
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xa8efff,
+        blending: THREE.AdditiveBlending,
+        opacity: STARTING_ROCK_OUTLINE_OPACITY,
+        side: THREE.BackSide,
+        transparent: true,
+        depthWrite: false,
+        toneMapped: false
+      });
+      material.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
+
+      const outline = new THREE.Mesh(mesh.geometry.clone(), material);
+      outline.name = mesh.name + " Outline";
+      outline.scale.setScalar(STARTING_ROCK_OUTLINE_SCALE);
+      outline.castShadow = false;
+      outline.receiveShadow = false;
+      outline.renderOrder = 1;
+      mesh.add(outline);
+    });
   }
 
   return { createGelifluctionInstance, validateGelifluctionAsset };
