@@ -38,7 +38,7 @@
     state.placementReticle = new THREE.Group();
     state.placementReticle.name = "Placement Reticle";
 
-    const grid = new THREE.GridHelper(0.8, 8, 0x24f2a9, 0x24f2a9);
+    const grid = new THREE.GridHelper(0.4, 8, 0x24f2a9, 0x24f2a9);
     grid.material.transparent = true;
     grid.material.opacity = 0.7;
     grid.material.depthWrite = false;
@@ -69,7 +69,7 @@
 
     const bounds = new THREE.Box3().setFromObject(model);
     const size = bounds.getSize(new THREE.Vector3());
-    model.scale.setScalar(0.5 / Math.max(size.x, size.z, 0.001));
+    model.scale.setScalar(0.25 / Math.max(size.x, size.z, 0.001));
     bounds.setFromObject(model);
     const center = bounds.getCenter(new THREE.Vector3());
     model.position.set(-center.x, -bounds.min.y + 0.01, -center.z);
