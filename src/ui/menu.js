@@ -1,4 +1,4 @@
-export function createMenuUi({ arHud, state, ui, clamp, updateHud }) {
+export function createMenuUi({ state, ui, clamp, updateHud }) {
   function setMenuLoading(percent, label, message) {
     const clampedPercent = clamp(percent, 0, 100);
     if (ui.loadingFill) {
@@ -43,37 +43,21 @@ export function createMenuUi({ arHud, state, ui, clamp, updateHud }) {
   }
 
   function setMenuButtonVisible(isVisible) {
-    const useArHud = shouldUseArHud();
     if (ui.menuButton) {
-      ui.menuButton.hidden = useArHud || !isVisible;
-    }
-    if (arHud) {
-      arHud.setMenuButtonVisible(isVisible);
+      ui.menuButton.hidden = !isVisible;
     }
   }
 
   function setFormationSliderVisible(isVisible) {
-    const useArHud = shouldUseArHud();
     if (ui.bottomUi) {
-      ui.bottomUi.hidden = useArHud || !isVisible;
-    }
-    if (arHud) {
-      arHud.setFormationSliderVisible(isVisible);
+      ui.bottomUi.hidden = !isVisible;
     }
   }
 
   function setScanPromptVisible(isVisible) {
-    const useArHud = shouldUseArHud();
     if (ui.scanPrompt) {
-      ui.scanPrompt.hidden = useArHud || !isVisible;
+      ui.scanPrompt.hidden = !isVisible;
     }
-    if (arHud) {
-      arHud.setScanPromptVisible(isVisible);
-    }
-  }
-
-  function shouldUseArHud() {
-    return Boolean(state.xrSession && arHud);
   }
 
   function bounceScanPrompt() {

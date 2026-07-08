@@ -13,7 +13,6 @@ import { installRuntimeErrorCapture } from "./runtime-errors.js";
 import { createSceneController } from "./scene.js";
 import { createAppState } from "./state.js";
 import { disposeObject } from "./three-utils.js";
-import { createArHud } from "./ui/ar-hud.js";
 import { createFormationSlider } from "./ui/formation-slider.js";
 import { createHudUi } from "./ui/hud.js";
 import { createMenuUi } from "./ui/menu.js";
@@ -25,21 +24,8 @@ import { createMenuUi } from "./ui/menu.js";
   const ui = getUiElements();
   const hudUi = createHudUi({ ui });
   const { setXRDebug, updateHud } = hudUi;
-  let formationSliderUi;
-  let interactionController;
-  let placementController;
-
-  const arHud = createArHud({
-    state,
-    THREE,
-    onMenuSelected: () => placementController && placementController.returnToMainMenu(),
-    onSliderGestureStart: () => formationSliderUi && formationSliderUi.beginFormationSliderGesture(),
-    onSliderPreview: (value) => formationSliderUi && formationSliderUi.previewFormationSliderValue(value),
-    onSliderCommit: (value) => formationSliderUi && formationSliderUi.commitFormationSliderGesture(value)
-  });
 
   const menuUi = createMenuUi({
-    arHud,
     state,
     ui,
     clamp: THREE.MathUtils.clamp,
@@ -69,11 +55,9 @@ import { createMenuUi } from "./ui/menu.js";
     update: updateFormationAnimation
   } = stageController;
 
-  formationSliderUi = createFormationSlider({
+  const formationSliderUi = createFormationSlider({
     ui,
     clamp: THREE.MathUtils.clamp,
-    onPromptingChange: (isPrompting) => arHud.setSliderPrompting(isPrompting),
-    onRender: (value, displayStep) => arHud.setSliderValue(value, displayStep),
     onStepSelected(stepIndex) {
       return requestStage(stepIndex + 1);
     }
@@ -121,6 +105,8 @@ import { createMenuUi } from "./ui/menu.js";
     updateSunLightFromDeviceLocation
   } = locationController;
 
+  let interactionController;
+  let placementController;
   const arController = createArController({
     state,
     ui,
@@ -156,8 +142,6 @@ import { createMenuUi } from "./ui/menu.js";
   interactionController = createCanvasInteractionController({
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
     pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
-    onHudPointerInput: (event) => arHud.handlePointerEvent(event),
-    onHudSelectInput: (event) => arHud.handleSelect(event),
     onPinchChange: setPinchActive,
     onPlacementTap: placeAtDetectedPlane
   });
@@ -186,7 +170,6 @@ import { createMenuUi } from "./ui/menu.js";
 
   function init() {
     initializeScene();
-    arHud.initialize();
     interactionController.attach(state.renderer.domElement);
     loadModels();
 
@@ -225,7 +208,6 @@ import { createMenuUi } from "./ui/menu.js";
     if (state.formationPlaced) {
       updateFormationAnimation(deltaSeconds);
     }
-    arHud.update();
 
     state.renderer.render(state.scene, state.camera);
   }
