@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FelsenmeAR — UI Concept Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      background: #0f1114;
+      color: #f6efe6;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* --- Mock AR viewport --- */
+    .mock-ar {
+      position: relative;
+      width: 100%; height: 100%;
+      background: linear-gradient(145deg, #1a1f2e 0%, #0f1114 100%);
+      overflow: hidden;
+    }
+    .mock-ar::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 70%, rgba(36, 242, 169, 0.06) 0%, transparent 60%);
+    }
+
+    /* Simulated ground plane */
+    .mock-ground {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 38%;
+      background: linear-gradient(0deg, rgba(36, 242, 169, 0.12) 0%, transparent 100%);
+      border-top: 1px solid rgba(36, 242, 169, 0.2);
+    }
+
+    /* Simulated reticle */
+    .mock-reticle {
+      position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -70%);
+      width: 80px; height: 80px;
+      border: 2px dashed rgba(36, 242, 169, 0.5);
+      border-radius: 50%;
+      box-shadow: 0 0 30px rgba(36, 242, 169, 0.15);
+      animation: reticlePulse 2s ease-in-out infinite;
+    }
+    .mock-reticle::after {
+      content: "";
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px; height: 12px;
+      background: rgba(36, 242, 169, 0.6);
+      border-radius: 50%;
+    }
+
+    /* Simulated 3D rock silhouette */
+    .mock-rock {
+      position: absolute;
+      bottom: 28%; left: 50%; transform: translateX(-50%);
+      width: 140px; height: 120px;
+      background: radial-gradient(ellipse at 50% 80%, rgba(246, 239, 230, 0.08) 0%, transparent 70%);
+      border-radius: 60% 60% 40% 40% / 80% 80% 20% 20%;
+      border: 1px solid rgba(246, 239, 230, 0.06);
+    }
+
+    /* === TOP TUTORIAL BAR === */
+    .tutorial-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 40;
+      padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    /* Step indicator dots */
+    .step-dots {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .step-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(246, 239, 230, 0.2);
+      transition: all 400ms ease;
+    }
+    .step-dot.active {
+      width: 24px;
+      border-radius: 999px;
+      background: #d4381b;
+      box-shadow: 0 0 12px rgba(212, 56, 27, 0.5);
+    }
+    .step-dot.done {
+      background: rgba(36, 242, 169, 0.6);
+    }
+
+    /* Main instruction card */
+    .instruction-card {
+      background: rgba(8, 10, 12, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(246, 239, 230, 0.1);
+      border-radius: 16px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      animation: cardIn 400ms ease;
+    }
+    .instruction-card.exit {
+      animation: cardOut 300ms ease forwards;
+    }
+
+    .instruction-icon {
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      display: grid; place-items: center;
+      background: rgba(212, 56, 27, 0.2);
+      border-radius: 12px;
+      font-size: 1.5rem;
+    }
+
+    .instruction-text {
+      flex: 1;
+    }
+    .instruction-title {
+      font-size: clamp(0.9rem, 2.4vw, 1.2rem);
+      font-weight: 700;
+      color: #f6efe6;
+      line-height: 1.3;
+    }
+    .instruction-hint {
+      font-size: clamp(0.72rem, 1.8vw, 0.88rem);
+      color: rgba(246, 239, 230, 0.55);
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    /* === GESTURE HINT (floating) === */
+    .gesture-hint {
+      position: fixed;
+      z-index: 35;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      animation: floatHint 2s ease-in-out infinite;
+    }
+    .gesture-hint.tap-center {
+      top: 50%; left: 50%;
+      transform: translate(-50%, -80%);
+    }
+    .gesture-hint.swipe-left {
+      bottom: 22%; right: 12%;
+    }
+    .gesture-hint.pinch {
+      bottom: 40%; left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .gesture-icon {
+      width: 48px; height: 48px;
+      display: grid; place-items: center;
+      background: rgba(246, 239, 230, 0.06);
+      border: 1.5px solid rgba(246, 239, 230, 0.18);
+      border-radius: 50%;
+      font-size: 1.4rem;
+    }
+    .gesture-label {
+      font-size: 0.72rem;
+      color: rgba(246, 239, 230, 0.45);
+      font-weight: 500;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    /* === DATA PANEL === */
+    .data-panel {
+      position: fixed;
+      bottom: max(100px, 16vh, env(safe-area-inset-bottom) + 70px);
+      left: 50%; transform: translateX(-50%);
+      z-index: 30;
+      width: min(84vw, 480px);
+      background: rgba(8, 10, 12, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(246, 239, 230, 0.08);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: grid;
+      gap: 6px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      animation: panelUp 400ms ease;
+    }
+
+    .data-panel .dp-row {
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+    }
+    .data-panel .dp-label {
+      color: rgba(246, 239, 230, 0.4);
+      font-size: clamp(0.65rem, 1.6vw, 0.78rem);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .data-panel .dp-value {
+      color: #f6efe6;
+      font-size: clamp(0.78rem, 2vw, 0.95rem);
+      font-weight: 600;
+    }
+    .data-panel .dp-title {
+      font-size: clamp(1rem, 2.8vw, 1.3rem);
+      font-weight: 700;
+      color: #f6efe6;
+      margin-bottom: 2px;
+    }
+    .data-panel .dp-desc {
+      font-size: clamp(0.68rem, 1.6vw, 0.82rem);
+      color: rgba(246, 239, 230, 0.6);
+      font-weight: 400;
+      line-height: 1.3;
+      margin-top: 2px;
+    }
+
+    /* === SLIDER (simplified mock) === */
+    .mock-slider {
+      position: fixed;
+      bottom: max(12px, env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%);
+      z-index: 30;
+      width: min(78vw, 520px);
+      display: grid;
+      gap: 6px;
+    }
+    .mock-slider-icons {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 2%;
+    }
+    .mock-slider-icons span {
+      width: 32px; height: 32px;
+      display: grid; place-items: center;
+      background: rgba(246, 239, 230, 0.04);
+      border-radius: 8px;
+      font-size: 0.7rem;
+      opacity: 0.4;
+      transition: all 300ms;
+    }
+    .mock-slider-icons span.active {
+      opacity: 1;
+      background: rgba(212, 56, 27, 0.2);
+      box-shadow: 0 0 16px rgba(212, 56, 27, 0.15);
+    }
+    .mock-slider-track {
+      height: 6px;
+      background: rgba(246, 239, 230, 0.1);
+      border-radius: 999px;
+      position: relative;
+      overflow: hidden;
+    }
+    .mock-slider-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #c82b13, #5fa7bd);
+      border-radius: inherit;
+      transition: width 400ms ease;
+    }
+    .mock-slider-dots {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 10%;
+      margin-top: -10px;
+    }
+    .mock-slider-dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(246, 239, 230, 0.15);
+      border: 2px solid rgba(17, 24, 32, 0.5);
+      transition: all 300ms;
+    }
+    .mock-slider-dots span.active {
+      width: 16px; height: 16px;
+      background: #f6efe6;
+      border-color: #111820;
+      box-shadow: 0 0 14px rgba(95, 167, 189, 0.4);
+    }
+
+    /* === ANIMATIONS === */
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cardOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-12px); }
+    }
+    @keyframes panelUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes floatHint {
+      0%, 100% { transform: translate(-50%, -80%) translateY(0); }
+      50% { transform: translate(-50%, -80%) translateY(-10px); }
+    }
+    @keyframes reticlePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* === NAV === */
+    .demo-nav {
+      position: fixed;
+      bottom: max(80px, 12vh); right: 12px;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .demo-nav button {
+      width: 44px; height: 44px;
+      border: 0; border-radius: 50%;
+      background: rgba(246, 239, 230, 0.08);
+      color: #f6efe6;
+      font-size: 1rem;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(246, 239, 230, 0.12);
+      transition: background 200ms;
+    }
+    .demo-nav button:hover { background: rgba(246, 239, 230, 0.16); }
+    .demo-nav button:active { transform: scale(0.94); }
+
+    .step-counter {
+      position: fixed;
+      bottom: max(80px, 12vh); left: 12px;
+      z-index: 50;
+      font-size: 0.7rem;
+      color: rgba(246, 239, 230, 0.25);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-ar">
+    <div class="mock-ground"></div>
+    <div class="mock-reticle"></div>
+    <div class="mock-rock"></div>
+  </div>
+
+  <!-- Tutorial bar -->
+  <div class="tutorial-bar" id="tutorialBar">
+    <div class="step-dots" id="stepDots"></div>
+    <div class="instruction-card" id="instructionCard">
+      <div class="instruction-icon" id="instructionIcon"></div>
+      <div class="instruction-text">
+        <div class="instruction-title" id="instructionTitle"></div>
+        <div class="instruction-hint" id="instructionHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gesture hint -->
+  <div class="gesture-hint tap-center" id="gestureHint" hidden>
+    <div class="gesture-icon">👆</div>
+    <div class="gesture-label">Tap to place</div>
+  </div>
+
+  <!-- Data panel -->
+  <div class="data-panel" id="dataPanel" hidden>
+    <div class="dp-row"><span class="dp-title" id="dpStageName">Final Boulder</span></div>
+    <div class="dp-row"><span class="dp-label">Era</span><span class="dp-value" id="dpEra">Cretaceous</span></div>
+    <div class="dp-row"><span class="dp-label">Period</span><span class="dp-value" id="dpEpoch">~100 million years ago</span></div>
+    <div class="dp-row"><span class="dp-label">Rock</span><span class="dp-value" id="dpRock">Quartz Diorite</span></div>
+    <div class="dp-row"><span class="dp-label">Plate</span><span class="dp-value" id="dpPlate">Laurasia</span></div>
+    <div class="dp-desc" id="dpDesc">The final boulder form, shaped by millions of years of geological forces.</div>
+  </div>
+
+  <!-- Mock slider -->
+  <div class="mock-slider" id="mockSlider">
+    <div class="mock-slider-icons">
+      <span>🔥</span><span>💎</span><span>💥</span><span>🪨</span><span class="active">🪨</span>
+    </div>
+    <div class="mock-slider-track"><div class="mock-slider-fill" style="width:100%"></div></div>
+    <div class="mock-slider-dots">
+      <span></span><span></span><span></span><span></span><span class="active"></span>
+    </div>
+  </div>
+
+  <!-- Nav buttons -->
+  <div class="demo-nav">
+    <button id="prevBtn" title="Previous step">◀</button>
+    <button id="nextBtn" title="Next step">▶</button>
+  </div>
+  <div class="step-counter" id="stepCounter">1 / 8</div>
+
+  <script>
+    const steps = [
+      {
+        icon: "📷",
+        title: "Scanning for a flat surface",
+        hint: "Move your device slowly over a desk or floor",
+        gesture: { icon: "👆", label: "Wait for surface detection", show: false },
+        data: null,
+        slider: null,
+        dot: "pending"
+      },
+      {
+        icon: "🎯",
+        title: "Plane detected — Tap to place",
+        hint: "A flat surface was found. Tap the green reticle",
+        gesture: { icon: "👆", label: "Tap to place", show: true },
+        data: null,
+        slider: null,
+        dot: "pending"
+      },
+      {
+        icon: "🧱",
+        title: "Final Boulder — Present Day",
+        hint: "The rock formation is placed. Try the timeline below",
+        gesture: { icon: "👆", label: "Explore the timeline", show: false },
+        data: { name: "Final Boulder", era: "Cretaceous", epoch: "~100 million years ago", rock: "Quartz Diorite", plate: "Laurasia", desc: "The present-day boulder, shaped by millions of years of geological forces." },
+        slider: { fill: 100, active: 4 },
+        dot: "done"
+      },
+      {
+        icon: "🪨",
+        title: "Rounded Boulders — Erosion",
+        hint: "Slide left to go back in time",
+        gesture: { icon: "👈", label: "Slide left", show: true },
+        data: { name: "Rounded Boulders", era: "Jurassic", epoch: "~180 million years ago", rock: "Sedimentary", plate: "Laurasia", desc: "Erosion rounds the sharp edges into smooth boulders." },
+        slider: { fill: 75, active: 3 },
+        dot: "done"
+      },
+      {
+        icon: "💥",
+        title: "Cracked Slab of Diorite",
+        hint: "Tectonic stress cracks the solid rock slab",
+        gesture: { icon: "👈", label: "Slide left again", show: true },
+        data: { name: "Cracked Slab of Diorite", era: "Triassic", epoch: "~245 million years ago", rock: "Metamorphic", plate: "Pangaea", desc: "Tectonic stress cracks the solid rock slab." },
+        slider: { fill: 50, active: 2 },
+        dot: "done"
+      },
+      {
+        icon: "💎",
+        title: "Solid Quartz Diorite",
+        hint: "Magma cools and solidifies underground",
+        gesture: { icon: "👈", label: "Slide left", show: true },
+        data: { name: "Solid Quartz Diorite", era: "Permian", epoch: "~290 million years ago", rock: "Plutonic Igneous", plate: "Pangaea", desc: "Magma cools and solidifies into quartz diorite deep underground." },
+        slider: { fill: 25, active: 1 },
+        dot: "done"
+      },
+      {
+        icon: "🌋",
+        title: "Continental Collision",
+        hint: "The beginning — plates collide, magma rises",
+        gesture: { icon: "🤏", label: "Pinch inward to collide the plates", show: true },
+        data: { name: "Continental Collision", era: "Paleozoic", epoch: "~340 million years ago", rock: "Magmatic / Metamorphic", plate: "Gondwana", desc: "The continental plates collide, pushing magma upward." },
+        slider: { fill: 0, active: 0 },
+        dot: "done"
+      },
+      {
+        icon: "✅",
+        title: "Journey Complete",
+        hint: "You've explored 340 million years of geological history",
+        gesture: null,
+        data: { name: "Continental Collision", era: "Paleozoic", epoch: "~340 million years ago", rock: "Magmatic / Metamorphic", plate: "Gondwana", desc: "You've reached the origin — the continental collision that started it all." },
+        slider: { fill: 0, active: 0 },
+        dot: "done"
+      }
+    ];
+
+    let currentStep = 0;
+    const totalSteps = steps.length;
+
+    const iconEl = document.getElementById("instructionIcon");
+    const titleEl = document.getElementById("instructionTitle");
+    const hintEl = document.getElementById("instructionHint");
+    const cardEl = document.getElementById("instructionCard");
+    const dotsEl = document.getElementById("stepDots");
+    const gestureEl = document.getElementById("gestureHint");
+    const gestureIcon = gestureEl.querySelector(".gesture-icon");
+    const gestureLabel = gestureEl.querySelector(".gesture-label");
+    const dataPanel = document.getElementById("dataPanel");
+    const sliderEl = document.getElementById("mockSlider");
+
+    const dpName = document.getElementById("dpStageName");
+    const dpEra = document.getElementById("dpEra");
+    const dpEpoch = document.getElementById("dpEpoch");
+    const dpRock = document.getElementById("dpRock");
+    const dpPlate = document.getElementById("dpPlate");
+    const dpDesc = document.getElementById("dpDesc");
+
+    const stepCounter = document.getElementById("stepCounter");
+
+    function renderDots(activeIndex) {
+      dotsEl.innerHTML = "";
+      for (let i = 0; i < totalSteps; i++) {
+        const dot = document.createElement("span");
+        dot.className = "step-dot";
+        if (i < activeIndex) dot.classList.add("done");
+        if (i === activeIndex) dot.classList.add("active");
+        dotsEl.appendChild(dot);
+      }
+    }
+
+    function goToStep(index) {
+      index = Math.max(0, Math.min(totalSteps - 1, index));
+      if (index === currentStep) return;
+      currentStep = index;
+
+      cardEl.classList.add("exit");
+      setTimeout(() => {
+        const step = steps[currentStep];
+        iconEl.textContent = step.icon;
+        titleEl.textContent = step.title;
+        hintEl.textContent = step.hint;
+        cardEl.classList.remove("exit");
+
+        // Gesture hint
+        if (step.gesture && step.gesture.show) {
+          gestureIcon.textContent = step.gesture.icon;
+          gestureLabel.textContent = step.gesture.label;
+          gestureEl.hidden = false;
+        } else {
+          gestureEl.hidden = true;
+        }
+
+        // Data panel
+        if (step.data) {
+          dpName.textContent = step.data.name;
+          dpEra.textContent = step.data.era;
+          dpEpoch.textContent = step.data.epoch;
+          dpRock.textContent = step.data.rock;
+          dpPlate.textContent = step.data.plate;
+          dpDesc.textContent = step.data.desc;
+          dataPanel.hidden = false;
+          dataPanel.style.animation = "none";
+          void dataPanel.offsetHeight;
+          dataPanel.style.animation = "panelUp 400ms ease";
+        } else {
+          dataPanel.hidden = true;
+        }
+
+        // Slider
+        if (step.slider) {
+          sliderEl.hidden = false;
+          const fill = sliderEl.querySelector(".mock-slider-fill");
+          const icons = sliderEl.querySelectorAll(".mock-slider-icons span");
+          const dots = sliderEl.querySelectorAll(".mock-slider-dots span");
+          fill.style.width = step.slider.fill + "%";
+          icons.forEach((el, i) => el.classList.toggle("active", i === step.slider.active));
+          dots.forEach((el, i) => el.classList.toggle("active", i === step.slider.active));
+        } else {
+          sliderEl.hidden = true;
+        }
+
+        renderDots(currentStep);
+        stepCounter.textContent = (currentStep + 1) + " / " + totalSteps;
+      }, 250);
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", () => goToStep(currentStep + 1));
+    document.getElementById("prevBtn").addEventListener("click", () => goToStep(currentStep - 1));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") goToStep(currentStep + 1);
+      if (e.key === "ArrowLeft") goToStep(currentStep - 1);
+    });
+
+    // Init
+    goToStep(0);
+  </script>
+</body>
+</html>

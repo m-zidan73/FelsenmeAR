@@ -1,0 +1,17 @@
+{
+  "prompts": {
+    "Loading": "Loading 3D assets...",
+    "Ready": "Press Start to begin",
+    "Scanning": "Move your device to scan the area",
+    "PlaneDetected": "A flat surface was found. Tap to place the rock formation.",
+    "FormationPlaced": "The formation is placed! Use the slider to explore geological stages.",
+    "Stage5": "Final Boulder — the present-day form",
+    "Stage4": "Rounded Boulders — erosion shapes the rock over time",
+    "Stage3": "Cracked Slab of Diorite — tectonic forces at work",
+    "Stage2": "Solid Quartz Diorite — magma cools underground",
+    "Stage1": "Continental Collision — the beginning of the journey",
+    "PinchActive": "Pinch inward to collide the plates",
+    "SubductionProgress": "Plates are colliding — watch the magma rise",
+    "SubductionComplete": "The collision is complete! Slide to see the result."
+  }
+}
