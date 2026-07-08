@@ -1,0 +1,49 @@
+{
+  "stages": [
+    {
+      "index": 1,
+      "name": "Continental Collision",
+      "era": "Paleozoic",
+      "epoch": "~340 million years ago",
+      "rockType": "Magmatic / Metamorphic",
+      "plateName": "Gondwana",
+      "description": "The continental plates collide, pushing magma upward."
+    },
+    {
+      "index": 2,
+      "name": "Solid Quartz Diorite",
+      "era": "Permian",
+      "epoch": "~290 million years ago",
+      "rockType": "Plutonic Igneous",
+      "plateName": "Pangaea",
+      "description": "Magma cools and solidifies into quartz diorite."
+    },
+    {
+      "index": 3,
+      "name": "Cracked Slab of Diorite",
+      "era": "Triassic",
+      "epoch": "~245 million years ago",
+      "rockType": "Metamorphic",
+      "plateName": "Pangaea",
+      "description": "Tectonic stress cracks the solid rock slab."
+    },
+    {
+      "index": 4,
+      "name": "Rounded Boulders",
+      "era": "Jurassic",
+      "epoch": "~180 million years ago",
+      "rockType": "Sedimentary",
+      "plateName": "Laurasia",
+      "description": "Erosion rounds the sharp edges into boulders."
+    },
+    {
+      "index": 5,
+      "name": "Final Boulder",
+      "era": "Cretaceous",
+      "epoch": "~100 million years ago",
+      "rockType": "Quartz Diorite",
+      "plateName": "Laurasia",
+      "description": "The final boulder form, shaped by millions of years of geological forces."
+    }
+  ]
+}
