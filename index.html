@@ -13,7 +13,7 @@
         }
       }
     </script>
-    <script type="module" src="src/app.js?v=starting-rock-outline-1"></script>
+    <script type="module" src="src/app_Revised.js?v=2"></script>
   </head>
   <body>
     <main id="app">
@@ -45,6 +45,9 @@
         <div class="placement-controls">
           <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera on top of a flat surface</p>
         </div>
+        <div id="tutorialBar" class="tutorial-bar" hidden>
+          <span id="tutorialText" class="tutorial-text">Align the ghost rock</span>
+        </div>
         <div class="bottom-ui" hidden>
           <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">
             <ol class="formation-stages" aria-hidden="true">
@@ -65,6 +68,7 @@
               </li>
             </ol>
             <div class="formation-track-wrap">
+              <div id="sliderTimeLabel" class="slider-time-label">Present Day</div>
               <input id="formationRange" class="formation-range" type="range" min="0" max="4" step="0.001" value="4" aria-label="Rock formation step">
               <div class="formation-track" aria-hidden="true">
                 <span class="formation-fill"></span>
@@ -76,6 +80,18 @@
               </div>
             </div>
           </section>
+        </div>
+        <div id="dataOverlay" class="data-overlay" hidden>
+          <div class="data-row"><span id="stageName" class="data-value stage-name"></span></div>
+          <div class="data-row"><span class="data-label">Era:</span><span id="stageEra" class="data-value"></span></div>
+          <div class="data-row"><span class="data-label">Period:</span><span id="stageEpoch" class="data-value"></span></div>
+          <div class="data-row"><span class="data-label">Rock:</span><span id="stageRockType" class="data-value"></span></div>
+          <div class="data-row"><span class="data-label">Plate:</span><span id="stagePlate" class="data-value"></span></div>
+          <div class="data-row"><span id="stageDescription" class="data-value stage-desc"></span></div>
+        </div>
+        <div id="rockInfoBadge" class="rock-info-badge" hidden>
+          <span class="rock-badge-material" id="rockBadgeMaterial">Quartz Diorite</span>
+          <span class="rock-badge-era" id="rockBadgeEra">Cretaceous</span>
         </div>
         <div class="telemetry" hidden>
           <span id="xrDebugText">XR: checking support</span>
