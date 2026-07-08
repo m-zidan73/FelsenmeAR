@@ -143,9 +143,22 @@ import { createMenuUi } from "./ui/menu.js";
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
     pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
     onPinchChange: setPinchActive,
+    onPinchDebug: reportPinchDebug,
     onPlacementTap: placeAtDetectedPlane
   });
 
+  function reportPinchDebug(debug) {
+    const distance = Number.isFinite(debug.distance) ? " distance=" + debug.distance.toFixed(1) : "";
+    const delta = Number.isFinite(debug.distanceDelta) ? " delta=" + debug.distanceDelta.toFixed(1) : "";
+    setXRDebug(
+      "pinch " + debug.eventName +
+      " touches=" + debug.touchCount +
+      " active=" + (debug.pinchActive ? "yes" : "no") +
+      distance +
+      delta +
+      " stage=" + getCurrentStage()
+    );
+  }
   placementController = createPlacementController({
     state,
     THREE,

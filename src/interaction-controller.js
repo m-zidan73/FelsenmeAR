@@ -2,6 +2,7 @@ export function createCanvasInteractionController({
   pinchActivityTimeoutMs,
   pinchDistanceThresholdPixels,
   onPinchChange,
+  onPinchDebug = () => {},
   onPlacementTap
 }) {
   const touchPointers = new Map();
@@ -43,8 +44,10 @@ export function createCanvasInteractionController({
     }
 
     touchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    reportPinchDebug("touch-down");
     if (touchPointers.size === 2) {
       previousPinchDistance = getPinchDistance();
+      reportPinchDebug("pinch-ready", { distance: previousPinchDistance });
     }
   }
 
@@ -57,6 +60,7 @@ export function createCanvasInteractionController({
     if (touchPointers.size !== 2) {
       setPinchActive(false);
       previousPinchDistance = null;
+      reportPinchDebug("pinch-waiting");
       return;
     }
 
@@ -66,8 +70,10 @@ export function createCanvasInteractionController({
       if (distanceDelta <= -pinchDistanceThresholdPixels) {
         lastInwardMovementTime = performance.now();
         setPinchActive(true);
+        reportPinchDebug("pinch-inward", { distance, distanceDelta });
       } else {
         setPinchActive(false);
+        reportPinchDebug("pinch-move", { distance, distanceDelta });
       }
     }
     previousPinchDistance = distance;
@@ -79,6 +85,7 @@ export function createCanvasInteractionController({
     if (touchPointers.size < 2) {
       setPinchActive(false);
     }
+    reportPinchDebug("touch-end");
   }
 
   function getPinchDistance() {
@@ -98,6 +105,7 @@ export function createCanvasInteractionController({
   function update(now) {
     if (pinchActive && now - lastInwardMovementTime > pinchActivityTimeoutMs) {
       setPinchActive(false);
+      reportPinchDebug("pinch-timeout");
     }
   }
 
@@ -106,6 +114,16 @@ export function createCanvasInteractionController({
     previousPinchDistance = null;
     lastInwardMovementTime = 0;
     setPinchActive(false);
+    reportPinchDebug("pinch-reset");
+  }
+
+  function reportPinchDebug(eventName, details = {}) {
+    onPinchDebug({
+      ...details,
+      eventName,
+      pinchActive,
+      touchCount: touchPointers.size
+    });
   }
 
   return { attach, reset, setXrSession, update };
