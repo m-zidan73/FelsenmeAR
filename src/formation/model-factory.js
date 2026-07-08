@@ -55,10 +55,9 @@ export function createGelifluctionModelFactory({ THREE }) {
     const nodes = Object.fromEntries(
       REQUIRED_NODE_NAMES.map((name) => [name, getImportedObjectByName(root, name)])
     );
-    const bounds = new THREE.Box3().setFromObject(root);
-    const center = bounds.getCenter(new THREE.Vector3());
     const startingRockBounds = new THREE.Box3().setFromObject(nodes.Starting_Rock);
-    model.position.set(-center.x, -startingRockBounds.min.y, -center.z);
+    const startingRockCenter = startingRockBounds.getCenter(new THREE.Vector3());
+    model.position.set(-startingRockCenter.x, -startingRockBounds.min.y, -startingRockCenter.z);
     root.updateMatrixWorld(true);
     applyModelShadowSettings(root);
     addStartingRockOutline(nodes.Starting_Rock);
