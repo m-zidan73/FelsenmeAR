@@ -31,11 +31,9 @@ export function createGelifluctionModelFactory({ THREE }) {
       throw new Error("Gelifluction model is missing Subduction_Animation");
     }
 
-    const stageFourClips = gltf.animations.filter((clip) => (
-      clip.name !== "Starting_RockAction" && clip.name !== "Subduction_Animation"
-    ));
-    if (stageFourClips.length !== 23) {
-      throw new Error("Expected 23 Stage 4 animation clips, found " + stageFourClips.length);
+    const stageFourClips = gltf.animations.filter((clip) => clip.name !== "Subduction_Animation");
+    if (stageFourClips.length !== 24) {
+      throw new Error("Expected 24 Stage 4 animation clips, found " + stageFourClips.length);
     }
 
     return { stageFourClips, subductionClip };
