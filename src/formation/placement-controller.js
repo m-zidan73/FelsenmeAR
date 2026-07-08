@@ -61,7 +61,7 @@ export function createPlacementController({
 
     cameraDirection.normalize();
     state.formationRoot.quaternion.setFromUnitVectors(
-      new THREE.Vector3(0, 0, -1),
+      new THREE.Vector3(0, 0, 1),
       cameraDirection
     );
   }
