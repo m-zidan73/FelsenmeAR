@@ -1,4 +1,4 @@
-export function createFormationSlider({ ui, clamp, onStepSelected }) {
+export function createFormationSlider({ ui, clamp, onStepSelected, onPromptingChange = () => {}, onRender = () => {} }) {
   const snapThreshold = 0.16;
   let currentStep = 4;
   let gestureStartStep = 4;
@@ -10,10 +10,7 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     }
 
     ui.formationRange.addEventListener("pointerdown", () => {
-      gestureStartStep = currentStep;
-      gestureCommitted = false;
-      ui.formationSlider.classList.remove("is-prompting");
-      ui.formationSlider.classList.add("is-dragging");
+      beginFormationSliderGesture();
     });
 
     ui.formationRange.addEventListener("input", (event) => {
@@ -24,12 +21,11 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
       if (!gestureCommitted && !ui.formationSlider.classList.contains("is-dragging")) {
         gestureStartStep = currentStep;
       }
-      commitSliderGesture(event.target.value);
+      commitFormationSliderGesture(event.target.value);
     });
 
     ui.formationRange.addEventListener("keydown", () => {
-      gestureStartStep = currentStep;
-      gestureCommitted = false;
+      beginFormationSliderGesture();
     });
 
     window.addEventListener("pointerup", () => {
@@ -37,23 +33,35 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
         return;
       }
       ui.formationSlider.classList.remove("is-dragging");
-      commitSliderGesture(ui.formationRange.value);
+      commitFormationSliderGesture(ui.formationRange.value);
     });
 
     window.addEventListener("pointercancel", () => {
       ui.formationSlider.classList.remove("is-dragging");
-      commitSliderGesture(ui.formationRange.value);
+      commitFormationSliderGesture(ui.formationRange.value);
     });
 
     resetFormationSlider();
   }
 
-  function commitSliderGesture(rawValue) {
+  function beginFormationSliderGesture() {
+    gestureStartStep = currentStep;
+    gestureCommitted = false;
+    setPrompting(false);
+    if (ui.formationSlider) {
+      ui.formationSlider.classList.add("is-dragging");
+    }
+  }
+
+  function commitFormationSliderGesture(rawValue) {
     if (gestureCommitted) {
       return;
     }
 
     gestureCommitted = true;
+    if (ui.formationSlider) {
+      ui.formationSlider.classList.remove("is-dragging");
+    }
     const requestedStep = Math.round(clamp(Number(rawValue) || 0, 0, 4));
     const adjacentStep = clamp(requestedStep, gestureStartStep - 1, gestureStartStep + 1);
     const accepted = adjacentStep !== currentStep && onStepSelected(adjacentStep, currentStep);
@@ -61,6 +69,10 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
       currentStep = adjacentStep;
     }
     renderSliderValue(currentStep, true);
+  }
+
+  function previewFormationSliderValue(rawValue) {
+    renderSliderValue(rawValue, false);
   }
 
   function renderSliderValue(rawValue, shouldSnap) {
@@ -72,7 +84,9 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     const displayStep = Math.round(displayedValue);
     const progressPercent = (displayedValue / 4) * 100;
 
-    ui.formationRange.value = displayedValue.toFixed(3);
+    if (ui.formationRange) {
+      ui.formationRange.value = displayedValue.toFixed(3);
+    }
     if (ui.formationFill) {
       ui.formationFill.style.width = progressPercent + "%";
     }
@@ -82,19 +96,32 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     ui.formationDots.forEach((dot, index) => {
       dot.classList.toggle("is-active", index === displayStep);
     });
+    onRender(displayedValue, displayStep, progressPercent);
   }
 
   function resetFormationSlider() {
-    if (!ui.formationSlider || !ui.formationRange) {
-      return;
-    }
-
     currentStep = 4;
     gestureStartStep = 4;
     gestureCommitted = false;
-    ui.formationSlider.classList.add("is-prompting");
+    setPrompting(true);
+    if (ui.formationSlider) {
+      ui.formationSlider.classList.remove("is-dragging");
+    }
     renderSliderValue(currentStep, true);
   }
 
-  return { initFormationSlider, resetFormationSlider };
+  function setPrompting(isPrompting) {
+    if (ui.formationSlider) {
+      ui.formationSlider.classList.toggle("is-prompting", isPrompting);
+    }
+    onPromptingChange(isPrompting);
+  }
+
+  return {
+    beginFormationSliderGesture,
+    commitFormationSliderGesture,
+    initFormationSlider,
+    previewFormationSliderValue,
+    resetFormationSlider
+  };
 }
