@@ -69,13 +69,13 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       startStageFourAnimation(-1);
     } else if (previousStage === 4 && targetStage === 3) {
       startCrossfade(
-        [instance.nodes.Starting_Rock, instance.nodes.Surrounding_Rocks, instance.nodes.Slope],
+        [instance.nodes.Surrounding_Rocks, instance.nodes.Slope],
         [instance.nodes.Earth_Crust_Right, instance.nodes["3rd Stage Rock"]]
       );
     } else if (previousStage === 3 && targetStage === 4) {
       startCrossfade(
         [instance.nodes.Earth_Crust_Right, instance.nodes["3rd Stage Rock"]],
-        [instance.nodes.Starting_Rock, instance.nodes.Surrounding_Rocks, instance.nodes.Slope]
+        [instance.nodes.Surrounding_Rocks, instance.nodes.Slope]
       );
     } else if (previousStage === 3 && targetStage === 2) {
       startCrossfade(
@@ -231,7 +231,6 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
   function managedNodes() {
     return [
-      instance.nodes.Starting_Rock,
       instance.nodes.Surrounding_Rocks,
       instance.nodes.Slope,
       instance.nodes.Earth_Crust_Right,
