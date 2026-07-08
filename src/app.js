@@ -148,6 +148,7 @@ import { createMenuUi } from "./ui/menu.js";
 
   placementController = createPlacementController({
     state,
+    THREE,
     createGelifluctionInstance,
     createShadowReceiver,
     disposeObject,

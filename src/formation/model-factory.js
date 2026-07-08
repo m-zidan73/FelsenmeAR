@@ -50,7 +50,7 @@ export function createGelifluctionModelFactory({ THREE }) {
     model.name = "Gelifluction";
     root.add(model);
 
-    model.scale.setScalar(1);
+    model.scale.setScalar(0.5);
 
     const nodes = Object.fromEntries(
       REQUIRED_NODE_NAMES.map((name) => [name, getImportedObjectByName(root, name)])

@@ -1,5 +1,6 @@
 export function createPlacementController({
   state,
+  THREE,
   createGelifluctionInstance,
   createShadowReceiver,
   disposeObject,
@@ -24,6 +25,7 @@ export function createPlacementController({
 
     const formation = createGelifluctionInstance(state.modelAssets.gelifluction);
     state.formationRoot = formation.root;
+    orientFormationToCameraHeading();
     state.formationPlaced = true;
     state.scene.add(state.formationRoot);
     createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
@@ -47,6 +49,21 @@ export function createPlacementController({
 
     state.formationRoot.position.copy(state.placementCenter);
     state.formationRoot.position.y = state.planeHeight;
+  }
+
+  function orientFormationToCameraHeading() {
+    const cameraDirection = new THREE.Vector3();
+    state.camera.getWorldDirection(cameraDirection);
+    cameraDirection.y = 0;
+    if (cameraDirection.lengthSq() <= 0.000001) {
+      return;
+    }
+
+    cameraDirection.normalize();
+    state.formationRoot.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 0, -1),
+      cameraDirection
+    );
   }
 
   function returnToMainMenu() {
