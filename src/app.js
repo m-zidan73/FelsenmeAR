@@ -152,6 +152,7 @@ import { createMenuUi } from "./ui/menu.js";
     const delta = Number.isFinite(debug.distanceDelta) ? " delta=" + debug.distanceDelta.toFixed(1) : "";
     setXRDebug(
       "pinch " + debug.eventName +
+      " #" + debug.debugEventCount +
       " touches=" + debug.touchCount +
       " active=" + (debug.pinchActive ? "yes" : "no") +
       distance +

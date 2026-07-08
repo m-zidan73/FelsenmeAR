@@ -11,14 +11,15 @@ export function createCanvasInteractionController({
   let previousPinchDistance = null;
   let pinchActive = false;
   let lastInwardMovementTime = 0;
+  let debugEventCount = 0;
 
   function attach(nextCanvas) {
     canvas = nextCanvas;
     canvas.addEventListener("click", handlePlacementInput);
-    canvas.addEventListener("pointerdown", handlePointerDown);
-    canvas.addEventListener("pointermove", handlePointerMove);
-    canvas.addEventListener("pointerup", handlePointerEnd);
-    canvas.addEventListener("pointercancel", handlePointerEnd);
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("pointermove", handlePointerMove, true);
+    window.addEventListener("pointerup", handlePointerEnd, true);
+    window.addEventListener("pointercancel", handlePointerEnd, true);
   }
 
   function setXrSession(nextSession) {
@@ -118,8 +119,10 @@ export function createCanvasInteractionController({
   }
 
   function reportPinchDebug(eventName, details = {}) {
+    debugEventCount += 1;
     onPinchDebug({
       ...details,
+      debugEventCount,
       eventName,
       pinchActive,
       touchCount: touchPointers.size
