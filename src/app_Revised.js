@@ -85,7 +85,7 @@ const STAGE_DATA = [
       }
       EventBus.raise("stage_changed", {
         stage: targetStage,
-        previousStage: previousStage + 1,
+        previousStage: previousStage,
         stageIndex: targetStage - 1
       });
     }
@@ -96,7 +96,7 @@ const STAGE_DATA = [
     ui,
     clamp: THREE.MathUtils.clamp,
     onStepSelected(stepIndex, previousStep) {
-      return requestStageWrapped(stepIndex + 1, previousStep);
+      return requestStageWrapped(stepIndex + 1, previousStep + 1);
     }
   });
   const { initFormationSlider, resetFormationSlider } = formationSliderUi;
@@ -306,7 +306,7 @@ const STAGE_DATA = [
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
     initFormationSlider();
-    updateSliderTimeLabel(4);
+    updateSliderTimeLabel(0);
 
     ui.formationRange.addEventListener("input", (event) => {
       updateSliderTimeLabel(event.target.value);
@@ -326,14 +326,13 @@ const STAGE_DATA = [
       }
     });
     EventBus.on("formation_placed", () => {
-      updateRockBadge(5);
-      updateSliderTimeLabel(4);
+      updateRockBadge(1);
+      updateSliderTimeLabel(0);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
-      setTimeout(() => {
-        if (state.formationLabels) {
-          setLabelVisibilityByStage(state.formationLabels, 5);
-        }
-      }, CONFIG.stageFiveRevealDelaySeconds * 1000);
+      requestStageWrapped(1, 1);
+      if (state.formationLabels) {
+        setLabelVisibilityByStage(state.formationLabels, 1);
+      }
     });
     EventBus.on("alignment_quality", (data) => {
       if (data && data.quality > 0.95) {
