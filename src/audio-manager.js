@@ -97,6 +97,7 @@ export function createAudioManager({ audioMapUrl }) {
     if (audio) {
       audio.onended = () => {
         if (currentAudio === audio) currentAudio = null;
+        EventBus.raise("clip_ended", { clip });
         if (sequenceGap > 0 && sequenceIndex === sequenceClips.length - 1) {
           const g = sequenceGap;
           sequenceGap = 0;
@@ -167,6 +168,11 @@ export function createAudioManager({ audioMapUrl }) {
     }
     const mapping = findMapping("state:" + newState);
     if (mapping) {
+      if (newState === "Stage1") {
+        playedOnce.delete("pinch_phase:1");
+        playedOnce.delete("pinch_phase:2");
+        playedOnce.delete("pinch_phase:3");
+      }
       if (mapping.clips) {
         playSequence(mapping.clips, mapping.interrupt !== false, "state:" + newState, mapping.gap || 0);
       } else if (mapping.clip) {
