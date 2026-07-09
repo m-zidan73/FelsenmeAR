@@ -36,7 +36,6 @@ const LABEL_DEPTHS = {
   4: "Surface Level",
   5: "Surface Level"
 };
-const LABEL_DEPTH_KEY = "__depth_label";
 
 const LABEL_VISIBILITY = {
   5: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
@@ -52,11 +51,10 @@ export function setLabelVisibilityByStage(labels, stage) {
     if (!Object.prototype.hasOwnProperty.call(labels, key)) continue;
     labels[key].visible = visibleKeys.indexOf(key) !== -1;
   }
-  const depthLabel = labels[LABEL_DEPTH_KEY];
-  if (depthLabel && LABEL_DEPTHS[stage]) {
-    updateLabelText(depthLabel, LABEL_DEPTHS[stage]);
+  const dl = labels[LABEL_DEPTH_KEY];
+  if (dl && LABEL_DEPTHS[stage]) {
+    updateLabelText(dl, LABEL_DEPTHS[stage]);
   }
-}
 }
 
 function updateLabelText(sprite, text) {
@@ -69,27 +67,23 @@ function updateLabelText(sprite, text) {
   const metrics = ctx.measureText(text);
   canvas.width = metrics.width + padding * 2;
   canvas.height = fontSize + padding * 2;
-
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "rgba(8, 10, 12, 0.85)";
   roundRect(ctx, 0, 0, canvas.width, canvas.height, 14);
   ctx.fill();
-
   ctx.strokeStyle = "rgba(246, 239, 230, 0.2)";
   ctx.lineWidth = 2;
   roundRect(ctx, 1, 1, canvas.width - 2, canvas.height - 2, 14);
   ctx.stroke();
-
   ctx.fillStyle = "#f6efe6";
   ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(text, canvas.width / 2, canvas.height / 2);
   sprite.material.map.needsUpdate = true;
-
   const aspect = canvas.width / canvas.height;
-  const height = sprite.scale.y;
-  sprite.scale.set(height * aspect, height, 1);
+  const h = sprite.scale.y;
+  sprite.scale.set(h * aspect, h, 1);
 }
 
 export function createGelifluctionModelFactory({ THREE }) {
@@ -222,7 +216,7 @@ export function createGelifluctionModelFactory({ THREE }) {
 
     const depthPos = makeDepthLabelPosition(nodes);
     if (depthPos) {
-      const sprite = makeLabel(LABEL_DEPTHS[1], depthPos, labelHeight);
+      const sprite = makeLabel(LABEL_DEPTH, depthPos, labelHeight);
       root.add(sprite);
       sprite.visible = false;
       labels[LABEL_DEPTH_KEY] = sprite;
@@ -234,10 +228,8 @@ export function createGelifluctionModelFactory({ THREE }) {
   function makeDepthLabelPosition(nodes) {
     const crustNodes = [nodes.Earth_Crust_Right, nodes.Earth_Crust_Left].filter(Boolean);
     const rockNodes = [nodes.Slope, nodes["1st Stage Rock"], nodes["2nd Stage Rock"], nodes["3rd Stage Rock"], nodes.Starting_Rock, nodes.Surrounding_Rocks].filter(Boolean);
-
     const allNodes = crustNodes.concat(rockNodes);
     if (!allNodes.length) return null;
-
     const box = new THREE.Box3();
     let first = true;
     for (const n of allNodes) {
@@ -247,7 +239,7 @@ export function createGelifluctionModelFactory({ THREE }) {
     }
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
-    return new THREE.Vector3(center.x, center.y + size.y * 0.5 + 0.12, center.z);
+    return new THREE.Vector3(center.x, center.y + size.y * 0.5 + 0.4, center.z);
   }
 
   function makeLabel(text, worldPos, height) {
