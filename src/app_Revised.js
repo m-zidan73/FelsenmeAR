@@ -315,9 +315,13 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
 
     const subtitleEl = document.getElementById("subtitleDisplay");
     let subtitlesMap = {};
+    let tutorialsMap = {};
     fetch("config/subtitles.json")
       .then(r => r.json())
-      .then(data => { subtitlesMap = data.subtitles || {}; })
+      .then(data => {
+        subtitlesMap = data.subtitles || {};
+        tutorialsMap = data.tutorials || {};
+      })
       .catch(() => {});
 
     EventBus.on("clip_started", (data) => {
@@ -325,6 +329,8 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
       const text = subtitlesMap[data.clip];
       subtitleEl.textContent = text || "";
       subtitleEl.hidden = !text;
+      const tutorialText = tutorialsMap[data.clip];
+      if (tutorialText) tutorialController.addMessage(tutorialText);
     });
     EventBus.on("clip_ended", () => {
       if (subtitleEl) subtitleEl.hidden = true;

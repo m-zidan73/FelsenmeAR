@@ -95,8 +95,7 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
   nextBtn.addEventListener("click", navigateNext);
 
   const stateToMsg = {
-    Scanning: "Scan a flat surface slowly",
-    PlaneDetected: "Align with the real rock and tap."
+    Scanning: "Scan a flat surface slowly"
   };
 
   const unsubState = ExperienceStateManager.onStateChanged((newState) => {
@@ -131,17 +130,12 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
     hide();
   });
 
-  const unsubFormationPlaced = EventBus.on("formation_placed", () => {
-    addMessage("Slide the knob to travel back in time.");
-  });
-
   function dispose() {
     unsubState();
     unsubStageChanged();
     unsubPinch();
     unsubSessionStart();
     unsubSessionEnd();
-    unsubFormationPlaced();
     iconBtn.removeEventListener("click", togglePanel);
     prevBtn.removeEventListener("click", navigatePrev);
     nextBtn.removeEventListener("click", navigateNext);

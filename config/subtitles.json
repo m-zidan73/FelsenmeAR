@@ -2,7 +2,6 @@
   "subtitles": {
     "1a. welcome.mp3": "Welcome. Have you ever wondered where all these rocks came from?",
     "11a. 350.mp3": "340 million years ago, tectonic plates collided and melted rock deep underground.",
-    "11. pinch the tectonci.mp3": "Pinch the tectonic plates to collide.",
     "11a__.mp3": "One tectonic plate sinks beneath the other. Intense friction melts the rock into liquid magma.",
     "11b__.mp3": "The magma rises, lighter than solid rock, but never reaches the surface.",
     "11c__.mp3": "Over millions of years, it cools and crystallises into solid granite.",
@@ -15,9 +14,12 @@
     "3a. you are looking.mp3": "You are looking at the rocks as they are today.",
     "3b. over millios on feaers.mp3": "Over millions of years, freezing and thawing sorted the boulders by size."
   },
+  "tutorials": {
+    "11. pinch the tectonci.mp3": "Pinch the tectonic plates to collide.",
+    "3b. aling.mp3": "Align with the real rock and tap.",
+    "4. slideee.mp3": "Slide the knob to travel back in time."
+  },
   "prompts": [
-    { "id": "scan", "text": "Scan a flat surface slowly" },
-    { "id": "align", "text": "Align with the real rock and tap." },
-    { "id": "slider", "text": "Slide the knob to travel back in time." }
+    { "id": "scan", "text": "Scan a flat surface slowly" }
   ]
 }
