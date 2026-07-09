@@ -488,6 +488,83 @@ body.in-camera-ar .main-menu {
   }
 }
 
+.pinch-prompt {
+  --pinch-travel: clamp(58px, 18vw, 172px);
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  pointer-events: none;
+}
+
+.pinch-prompt[hidden] {
+  display: none !important;
+}
+
+.pinch-prompt-icon {
+  position: absolute;
+  top: clamp(42%, 50vh, 58%);
+  width: clamp(54px, 12vw, 96px);
+  height: auto;
+  opacity: 0;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.48)) drop-shadow(0 0 12px rgba(246, 239, 230, 0.28));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.pinch-prompt-icon-left {
+  left: max(22px, env(safe-area-inset-left));
+  animation: pinchPromptLeft 1.6s ease-in-out infinite;
+}
+
+.pinch-prompt-icon-right {
+  right: max(22px, env(safe-area-inset-right));
+  animation: pinchPromptRight 1.6s ease-in-out infinite;
+}
+
+@keyframes pinchPromptLeft {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(-8px, -50%, 0) scale(1.05);
+  }
+
+  18% {
+    opacity: 0.92;
+  }
+
+  58% {
+    opacity: 0.92;
+    transform: translate3d(var(--pinch-travel), -50%, 0) scale(0.86);
+  }
+
+  78% {
+    opacity: 0;
+    transform: translate3d(var(--pinch-travel), -50%, 0) scale(0.8);
+  }
+}
+
+@keyframes pinchPromptRight {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(8px, -50%, 0) scale(1.05);
+  }
+
+  18% {
+    opacity: 0.92;
+  }
+
+  58% {
+    opacity: 0.92;
+    transform: translate3d(calc(var(--pinch-travel) * -1), -50%, 0) scale(0.86);
+  }
+
+  78% {
+    opacity: 0;
+    transform: translate3d(calc(var(--pinch-travel) * -1), -50%, 0) scale(0.8);
+  }
+}
+
 .bottom-ui {
   grid-row: 3;
   justify-self: center;
