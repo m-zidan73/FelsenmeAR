@@ -18,6 +18,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   let subductionMixer = null;
   let subductionTime = 0;
   let pinchActive = false;
+  let pendingStageFiveSlopeHide = false;
 
   function preparePlacement(nextInstance) {
     reset();
@@ -96,6 +97,9 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
   function interruptActiveTransition(previousStage, targetStage) {
     crossfade = null;
+    if (targetStage !== 5) {
+      pendingStageFiveSlopeHide = false;
+    }
 
     if (targetStage !== 4 && !(previousStage === 4 && targetStage === 5)) {
       stageFourDirection = 0;
@@ -107,10 +111,13 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function updateStartingRockPlayback(previousStage, targetStage) {
-    if (previousStage === 5 && targetStage < 5) {
-      startStartingRockAnimation(1);
+    if (targetStage === 4 && previousStage < 4) {
+      pauseStartingRockAnimationAtEnd();
+    } else if (previousStage === 5 && targetStage < 5) {
+      startStartingRockAnimation(1, 0);
     } else if (previousStage < 5 && targetStage === 5) {
-      startStartingRockAnimation(-1);
+      pendingStageFiveSlopeHide = true;
+      startStartingRockAnimation(-1, startingRockDuration);
     }
   }
 
@@ -118,8 +125,8 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     if (targetStage === 4 && previousStage === 5) {
       startStageFourAnimation(1);
     } else if (targetStage === 4 && previousStage < 4) {
-      startStageFourAnimation(-1);
-    } else if (previousStage === 4 && targetStage === 5) {
+      pauseStageFourAnimationAtEnd();
+    } else if (previousStage < 5 && targetStage === 5) {
       startStageFourAnimation(-1);
     } else if (targetStage !== 4) {
       stageFourDirection = 0;
@@ -170,6 +177,12 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     seekStageFourAnimation(stageFourTime);
   }
 
+  function pauseStageFourAnimationAtEnd() {
+    stageFourDirection = 0;
+    stageFourTime = stageFourDuration;
+    seekStageFourAnimation(stageFourTime);
+  }
+
   function seekStageFourAnimation(time) {
     stageFourActions.forEach((action) => {
       action.enabled = true;
@@ -178,8 +191,14 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     stageFourMixer.setTime(time);
   }
 
-  function startStartingRockAnimation(direction) {
+  function startStartingRockAnimation(direction, startTime = startingRockTime) {
+    seekStartingRockAnimation(startTime);
     startingRockDirection = direction;
+  }
+
+  function pauseStartingRockAnimationAtEnd() {
+    startingRockDirection = 0;
+    seekStartingRockAnimation(startingRockDuration);
   }
 
   function seekStartingRockAnimation(time) {
@@ -225,6 +244,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     updateCrossfade(deltaSeconds);
     updateStageFourAnimation(deltaSeconds);
     updateStartingRockAnimation(deltaSeconds);
+    updateStageFiveSlopeVisibility();
     updateSubductionAnimation(deltaSeconds);
   }
 
@@ -293,6 +313,25 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       seekStartingRockAnimation(reachedEnd ? startingRockDuration : 0);
       startingRockDirection = 0;
     }
+  }
+
+  function updateStageFiveSlopeVisibility() {
+    if (!pendingStageFiveSlopeHide || currentStage !== 5 || crossfade) {
+      return;
+    }
+
+    const endpointTolerance = 0.000001;
+    const animationsAtStart = !stageFourDirection
+      && !startingRockDirection
+      && stageFourTime <= endpointTolerance
+      && startingRockTime <= endpointTolerance;
+    if (!animationsAtStart) {
+      return;
+    }
+
+    instance.nodes.Slope.visible = false;
+    setObjectOpacity(instance.nodes.Slope, 1);
+    pendingStageFiveSlopeHide = false;
   }
 
   function updateSubductionAnimation(deltaSeconds) {
@@ -391,6 +430,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     subductionMixer = null;
     subductionTime = 0;
     pinchActive = false;
+    pendingStageFiveSlopeHide = false;
   }
 
   return {

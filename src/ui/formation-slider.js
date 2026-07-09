@@ -10,7 +10,7 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
 
     ui.formationRange.addEventListener("pointerdown", () => {
       gestureCommitted = false;
-      ui.formationSlider.classList.remove("is-prompting");
+      ui.formationSlider.classList.remove("is-prompting", "is-activation-prompting");
       ui.formationSlider.classList.add("is-dragging");
     });
 
@@ -52,6 +52,10 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     const accepted = onStepSelected(requestedStep, currentStep);
     if (accepted) {
       currentStep = requestedStep;
+      ui.formationSlider.classList.remove("is-activation-prompting");
+      ui.formationSlider.classList.add("is-prompting");
+    } else if (currentStep === 0) {
+      ui.formationSlider.classList.add("is-activation-prompting");
     }
     renderSliderValue(currentStep, true);
   }
@@ -84,7 +88,8 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
 
     currentStep = 0;
     gestureCommitted = false;
-    ui.formationSlider.classList.add("is-prompting");
+    ui.formationSlider.classList.remove("is-prompting");
+    ui.formationSlider.classList.add("is-activation-prompting");
     renderSliderValue(currentStep, true);
   }
 
