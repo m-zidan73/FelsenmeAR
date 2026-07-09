@@ -350,6 +350,11 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     });
     EventBus.on("sequence_completed", (data) => {
       if (data && data.trigger === "state:Stage1") {
+        audioManager.playSequence(
+          ["11b. thwo continers.mp3", "11c. the magma rises.mp3", "11d.as.mp3"],
+          true,
+          "event:post_stage1"
+        );
         tutorialController.addMessage("Tap Next Chapter to explore this stage.");
       }
     });

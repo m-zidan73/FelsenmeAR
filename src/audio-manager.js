@@ -92,7 +92,7 @@ export function createAudioManager({ audioMapUrl }) {
     const audio = playClip(clip, true);
     if (audio) {
       audio.onended = () => {
-        // Gap applies only BEFORE the last clip in the sequence
+        if (currentAudio === audio) currentAudio = null;
         if (sequenceGap > 0 && sequenceIndex === sequenceClips.length - 1) {
           const g = sequenceGap;
           sequenceGap = 0;
