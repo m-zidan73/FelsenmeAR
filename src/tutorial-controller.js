@@ -8,7 +8,6 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
   let autoCollapseTimer = null;
   let collapseEnabled = false;
   let hasPinched = false;
-  let stage1Seen = false;
 
   function pushToHistory(text) {
     if (!text) return;
@@ -105,9 +104,7 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
   });
 
   const unsubStageChanged = EventBus.on("stage_changed", (data) => {
-    if (data && data.stage === 1 && !stage1Seen) {
-      stage1Seen = true;
-      addMessage("Use your fingers to move the tectonic plates");
+    if (data && data.stage === 1) {
       collapseEnabled = true;
     }
   });
@@ -123,7 +120,6 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
     show();
     hasPinched = false;
     collapseEnabled = false;
-    stage1Seen = false;
   });
 
   const unsubSessionEnd = EventBus.on("session_ended", () => {
