@@ -2,48 +2,48 @@
   "stages": [
     {
       "index": 5,
-      "name": "5 – Present (Gelifluction / Sorting)",
+      "name": "5. Gelifluction",
       "era": "",
       "epoch": "~2.6 Ma – Present",
       "rockType": "",
       "plateName": "",
-      "description": "Freeze-thaw cycles sort boulders by size"
+      "description": "Freeze-thaw cycles sort blocks by size"
     },
     {
       "index": 4,
-      "name": "4 – Rounding (Woolsack Weathering)",
+      "name": "4. Woolsack Weathering",
       "era": "",
       "epoch": "~50 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Acidic groundwater rounds the sharp edges"
+      "description": "Acidic water dissolves edges into grus"
     },
     {
       "index": 3,
-      "name": "3 – Fracturing (Cooling Joints / Diaclasas)",
+      "name": "3. Diaclasas",
       "era": "",
       "epoch": "~300 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Thermal contraction cracks the rock into blocks"
+      "description": "Cooling contractions create orthogonal fractures"
     },
     {
       "index": 2,
-      "name": "2 – Pluton Formation",
+      "name": "2. Pluton",
       "era": "",
       "epoch": "~340–330 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Magma cools and crystallises slowly underground"
+      "description": "Slow crystallisation of the magma chamber"
     },
     {
       "index": 1,
-      "name": "1 – Magma Generation (Subduction)",
+      "name": "1. Subduction Magma",
       "era": "",
       "epoch": "~340 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Partial melting of mantle and crust"
+      "description": "Tectonic plates converge, melt mantle and crust"
     }
   ],
   "pinch": {
