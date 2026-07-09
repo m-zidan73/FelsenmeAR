@@ -374,11 +374,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     });
     EventBus.on("sequence_completed", (data) => {
       if (data && data.trigger === "state:Stage1") {
-        audioManager.playSequence(
-          ["11a__.mp3", "11b__.mp3", "11c__.mp3"],
-          true,
-          "event:post_stage1"
-        );
+        subductionElapsed = 0;
       }
     });
     EventBus.on("next_chapter", () => {
@@ -464,6 +460,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
           }
         }
       } else if (!pinchActive && currentStage === 1) {
+        subductionElapsed = 0;
         lastEmittedSubductionThreshold = 0;
         emittedPinchPhase = 0;
       }
