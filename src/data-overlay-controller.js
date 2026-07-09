@@ -1,33 +1,6 @@
 import { EventBus } from "./event-bus.js";
 import { ExperienceStateManager } from "./state-manager.js";
 
-const PINCH_STATS = {
-  1: {
-    name: "Continental Collision",
-    era: "Variscan Orogeny",
-    epoch: "~340 Ma",
-    rockType: "",
-    plateName: "Avalonia + Armorica",
-    description: ""
-  },
-  2: {
-    name: "Magma Ascent",
-    era: "",
-    epoch: "",
-    rockType: "",
-    plateName: "",
-    description: "Depth: ~12 km | Process: Partial melting + buoyancy"
-  },
-  3: {
-    name: "Pluton Solidified",
-    era: "",
-    epoch: "",
-    rockType: "Quartz Diorite (Granodiorite)",
-    plateName: "",
-    description: "Cooling time: millions of years"
-  }
-};
-
 export function createDataOverlayController({
   stageDataUrl,
   nameElement,
@@ -38,6 +11,7 @@ export function createDataOverlayController({
   descriptionElement
 }) {
   let stageData = [];
+  let pinchData = null;
   let loaded = false;
 
   const elements = { nameElement, eraElement, epochElement, rockTypeElement, plateElement, descriptionElement };
@@ -75,6 +49,7 @@ export function createDataOverlayController({
       const res = await fetch(stageDataUrl);
       const json = await res.json();
       stageData = json.stages || [];
+      pinchData = json.pinch || null;
       loaded = true;
     } catch (e) {
       console.warn("DataOverlay: failed to load stage data", e);
@@ -101,23 +76,14 @@ export function createDataOverlayController({
   });
 
   const unsubState = ExperienceStateManager.onStateChanged((newState) => {
-    if (newState === "PinchReady") {
-      showData(PINCH_STATS[1]);
-    } else if (newState === "TrackingLost") {
-      hideAll();
+    if (newState === "PinchReady" && pinchData) {
+      showData(pinchData);
     } else if (newState === "SliderActive") {
       showStageData(5);
     } else if (newState === "PinchActive") {
       showStageData(1);
-    } else if (newState === "Aligning" || newState === "Aligned" || newState === "RockRising" || newState === "SessionEnded") {
+    } else if (newState !== "PinchReady" && newState !== "SliderActive" && newState !== "PinchActive") {
       hideAll();
-    }
-  });
-
-  const unsubPinchPhase = EventBus.on("pinch_phase", (data) => {
-    if (data && typeof data.phase === "number") {
-      const stats = PINCH_STATS[data.phase];
-      if (stats) showData(stats);
     }
   });
 
@@ -139,9 +105,8 @@ export function createDataOverlayController({
     unsubStage();
     unsubFormation();
     unsubState();
-    unsubPinchPhase();
     unsubPlateTouched();
   }
 
-  return { load, showStageData, hideAll, showFormattedStats, dispose };
+  return { load, showStageData, hideAll, dispose };
 }

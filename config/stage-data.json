@@ -2,48 +2,52 @@
   "stages": [
     {
       "index": 5,
-      "name": "Gelifluction (Sorting)",
-      "era": "Quaternary Period",
-      "epoch": "~2.6 Ma – 10,000 years ago",
-      "rockType": "Granodiorite",
+      "name": "Stage 5 – Present (Gelifluction / Sorting)",
+      "era": "",
+      "epoch": "",
+      "rockType": "",
       "plateName": "",
-      "description": ""
+      "description": "Freeze-thaw cycles sort boulders by size"
     },
     {
       "index": 4,
-      "name": "Woolsack Weathering (Rounding)",
-      "era": "Tertiary Period",
-      "epoch": "~50 Ma",
-      "rockType": "Quartz Diorite",
+      "name": "Stage 4 – Rounding (Woolsack Weathering)",
+      "era": "",
+      "epoch": "",
+      "rockType": "",
       "plateName": "",
-      "description": "Process: Chemical weathering by acidic water"
+      "description": "Acidic groundwater rounds the sharp edges"
     },
     {
       "index": 3,
-      "name": "Cooling Joints (Diaclasas)",
+      "name": "Stage 3 – Fracturing (Cooling Joints / Diaclasas)",
       "era": "",
-      "epoch": "~300 Ma",
-      "rockType": "Quartz Diorite",
+      "epoch": "",
+      "rockType": "",
       "plateName": "",
-      "description": "Process: Thermal contraction"
+      "description": "Thermal contraction cracks the rock into blocks"
     },
     {
       "index": 2,
-      "name": "Pluton Formation",
-      "era": "Variscan Orogeny",
-      "epoch": "~340–330 Ma",
-      "rockType": "Quartz Diorite",
+      "name": "Stage 2 – Pluton Formation",
+      "era": "",
+      "epoch": "",
+      "rockType": "",
       "plateName": "",
-      "description": "Depth: ~10–15 km"
+      "description": "Magma cools and crystallises slowly underground"
     },
     {
       "index": 1,
-      "name": "Magma Generation",
-      "era": "Subduction Zone",
-      "epoch": "~340 Ma",
-      "rockType": "Mantle + Crustal Melts",
+      "name": "Stage 1 – Magma Generation (Subduction)",
+      "era": "",
+      "epoch": "",
+      "rockType": "",
       "plateName": "",
-      "description": "Depth: ~12 km"
+      "description": "Partial melting of mantle and crust produces magma"
     }
-  ]
+  ],
+  "pinch": {
+    "name": "During Pinch Interaction (Collision)",
+    "description": "Continental collision forces one plate beneath another"
+  }
 }
