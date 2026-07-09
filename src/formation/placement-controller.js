@@ -104,6 +104,8 @@ export function createPlacementController({
     setFormationSliderVisible(false);
     resetFormationSlider();
     updateHud("Move the iPad to detect a plane, then tap the screen to place the model.");
+    var badge = document.getElementById("rockInfoBadge");
+    if (badge) { badge.hidden = true; }
   }
 
   return {

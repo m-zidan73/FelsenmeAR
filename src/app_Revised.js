@@ -307,7 +307,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
     initFormationSlider();
-    updateSliderTimeLabel(0);
+    rockBadge.hidden = true;
 
     ui.formationRange.addEventListener("input", (event) => {
       updateSliderTimeLabel(event.target.value);
