@@ -17,6 +17,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   let startingRockDirection = 0;
   let subductionMixer = null;
   let subductionTime = 0;
+  let subductionComplete = false;
   let pinchActive = false;
   let pendingStageFiveSlopeHide = false;
 
@@ -74,6 +75,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
       isActivated = true;
       crossfade = null;
+      resetSubductionAnimation();
       applyStageTransition(targetStage);
       startStartingRockAnimation(1);
       updateHud("Stage 1 ready.");
@@ -87,6 +89,9 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     const previousStage = currentStage;
     currentStage = targetStage;
     interruptActiveTransition(previousStage, targetStage);
+    if (targetStage === 1) {
+      resetSubductionAnimation();
+    }
     applyStageTransition(targetStage);
     updateStartingRockPlayback(previousStage, targetStage);
     updateStageFourPlayback(previousStage, targetStage);
@@ -335,20 +340,34 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function updateSubductionAnimation(deltaSeconds) {
-    if (!pinchActive || !isActivated || currentStage !== 1 || !subductionMixer) {
+    if (!pinchActive || subductionComplete || !isActivated || currentStage !== 1 || !subductionMixer) {
       return;
     }
 
-    subductionTime = Math.min(instance.subductionClip.duration, subductionTime + deltaSeconds);
+    const duration = instance.subductionClip.duration;
+    subductionTime = Math.min(duration, subductionTime + deltaSeconds);
     subductionMixer.setTime(subductionTime);
+
+    const endpointTolerance = 0.000001;
+    if (subductionTime >= duration - endpointTolerance) {
+      subductionTime = duration;
+      subductionMixer.setTime(subductionTime);
+      subductionComplete = true;
+      pinchActive = false;
+    }
   }
 
   function setPinchActive(isActive) {
-    pinchActive = Boolean(isActive) && isActivated && currentStage === 1;
+    pinchActive = Boolean(isActive)
+      && Boolean(instance)
+      && isActivated
+      && currentStage === 1
+      && !subductionComplete;
   }
 
   function resetSubductionAnimation() {
     pinchActive = false;
+    subductionComplete = false;
     subductionTime = 0;
     if (subductionMixer) {
       subductionMixer.setTime(0);
@@ -429,6 +448,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     startingRockDirection = 0;
     subductionMixer = null;
     subductionTime = 0;
+    subductionComplete = false;
     pinchActive = false;
     pendingStageFiveSlopeHide = false;
   }
