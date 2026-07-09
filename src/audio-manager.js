@@ -104,14 +104,15 @@ export function createAudioManager({ audioMapUrl }) {
   }
 
   function playSequence(clips, interrupt = true, trigger = "", gap = 0) {
-    if (!clips || clips.length === 0) return;
-    if (currentAudio && !interrupt) return;
+    if (!clips || clips.length === 0) return false;
+    if (currentAudio && !interrupt) return false;
     pendingRetry = null;
     sequenceClips = clips;
     sequenceIndex = 0;
     sequenceTrigger = trigger;
     sequenceGap = gap;
     advanceSequence();
+    return true;
   }
 
   function findMapping(trigger) {
@@ -171,10 +172,9 @@ export function createAudioManager({ audioMapUrl }) {
     if (!data || typeof data.phase !== "number") return;
     const key = "pinch_phase:" + data.phase;
     if (playedOnce.has(key)) return;
-    playedOnce.add(key);
     const mapping = findMapping("event:" + key);
-    if (mapping && mapping.clips) {
-      playSequence(mapping.clips, mapping.interrupt !== false, "event:" + key);
+    if (mapping && mapping.clips && playSequence(mapping.clips, mapping.interrupt !== false, "event:" + key)) {
+      playedOnce.add(key);
     }
   }
 
