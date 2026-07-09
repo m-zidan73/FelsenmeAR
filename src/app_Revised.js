@@ -23,15 +23,6 @@ import { createUIPromptController } from "./ui-prompt-controller.js";
 import { createAudioManager } from "./audio-manager.js";
 import { createDataOverlayController } from "./data-overlay-controller.js";
 
-const STAGE_DATA = [
-  { stage: 5, name: "5 – Present (Gelifluction / Sorting)", desc: "Freeze-thaw cycles sort boulders by size" },
-  { stage: 4, name: "4 – Rounding (Woolsack Weathering)", desc: "Acidic groundwater rounds the sharp edges" },
-  { stage: 3, name: "3 – Fracturing (Cooling Joints / Diaclasas)", desc: "Thermal contraction cracks the rock into blocks" },
-  { stage: 2, name: "2 – Pluton Formation", desc: "Magma cools and crystallises slowly underground" },
-  { stage: 1, name: "1 – Magma Generation (Subduction)", desc: "Partial melting of mantle and crust" },
-  { stage: "pinch", name: "Collision", desc: "Continental collision forces one plate beneath another" }
-];
-
 (function () {
   installRuntimeErrorCapture();
 
@@ -273,7 +264,8 @@ const STAGE_DATA = [
   function updateSliderTimeLabel(rawSliderValue) {
     const numericValue = THREE.MathUtils.clamp(Number(rawSliderValue) || 0, 0, 4);
     const stepIndex = Math.round(numericValue);
-    const data = STAGE_DATA[stepIndex];
+    const stageIndex = stepIndex + 1;
+    const data = dataOverlayController.getStageData().find(s => s.index === stageIndex);
     if (!sliderTimeLabel || !data) return;
     sliderTimeLabel.hidden = false;
     sliderTimeLabel.textContent = data.epoch;
@@ -282,10 +274,10 @@ const STAGE_DATA = [
   }
 
   function updateRockBadge(stageIndex) {
-    const data = STAGE_DATA.find(s => s.stage === stageIndex);
+    const data = dataOverlayController.getStageData().find(s => s.index === stageIndex);
     if (!data || !rockBadge) return;
     if (rockBadgeMaterial) rockBadgeMaterial.textContent = data.name;
-    if (rockBadgeEra) rockBadgeEra.textContent = data.desc;
+    if (rockBadgeEra) rockBadgeEra.textContent = data.description;
     rockBadge.hidden = false;
     rockBadge.style.animation = "none";
     void rockBadge.offsetHeight;
@@ -346,7 +338,15 @@ const STAGE_DATA = [
     });
     EventBus.on("next_chapter", () => {
       ExperienceStateManager.setState(ExperienceState.PinchReady);
-      updateRockBadge("pinch");
+      const p = dataOverlayController.getPinchData();
+      if (p && rockBadge) {
+        rockBadgeMaterial.textContent = p.name;
+        rockBadgeEra.textContent = p.description;
+        rockBadge.hidden = false;
+        rockBadge.style.animation = "none";
+        void rockBadge.offsetHeight;
+        rockBadge.style.animation = "badgeIn 350ms ease";
+      }
     });
     EventBus.on("subduction_progress", (data) => {
       if (data && data.progress >= 1) {

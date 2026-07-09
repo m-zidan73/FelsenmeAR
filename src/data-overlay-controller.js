@@ -108,5 +108,5 @@ export function createDataOverlayController({
     unsubPlateTouched();
   }
 
-  return { load, showStageData, hideAll, dispose };
+  return { load, showStageData, hideAll, dispose, getStageData: () => stageData, getPinchData: () => pinchData };
 }

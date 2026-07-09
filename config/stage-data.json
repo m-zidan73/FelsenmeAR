@@ -2,52 +2,52 @@
   "stages": [
     {
       "index": 5,
-      "name": "Stage 5 – Present (Gelifluction / Sorting)",
+      "name": "5 – Present (Gelifluction / Sorting)",
       "era": "",
-      "epoch": "",
+      "epoch": "~2.6 Ma – Present",
       "rockType": "",
       "plateName": "",
       "description": "Freeze-thaw cycles sort boulders by size"
     },
     {
       "index": 4,
-      "name": "Stage 4 – Rounding (Woolsack Weathering)",
+      "name": "4 – Rounding (Woolsack Weathering)",
       "era": "",
-      "epoch": "",
+      "epoch": "~50 Ma",
       "rockType": "",
       "plateName": "",
       "description": "Acidic groundwater rounds the sharp edges"
     },
     {
       "index": 3,
-      "name": "Stage 3 – Fracturing (Cooling Joints / Diaclasas)",
+      "name": "3 – Fracturing (Cooling Joints / Diaclasas)",
       "era": "",
-      "epoch": "",
+      "epoch": "~300 Ma",
       "rockType": "",
       "plateName": "",
       "description": "Thermal contraction cracks the rock into blocks"
     },
     {
       "index": 2,
-      "name": "Stage 2 – Pluton Formation",
+      "name": "2 – Pluton Formation",
       "era": "",
-      "epoch": "",
+      "epoch": "~340–330 Ma",
       "rockType": "",
       "plateName": "",
       "description": "Magma cools and crystallises slowly underground"
     },
     {
       "index": 1,
-      "name": "Stage 1 – Magma Generation (Subduction)",
+      "name": "1 – Magma Generation (Subduction)",
       "era": "",
-      "epoch": "",
+      "epoch": "~340 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Partial melting of mantle and crust produces magma"
+      "description": "Partial melting of mantle and crust"
     }
   ],
   "pinch": {
-    "name": "During Pinch Interaction (Collision)",
+    "name": "Collision",
     "description": "Continental collision forces one plate beneath another"
   }
 }
