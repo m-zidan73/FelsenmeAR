@@ -3,7 +3,7 @@
     { "trigger": "state:Ready", "clips": ["3.Tap.mp3"], "interrupt": true },
     { "trigger": "state:Scanning", "clips": ["1c. Lets unvocer it.mp3"], "interrupt": true },
     { "trigger": "state:PlaneDetected", "clips": ["3b. aling.mp3"] },
-    { "trigger": "state:FormationPlaced", "clips": ["4. ThisRockshaveaLongHistory.mp3", "4.Slider.mp3"], "interrupt": true },
+    { "trigger": "state:FormationPlaced", "clips": ["4. ThisRockshaveaLongHistory.mp3", "4. slideee.mp3"], "interrupt": true },
     { "trigger": "state:Stage5", "clips": ["3a. you are looking.mp3", "3b. over millios on feaers.mp3"], "interrupt": true },
     { "trigger": "state:Stage4", "clips": ["4a. about 50 milion.mp3", "4b. Rainwater seeped.mp3"], "interrupt": true },
     { "trigger": "state:Stage3", "clips": ["5a. aroud 300 million.mp3", "5b. as it cooled.mp3"], "interrupt": true },
