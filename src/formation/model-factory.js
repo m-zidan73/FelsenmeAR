@@ -174,6 +174,7 @@ export function createGelifluctionModelFactory({ THREE }) {
     const offsetY = 0.12;
     const labelHeight = 0.1;
     const labels = {};
+    let lastLabelPos = null;
 
     for (const name in LABEL_MATERIALS) {
       if (!Object.prototype.hasOwnProperty.call(LABEL_MATERIALS, name)) continue;
@@ -200,6 +201,7 @@ export function createGelifluctionModelFactory({ THREE }) {
         root.add(sprite);
         sprite.visible = false;
         labels[name] = sprite;
+        lastLabelPos = pos;
         continue;
       }
       const target = nodes[name];
@@ -212,11 +214,11 @@ export function createGelifluctionModelFactory({ THREE }) {
       root.add(sprite);
       sprite.visible = false;
       labels[name] = sprite;
+      lastLabelPos = pos;
     }
 
-    const depthPos = makeDepthLabelPosition(nodes);
-    const pos = depthPos || new THREE.Vector3(0, 0.4, 0);
-    const sprite = makeLabel(LABEL_DEPTH, pos, labelHeight);
+    const depthPos = lastLabelPos ? lastLabelPos.clone().add(new THREE.Vector3(0, 0.1, 0)) : new THREE.Vector3(0, 0.5, 0);
+    const sprite = makeLabel(LABEL_DEPTH, depthPos, labelHeight);
     sprite.renderOrder = 999;
     sprite.material.depthTest = false;
     root.add(sprite);
@@ -224,23 +226,6 @@ export function createGelifluctionModelFactory({ THREE }) {
     labels[LABEL_DEPTH_KEY] = sprite;
 
     return labels;
-  }
-
-  function makeDepthLabelPosition(nodes) {
-    const crustNodes = [nodes.Earth_Crust_Right, nodes.Earth_Crust_Left].filter(Boolean);
-    const rockNodes = [nodes.Slope, nodes["1st Stage Rock"], nodes["2nd Stage Rock"], nodes["3rd Stage Rock"], nodes.Starting_Rock, nodes.Surrounding_Rocks].filter(Boolean);
-    const allNodes = crustNodes.concat(rockNodes);
-    if (!allNodes.length) return null;
-    const box = new THREE.Box3();
-    let first = true;
-    for (const n of allNodes) {
-      const b = new THREE.Box3().setFromObject(n);
-      if (first) { box.copy(b); first = false; }
-      else { box.union(b); }
-    }
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    return new THREE.Vector3(center.x, center.y + size.y * 0.5 + 0.4, center.z);
   }
 
   function makeLabel(text, worldPos, height) {
