@@ -271,6 +271,14 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     sliderTimeLabel.textContent = data.epoch;
     const percent = 10 + (numericValue / 4) * 80;
     sliderTimeLabel.style.left = percent + "%";
+    if (rockBadge && data) {
+      if (rockBadgeMaterial) rockBadgeMaterial.textContent = data.name;
+      if (rockBadgeEra) rockBadgeEra.textContent = data.description;
+      rockBadge.hidden = false;
+      rockBadge.style.animation = "none";
+      void rockBadge.offsetHeight;
+      rockBadge.style.animation = "badgeIn 350ms ease";
+    }
   }
 
   function updateRockBadge(stageIndex) {
@@ -319,7 +327,6 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
       }
     });
     EventBus.on("formation_placed", () => {
-      updateRockBadge(1);
       updateSliderTimeLabel(0);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
       if (state.formationLabels) {

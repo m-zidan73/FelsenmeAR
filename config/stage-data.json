@@ -2,43 +2,43 @@
   "stages": [
     {
       "index": 5,
-      "name": "5. Gelifluction",
+      "name": "Gelifluction Sorting",
       "era": "",
       "epoch": "~2.6 Ma – Present",
       "rockType": "",
       "plateName": "",
-      "description": "Freeze-thaw cycles sort blocks by size"
+      "description": "Freeze-thaw cycles separate blocks by size"
     },
     {
       "index": 4,
-      "name": "4. Woolsack Weathering",
+      "name": "Woolsack Weathering",
       "era": "",
       "epoch": "~50 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Acidic water dissolves edges into grus"
+      "description": "Acidic water dissolves sharp edges into grus"
     },
     {
       "index": 3,
-      "name": "3. Diaclasas",
+      "name": "Thermal Fractures",
       "era": "",
       "epoch": "~300 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Cooling contractions create orthogonal fractures"
+      "description": "Contraction cracks rock in three directions"
     },
     {
       "index": 2,
-      "name": "2. Pluton",
+      "name": "Pluton Formation",
       "era": "",
       "epoch": "~340–330 Ma",
       "rockType": "",
       "plateName": "",
-      "description": "Slow crystallisation of the magma chamber"
+      "description": "Slow cooling crystallises the magma body"
     },
     {
       "index": 1,
-      "name": "1. Subduction Magma",
+      "name": "Subduction Magma",
       "era": "",
       "epoch": "~340 Ma",
       "rockType": "",
