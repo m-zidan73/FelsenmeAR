@@ -248,9 +248,9 @@ body.in-camera-ar .main-menu {
 
 .tutorial-toggle {
   position: fixed;
-  top: max(12px, env(safe-area-inset-top));
+  top: calc(max(12px, env(safe-area-inset-top)) + 76px);
   left: max(12px, env(safe-area-inset-left));
-  z-index: 26;
+  z-index: 27;
   display: flex;
   align-items: flex-start;
   gap: 6px;
@@ -258,8 +258,8 @@ body.in-camera-ar .main-menu {
 }
 
 .tutorial-icon-btn {
-  width: clamp(44px, 7vw, 56px);
-  height: clamp(44px, 7vw, 56px);
+  width: clamp(48px, 8vw, 68px);
+  height: clamp(48px, 8vw, 68px);
   padding: 0;
   border: 2px solid rgba(135, 206, 235, 0.5);
   border-radius: 999px;
