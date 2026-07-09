@@ -24,11 +24,12 @@ import { createAudioManager } from "./audio-manager.js";
 import { createDataOverlayController } from "./data-overlay-controller.js";
 
 const STAGE_DATA = [
-  { stage: 1, name: "Magma Generation", epoch: "~340 Ma", era: "Subduction Zone", rock: "Mantle + Crustal Melts" },
-  { stage: 2, name: "Pluton Formation", epoch: "~340–330 Ma", era: "Variscan Orogeny", rock: "Quartz Diorite" },
-  { stage: 3, name: "Cooling Joints (Diaclasas)", epoch: "~300 Ma", era: "", rock: "Quartz Diorite" },
-  { stage: 4, name: "Woolsack Weathering (Rounding)", epoch: "~50 Ma", era: "Tertiary Period", rock: "Quartz Diorite" },
-  { stage: 5, name: "Gelifluction (Sorting)", epoch: "~2.6 Ma – 10,000 years ago", era: "Quaternary Period", rock: "Granodiorite" }
+  { stage: 5, name: "5 – Present (Gelifluction / Sorting)", desc: "Freeze-thaw cycles sort boulders by size" },
+  { stage: 4, name: "4 – Rounding (Woolsack Weathering)", desc: "Acidic groundwater rounds the sharp edges" },
+  { stage: 3, name: "3 – Fracturing (Cooling Joints / Diaclasas)", desc: "Thermal contraction cracks the rock into blocks" },
+  { stage: 2, name: "2 – Pluton Formation", desc: "Magma cools and crystallises slowly underground" },
+  { stage: 1, name: "1 – Magma Generation (Subduction)", desc: "Partial melting of mantle and crust" },
+  { stage: "pinch", name: "Collision", desc: "Continental collision forces one plate beneath another" }
 ];
 
 (function () {
@@ -283,8 +284,8 @@ const STAGE_DATA = [
   function updateRockBadge(stageIndex) {
     const data = STAGE_DATA.find(s => s.stage === stageIndex);
     if (!data || !rockBadge) return;
-    if (rockBadgeMaterial) rockBadgeMaterial.textContent = data.rock;
-    if (rockBadgeEra) rockBadgeEra.textContent = data.era;
+    if (rockBadgeMaterial) rockBadgeMaterial.textContent = data.name;
+    if (rockBadgeEra) rockBadgeEra.textContent = data.desc;
     rockBadge.hidden = false;
     rockBadge.style.animation = "none";
     void rockBadge.offsetHeight;
@@ -345,6 +346,7 @@ const STAGE_DATA = [
     });
     EventBus.on("next_chapter", () => {
       ExperienceStateManager.setState(ExperienceState.PinchReady);
+      updateRockBadge("pinch");
     });
     EventBus.on("subduction_progress", (data) => {
       if (data && data.progress >= 1) {
