@@ -10,6 +10,11 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   let stageFourTime = 0;
   let stageFourDuration = 0;
   let stageFourDirection = 0;
+  let startingRockMixer = null;
+  let startingRockAction = null;
+  let startingRockTime = 0;
+  let startingRockDuration = 0;
+  let startingRockDirection = 0;
   let subductionMixer = null;
   let subductionTime = 0;
   let pinchActive = false;
@@ -38,6 +43,14 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     });
     seekStageFourAnimation(0);
 
+    startingRockDuration = instance.startingRockClip.duration;
+    startingRockMixer = new THREE.AnimationMixer(instance.model);
+    startingRockAction = startingRockMixer.clipAction(instance.startingRockClip);
+    startingRockAction.setLoop(THREE.LoopOnce, 1);
+    startingRockAction.clampWhenFinished = true;
+    startingRockAction.play();
+    seekStartingRockAnimation(0);
+
     subductionMixer = new THREE.AnimationMixer(instance.model);
     const subductionAction = subductionMixer.clipAction(instance.subductionClip);
     subductionAction.setLoop(THREE.LoopOnce, 1);
@@ -49,7 +62,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function requestStage(targetStage) {
-    if (!instance || Math.abs(targetStage - currentStage) !== 1) {
+    if (!instance || targetStage === currentStage || targetStage < 1 || targetStage > 5) {
       return false;
     }
 
@@ -57,12 +70,8 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     currentStage = targetStage;
     interruptActiveTransition(previousStage, targetStage);
     applyStageTransition(targetStage);
-
-    if (previousStage === 5 && targetStage === 4) {
-      startStageFourAnimation(1);
-    } else if (previousStage === 4 && targetStage === 5) {
-      startStageFourAnimation(-1);
-    }
+    updateStartingRockPlayback(previousStage, targetStage);
+    updateStageFourPlayback(previousStage, targetStage);
 
     updateHud("Stage " + targetStage + " ready.");
     return true;
@@ -72,12 +81,30 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     crossfade = null;
     revealDelaySeconds = null;
 
-    if (previousStage !== 4 || targetStage !== 5) {
+    if (targetStage !== 4 && !(previousStage === 4 && targetStage === 5)) {
       stageFourDirection = 0;
     }
 
     if (previousStage === 1 && targetStage !== 1) {
       resetSubductionAnimation();
+    }
+  }
+
+  function updateStartingRockPlayback(previousStage, targetStage) {
+    if (previousStage === 5 && targetStage < 5) {
+      startStartingRockAnimation(1);
+    } else if (previousStage < 5 && targetStage === 5) {
+      startStartingRockAnimation(-1);
+    }
+  }
+
+  function updateStageFourPlayback(previousStage, targetStage) {
+    if (previousStage === 5 && targetStage === 4) {
+      startStageFourAnimation(1);
+    } else if (previousStage === 4 && targetStage === 5) {
+      startStageFourAnimation(-1);
+    } else if (targetStage !== 4) {
+      stageFourDirection = 0;
     }
   }
 
@@ -133,6 +160,19 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     stageFourMixer.setTime(time);
   }
 
+  function startStartingRockAnimation(direction) {
+    startingRockDirection = direction;
+  }
+
+  function seekStartingRockAnimation(time) {
+    startingRockTime = THREE.MathUtils.clamp(time, 0, startingRockDuration);
+    if (startingRockAction) {
+      startingRockAction.enabled = true;
+      startingRockAction.paused = false;
+    }
+    startingRockMixer.setTime(startingRockTime);
+  }
+
   function startCrossfade(outgoing, incoming) {
     const outgoingObjects = uniqueObjects(outgoing);
     const incomingObjects = uniqueObjects(incoming);
@@ -174,6 +214,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
     updateCrossfade(deltaSeconds);
     updateStageFourAnimation(deltaSeconds);
+    updateStartingRockAnimation(deltaSeconds);
     updateSubductionAnimation(deltaSeconds);
   }
 
@@ -225,6 +266,22 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     if (reachedEnd || reachedStart) {
       stageFourTime = reachedEnd ? stageFourDuration : 0;
       stageFourDirection = 0;
+    }
+  }
+
+  function updateStartingRockAnimation(deltaSeconds) {
+    if (!startingRockDirection || !startingRockMixer) {
+      return;
+    }
+
+    seekStartingRockAnimation(startingRockTime + deltaSeconds * startingRockDirection);
+
+    const endpointTolerance = 0.000001;
+    const reachedEnd = startingRockDirection > 0 && startingRockTime >= startingRockDuration - endpointTolerance;
+    const reachedStart = startingRockDirection < 0 && startingRockTime <= endpointTolerance;
+    if (reachedEnd || reachedStart) {
+      seekStartingRockAnimation(reachedEnd ? startingRockDuration : 0);
+      startingRockDirection = 0;
     }
   }
 
@@ -298,6 +355,10 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       stageFourMixer.stopAllAction();
       stageFourMixer.uncacheRoot(instance.model);
     }
+    if (instance && startingRockMixer) {
+      startingRockMixer.stopAllAction();
+      startingRockMixer.uncacheRoot(instance.model);
+    }
     if (instance && subductionMixer) {
       subductionMixer.stopAllAction();
       subductionMixer.uncacheRoot(instance.model);
@@ -312,6 +373,11 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     stageFourTime = 0;
     stageFourDuration = 0;
     stageFourDirection = 0;
+    startingRockMixer = null;
+    startingRockAction = null;
+    startingRockTime = 0;
+    startingRockDuration = 0;
+    startingRockDirection = 0;
     subductionMixer = null;
     subductionTime = 0;
     pinchActive = false;

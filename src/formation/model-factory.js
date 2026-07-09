@@ -26,21 +26,28 @@ export function createGelifluctionModelFactory({ THREE }) {
       throw new Error("Gelifluction model is missing nodes: " + missingNodes.join(", "));
     }
 
+    const startingRockClip = gltf.animations.find((clip) => clip.name === "Starting_RockAction");
+    if (!startingRockClip) {
+      throw new Error("Gelifluction model is missing Starting_RockAction");
+    }
+
     const subductionClip = gltf.animations.find((clip) => clip.name === "Subduction_Animation");
     if (!subductionClip) {
       throw new Error("Gelifluction model is missing Subduction_Animation");
     }
 
-    const stageFourClips = gltf.animations.filter((clip) => clip.name !== "Subduction_Animation");
-    if (stageFourClips.length !== 24) {
-      throw new Error("Expected 24 Stage 4 animation clips, found " + stageFourClips.length);
+    const stageFourClips = gltf.animations.filter((clip) => (
+      clip.name !== "Starting_RockAction" && clip.name !== "Subduction_Animation"
+    ));
+    if (stageFourClips.length !== 23) {
+      throw new Error("Expected 23 Stage 4 animation clips, found " + stageFourClips.length);
     }
 
-    return { stageFourClips, subductionClip };
+    return { stageFourClips, startingRockClip, subductionClip };
   }
 
   function createGelifluctionInstance(gltf) {
-    const { stageFourClips, subductionClip } = validateGelifluctionAsset(gltf);
+    const { stageFourClips, startingRockClip, subductionClip } = validateGelifluctionAsset(gltf);
     const root = new THREE.Group();
     root.name = "Gelifluction Root";
 
@@ -65,6 +72,7 @@ export function createGelifluctionModelFactory({ THREE }) {
       model,
       nodes,
       stageFourClips,
+      startingRockClip,
       subductionClip
     };
   }

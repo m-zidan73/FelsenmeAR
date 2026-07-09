@@ -1,7 +1,6 @@
 export function createFormationSlider({ ui, clamp, onStepSelected }) {
   const snapThreshold = 0.16;
   let currentStep = 4;
-  let gestureStartStep = 4;
   let gestureCommitted = false;
 
   function initFormationSlider() {
@@ -10,7 +9,6 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     }
 
     ui.formationRange.addEventListener("pointerdown", () => {
-      gestureStartStep = currentStep;
       gestureCommitted = false;
       ui.formationSlider.classList.remove("is-prompting");
       ui.formationSlider.classList.add("is-dragging");
@@ -21,14 +19,10 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     });
 
     ui.formationRange.addEventListener("change", (event) => {
-      if (!gestureCommitted && !ui.formationSlider.classList.contains("is-dragging")) {
-        gestureStartStep = currentStep;
-      }
       commitSliderGesture(event.target.value);
     });
 
     ui.formationRange.addEventListener("keydown", () => {
-      gestureStartStep = currentStep;
       gestureCommitted = false;
     });
 
@@ -55,10 +49,9 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
 
     gestureCommitted = true;
     const requestedStep = Math.round(clamp(Number(rawValue) || 0, 0, 4));
-    const adjacentStep = clamp(requestedStep, gestureStartStep - 1, gestureStartStep + 1);
-    const accepted = adjacentStep !== currentStep && onStepSelected(adjacentStep, currentStep);
+    const accepted = requestedStep !== currentStep && onStepSelected(requestedStep, currentStep);
     if (accepted) {
-      currentStep = adjacentStep;
+      currentStep = requestedStep;
     }
     renderSliderValue(currentStep, true);
   }
@@ -90,7 +83,6 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     }
 
     currentStep = 4;
-    gestureStartStep = 4;
     gestureCommitted = false;
     ui.formationSlider.classList.add("is-prompting");
     renderSliderValue(currentStep, true);
