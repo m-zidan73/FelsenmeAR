@@ -29,6 +29,15 @@ const LABEL_DEPTH = "Depth: ~12 km";
 const LABEL_DEPTH_KEY = "__depth_label";
 const LABEL_ROCK_COMP_KEY = "__rock_comp";
 
+const LABEL_DEPTHS = {
+  1: "Depth: ~12 km below surface",
+  2: "Depth: ~10–15 km",
+  3: "Depth: ~10 km",
+  4: "Surface Level",
+  5: "Surface Level"
+};
+const LABEL_DEPTH_KEY = "__depth_label";
+
 const LABEL_VISIBILITY = {
   5: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
   4: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
@@ -43,6 +52,44 @@ export function setLabelVisibilityByStage(labels, stage) {
     if (!Object.prototype.hasOwnProperty.call(labels, key)) continue;
     labels[key].visible = visibleKeys.indexOf(key) !== -1;
   }
+  const depthLabel = labels[LABEL_DEPTH_KEY];
+  if (depthLabel && LABEL_DEPTHS[stage]) {
+    updateLabelText(depthLabel, LABEL_DEPTHS[stage]);
+  }
+}
+}
+
+function updateLabelText(sprite, text) {
+  const canvas = sprite.material.map.image;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const fontSize = 64;
+  const padding = 20;
+  ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
+  const metrics = ctx.measureText(text);
+  canvas.width = metrics.width + padding * 2;
+  canvas.height = fontSize + padding * 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(8, 10, 12, 0.85)";
+  roundRect(ctx, 0, 0, canvas.width, canvas.height, 14);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(246, 239, 230, 0.2)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, 1, 1, canvas.width - 2, canvas.height - 2, 14);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f6efe6";
+  ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  sprite.material.map.needsUpdate = true;
+
+  const aspect = canvas.width / canvas.height;
+  const height = sprite.scale.y;
+  sprite.scale.set(height * aspect, height, 1);
 }
 
 export function createGelifluctionModelFactory({ THREE }) {
@@ -173,20 +220,34 @@ export function createGelifluctionModelFactory({ THREE }) {
       labels[name] = sprite;
     }
 
-    let target = nodes.Slope;
-    if (!target) target = nodes.Earth_Crust_Left || nodes.Earth_Crust_Right;
-    if (target) {
-      const bounds = new THREE.Box3().setFromObject(target);
-      const center = bounds.getCenter(new THREE.Vector3());
-      const size = bounds.getSize(new THREE.Vector3());
-      const pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
-      const sprite = makeLabel(LABEL_DEPTH, pos, labelHeight);
+    const depthPos = makeDepthLabelPosition(nodes);
+    if (depthPos) {
+      const sprite = makeLabel(LABEL_DEPTHS[1], depthPos, labelHeight);
       root.add(sprite);
       sprite.visible = false;
       labels[LABEL_DEPTH_KEY] = sprite;
     }
 
     return labels;
+  }
+
+  function makeDepthLabelPosition(nodes) {
+    const crustNodes = [nodes.Earth_Crust_Right, nodes.Earth_Crust_Left].filter(Boolean);
+    const rockNodes = [nodes.Slope, nodes["1st Stage Rock"], nodes["2nd Stage Rock"], nodes["3rd Stage Rock"], nodes.Starting_Rock, nodes.Surrounding_Rocks].filter(Boolean);
+
+    const allNodes = crustNodes.concat(rockNodes);
+    if (!allNodes.length) return null;
+
+    const box = new THREE.Box3();
+    let first = true;
+    for (const n of allNodes) {
+      const b = new THREE.Box3().setFromObject(n);
+      if (first) { box.copy(b); first = false; }
+      else { box.union(b); }
+    }
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    return new THREE.Vector3(center.x, center.y + size.y * 0.5 + 0.12, center.z);
   }
 
   function makeLabel(text, worldPos, height) {
