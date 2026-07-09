@@ -4,7 +4,7 @@ import { CONFIG } from "./config.js";
 import { installDebugHooks } from "./debug-hooks.js";
 import { getUiElements } from "./dom.js";
 import { createFormationModelLoader } from "./formation/model-loader.js";
-import { createGelifluctionModelFactory } from "./formation/model-factory.js";
+import { createGelifluctionModelFactory, setLabelVisibilityByStage } from "./formation/model-factory.js";
 import { createPlacementController } from "./formation/placement-controller.js";
 import { createGelifluctionStageController } from "./formation/stage-controller.js";
 import { createCanvasInteractionController } from "./interaction-controller.js";
@@ -320,12 +320,20 @@ const STAGE_DATA = [
     EventBus.on("stage_changed", (data) => {
       if (data && typeof data.stage === "number") {
         updateRockBadge(data.stage);
+        if (state.formationLabels) {
+          setLabelVisibilityByStage(state.formationLabels, data.stage);
+        }
       }
     });
     EventBus.on("formation_placed", () => {
       updateRockBadge(5);
       updateSliderTimeLabel(4);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
+      setTimeout(() => {
+        if (state.formationLabels) {
+          setLabelVisibilityByStage(state.formationLabels, 5);
+        }
+      }, CONFIG.stageFiveRevealDelaySeconds * 1000);
     });
     EventBus.on("alignment_quality", (data) => {
       if (data && data.quality > 0.95) {

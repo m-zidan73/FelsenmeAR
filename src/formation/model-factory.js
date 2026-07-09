@@ -19,6 +19,32 @@ const REQUIRED_NODE_NAMES = [
   "1st Stage Rock"
 ];
 
+const LABEL_MATERIALS = {
+  "1st Stage Rock": "Mantle + Crustal Melts",
+  "2nd Stage Rock": "Quartz Diorite",
+  "3rd Stage Rock": "Quartz Diorite",
+  "Surrounding_Rocks": "Granodiorite",
+  "Starting_Rock": "Granodiorite"
+};
+const LABEL_DEPTH = "Depth: ~12 km";
+const LABEL_DEPTH_KEY = "__depth_label";
+
+const LABEL_VISIBILITY = {
+  5: ["Starting_Rock", "Surrounding_Rocks", LABEL_DEPTH_KEY],
+  3: ["3rd Stage Rock"],
+  2: ["2nd Stage Rock"],
+  1: ["1st Stage Rock", LABEL_DEPTH_KEY]
+};
+LABEL_VISIBILITY[4] = LABEL_VISIBILITY[5];
+
+export function setLabelVisibilityByStage(labels, stage) {
+  const visibleKeys = LABEL_VISIBILITY[stage] || [];
+  for (const key in labels) {
+    if (!Object.prototype.hasOwnProperty.call(labels, key)) continue;
+    labels[key].visible = visibleKeys.indexOf(key) !== -1;
+  }
+}
+
 export function createGelifluctionModelFactory({ THREE }) {
   function validateGelifluctionAsset(gltf) {
     const missingNodes = REQUIRED_NODE_NAMES.filter((name) => !getImportedObjectByName(gltf.scene, name));
@@ -66,11 +92,13 @@ export function createGelifluctionModelFactory({ THREE }) {
     root.updateMatrixWorld(true);
     applyModelShadowSettings(root);
     addStartingRockOutline(nodes.Starting_Rock);
+    const labels = addFormationLabels(root, nodes);
 
     return {
       root,
       model,
       nodes,
+      labels,
       stageFourClips,
       startingRockClip,
       subductionClip
@@ -99,6 +127,100 @@ export function createGelifluctionModelFactory({ THREE }) {
       outline.renderOrder = 1;
       mesh.add(outline);
     });
+  }
+
+  function addFormationLabels(root, nodes) {
+    const offsetY = 0.12;
+    const labelHeight = 0.1;
+    const labels = {};
+
+    for (const name in LABEL_MATERIALS) {
+      if (!Object.prototype.hasOwnProperty.call(LABEL_MATERIALS, name)) continue;
+      const target = nodes[name];
+      if (!target) continue;
+      const bounds = new THREE.Box3().setFromObject(target);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
+      const pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
+      const sprite = makeLabel(LABEL_MATERIALS[name], pos, labelHeight);
+      root.add(sprite);
+      sprite.visible = false;
+      labels[name] = sprite;
+    }
+
+    let target = nodes.Slope;
+    if (!target) target = nodes.Earth_Crust_Left || nodes.Earth_Crust_Right;
+    if (target) {
+      const bounds = new THREE.Box3().setFromObject(target);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
+      const pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
+      const sprite = makeLabel(LABEL_DEPTH, pos, labelHeight);
+      root.add(sprite);
+      sprite.visible = false;
+      labels[LABEL_DEPTH_KEY] = sprite;
+    }
+
+    return labels;
+  }
+
+  function makeLabel(text, worldPos, height) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const fontSize = 64;
+    ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
+    const metrics = ctx.measureText(text);
+    const textWidth = metrics.width;
+    const padding = 20;
+    canvas.width = textWidth + padding * 2;
+    canvas.height = fontSize + padding * 2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(8, 10, 12, 0.85)";
+    roundRect(ctx, 0, 0, canvas.width, canvas.height, 14);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(246, 239, 230, 0.2)";
+    ctx.lineWidth = 2;
+    roundRect(ctx, 1, 1, canvas.width - 2, canvas.height - 2, 14);
+    ctx.stroke();
+
+    ctx.fillStyle = "#f6efe6";
+    ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      sizeAttenuation: true
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.renderOrder = 999;
+    const aspect = canvas.width / canvas.height;
+    sprite.scale.set(height * aspect, height, 1);
+    sprite.position.copy(worldPos);
+    sprite.name = "Label: " + text;
+    return sprite;
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
   }
 
   return { createGelifluctionInstance, validateGelifluctionAsset };

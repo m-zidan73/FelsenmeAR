@@ -25,6 +25,7 @@ export function createPlacementController({
 
     const formation = createGelifluctionInstance(state.modelAssets.gelifluction);
     state.formationRoot = formation.root;
+    state.formationLabels = formation.labels;
     orientFormationToCameraHeading();
     state.formationPlaced = true;
     state.scene.add(state.formationRoot);
@@ -94,6 +95,7 @@ export function createPlacementController({
     }
 
     state.formationRoot = null;
+    state.formationLabels = null;
     state.shadowReceiver = null;
     state.placementCenter.set(0, 0, 0);
     state.planeHeight = 0;
