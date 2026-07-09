@@ -3,7 +3,6 @@ import { getDescendantMeshes, setMeshesOpacity } from "../three-utils.js";
 export function createGelifluctionStageController({ config, THREE, updateHud }) {
   let instance = null;
   let currentStage = 5;
-  let busy = false;
   let revealDelaySeconds = null;
   let crossfade = null;
   let stageFourMixer = null;
@@ -19,7 +18,6 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     reset();
     instance = nextInstance;
     currentStage = 5;
-    busy = true;
     revealDelaySeconds = config.stageFiveRevealDelaySeconds;
 
     const nodes = managedNodes();
@@ -51,56 +49,74 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function requestStage(targetStage) {
-    if (!instance || busy || Math.abs(targetStage - currentStage) !== 1) {
+    if (!instance || Math.abs(targetStage - currentStage) !== 1) {
       return false;
     }
 
     const previousStage = currentStage;
     currentStage = targetStage;
-    busy = true;
-
-    if (previousStage === 1 && targetStage === 2) {
-      resetSubductionAnimation();
-    }
+    interruptActiveTransition(previousStage, targetStage);
+    applyStageTransition(targetStage);
 
     if (previousStage === 5 && targetStage === 4) {
       startStageFourAnimation(1);
     } else if (previousStage === 4 && targetStage === 5) {
       startStageFourAnimation(-1);
-    } else if (previousStage === 4 && targetStage === 3) {
-      startCrossfade(
-        [instance.nodes.Surrounding_Rocks, instance.nodes.Slope],
-        [instance.nodes.Earth_Crust_Right, instance.nodes["3rd Stage Rock"]]
-      );
-    } else if (previousStage === 3 && targetStage === 4) {
-      startCrossfade(
-        [instance.nodes.Earth_Crust_Right, instance.nodes["3rd Stage Rock"]],
-        [instance.nodes.Surrounding_Rocks, instance.nodes.Slope]
-      );
-    } else if (previousStage === 3 && targetStage === 2) {
-      startCrossfade(
-        [instance.nodes["3rd Stage Rock"]],
-        [instance.nodes["2nd Stage Rock"]]
-      );
-    } else if (previousStage === 2 && targetStage === 3) {
-      startCrossfade(
-        [instance.nodes["2nd Stage Rock"]],
-        [instance.nodes["3rd Stage Rock"]]
-      );
-    } else if (previousStage === 2 && targetStage === 1) {
-      startCrossfade(
-        [instance.nodes["2nd Stage Rock"]],
-        [instance.nodes["1st Stage Rock"], instance.nodes.Earth_Crust_Left]
-      );
-    } else if (previousStage === 1 && targetStage === 2) {
-      startCrossfade(
-        [instance.nodes["1st Stage Rock"], instance.nodes.Earth_Crust_Left],
-        [instance.nodes["2nd Stage Rock"]]
-      );
     }
 
-    updateHud("Stage " + targetStage + " transition in progress.");
+    updateHud("Stage " + targetStage + " ready.");
     return true;
+  }
+
+  function interruptActiveTransition(previousStage, targetStage) {
+    crossfade = null;
+    revealDelaySeconds = null;
+
+    if (previousStage !== 4 || targetStage !== 5) {
+      stageFourDirection = 0;
+    }
+
+    if (previousStage === 1 && targetStage !== 1) {
+      resetSubductionAnimation();
+    }
+  }
+
+  function applyStageTransition(targetStage) {
+    const targetObjects = stageObjects(targetStage);
+    const outgoingObjects = managedNodes().filter((object) => (
+      object.visible && getObjectOpacity(object) > 0 && !targetObjects.includes(object)
+    ));
+    const incomingObjects = targetObjects.filter((object) => (
+      !object.visible || getObjectOpacity(object) < 1
+    ));
+
+    if (outgoingObjects.length || incomingObjects.length) {
+      startCrossfade(outgoingObjects, incomingObjects);
+    }
+  }
+
+  function stageObjects(stage) {
+    if (stage === 5 || stage === 4) {
+      return [instance.nodes.Surrounding_Rocks, instance.nodes.Slope];
+    }
+
+    if (stage === 3) {
+      return [instance.nodes.Earth_Crust_Right, instance.nodes["3rd Stage Rock"]];
+    }
+
+    if (stage === 2) {
+      return [instance.nodes.Earth_Crust_Right, instance.nodes["2nd Stage Rock"]];
+    }
+
+    if (stage === 1) {
+      return [
+        instance.nodes.Earth_Crust_Right,
+        instance.nodes.Earth_Crust_Left,
+        instance.nodes["1st Stage Rock"]
+      ];
+    }
+
+    return [];
   }
 
   function startStageFourAnimation(direction) {
@@ -120,17 +136,25 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   function startCrossfade(outgoing, incoming) {
     const outgoingObjects = uniqueObjects(outgoing);
     const incomingObjects = uniqueObjects(incoming);
+    const outgoingEntries = outgoingObjects.map((object) => ({
+      object,
+      startOpacity: getObjectOpacity(object)
+    }));
+    const incomingEntries = incomingObjects.map((object) => ({
+      object,
+      startOpacity: getObjectOpacity(object)
+    }));
+
     outgoingObjects.forEach((object) => {
       object.visible = true;
-      setObjectOpacity(object, 1);
     });
     incomingObjects.forEach((object) => {
       object.visible = true;
-      setObjectOpacity(object, 0);
     });
+
     crossfade = {
-      outgoing: outgoingObjects,
-      incoming: incomingObjects,
+      outgoing: outgoingEntries,
+      incoming: incomingEntries,
       elapsedSeconds: 0
     };
   }
@@ -144,7 +168,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       revealDelaySeconds -= deltaSeconds;
       if (revealDelaySeconds <= 0) {
         revealDelaySeconds = null;
-        startCrossfade([], [instance.nodes.Surrounding_Rocks, instance.nodes.Slope]);
+        startCrossfade([], stageObjects(5));
       }
     }
 
@@ -164,21 +188,23 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       0,
       1
     );
-    crossfade.outgoing.forEach((object) => setObjectOpacity(object, 1 - progress));
-    crossfade.incoming.forEach((object) => setObjectOpacity(object, progress));
+    crossfade.outgoing.forEach(({ object, startOpacity }) => {
+      setObjectOpacity(object, startOpacity * (1 - progress));
+    });
+    crossfade.incoming.forEach(({ object, startOpacity }) => {
+      setObjectOpacity(object, startOpacity + (1 - startOpacity) * progress);
+    });
 
     if (progress < 1) {
       return;
     }
 
-    crossfade.outgoing.forEach((object) => {
+    crossfade.outgoing.forEach(({ object }) => {
       object.visible = false;
       setObjectOpacity(object, 1);
     });
-    crossfade.incoming.forEach((object) => setObjectOpacity(object, 1));
+    crossfade.incoming.forEach(({ object }) => setObjectOpacity(object, 1));
     crossfade = null;
-    busy = false;
-    updateHud("Stage " + currentStage + " ready.");
   }
 
   function updateStageFourAnimation(deltaSeconds) {
@@ -199,13 +225,11 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     if (reachedEnd || reachedStart) {
       stageFourTime = reachedEnd ? stageFourDuration : 0;
       stageFourDirection = 0;
-      busy = false;
-      updateHud("Stage " + currentStage + " ready.");
     }
   }
 
   function updateSubductionAnimation(deltaSeconds) {
-    if (!pinchActive || currentStage !== 1 || busy || !subductionMixer) {
+    if (!pinchActive || currentStage !== 1 || !subductionMixer) {
       return;
     }
 
@@ -214,7 +238,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function setPinchActive(isActive) {
-    pinchActive = Boolean(isActive) && currentStage === 1 && !busy;
+    pinchActive = Boolean(isActive) && currentStage === 1;
   }
 
   function resetSubductionAnimation() {
@@ -227,6 +251,26 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
   function setObjectOpacity(object, opacity) {
     setMeshesOpacity(getDescendantMeshes(object), opacity);
+  }
+
+  function getObjectOpacity(object) {
+    if (!object || !object.visible) {
+      return 0;
+    }
+
+    const materials = getDescendantMeshes(object).flatMap((mesh) => (
+      Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    )).filter(Boolean);
+
+    if (!materials.length) {
+      return 1;
+    }
+
+    const opacityTotal = materials.reduce((total, material) => {
+      const opacityScale = material.userData.opacityScale ?? 1;
+      return total + material.opacity / opacityScale;
+    }, 0);
+    return THREE.MathUtils.clamp(opacityTotal / materials.length, 0, 1);
   }
 
   function managedNodes() {
@@ -261,7 +305,6 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
     instance = null;
     currentStage = 5;
-    busy = false;
     revealDelaySeconds = null;
     crossfade = null;
     stageFourMixer = null;
