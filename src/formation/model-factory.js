@@ -40,8 +40,8 @@ const LABEL_DEPTHS = {
 const LABEL_VISIBILITY = {
   5: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
   4: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
-  3: ["3rd Stage Rock"],
-  2: ["2nd Stage Rock"],
+  3: ["3rd Stage Rock", LABEL_DEPTH_KEY],
+  2: ["2nd Stage Rock", LABEL_DEPTH_KEY],
   1: ["1st Stage Rock", LABEL_DEPTH_KEY]
 };
 
