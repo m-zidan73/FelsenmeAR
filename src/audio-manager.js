@@ -70,8 +70,12 @@ export function createAudioManager({ audioMapUrl }) {
       });
     }
     currentAudio = audio;
+    EventBus.raise("clip_started", { clip });
     audio.onended = () => {
-      if (currentAudio === audio) currentAudio = null;
+      if (currentAudio === audio) {
+        currentAudio = null;
+        EventBus.raise("clip_ended", { clip });
+      }
     };
     return audio;
   }

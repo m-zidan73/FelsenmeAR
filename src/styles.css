@@ -360,6 +360,32 @@ body.in-camera-ar .main-menu {
   text-align: center;
 }
 
+.subtitle-display {
+  position: fixed;
+  bottom: clamp(200px, 32vh, 280px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 23;
+  max-width: min(80vw, 520px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(8, 10, 12, 0.78);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(246, 239, 230, 0.12);
+  color: #f6efe6;
+  font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  animation: subtitleIn 260ms ease;
+}
+
+@keyframes subtitleIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .slider-time-label {
   position: absolute;
   top: -28px;

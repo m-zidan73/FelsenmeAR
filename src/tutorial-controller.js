@@ -95,8 +95,8 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
   nextBtn.addEventListener("click", navigateNext);
 
   const stateToMsg = {
-    Scanning: "Move your device to scan the area",
-    PlaneDetected: "A flat surface was found. Tap to place the rock formation."
+    Scanning: "Scan a flat surface slowly",
+    PlaneDetected: "Align with the real rock and tap."
   };
 
   const unsubState = ExperienceStateManager.onStateChanged((newState) => {
@@ -132,7 +132,7 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
   });
 
   const unsubFormationPlaced = EventBus.on("formation_placed", () => {
-    addMessage("The formation is placed! Use the slider to explore geological stages.");
+    addMessage("Slide the knob to travel back in time.");
   });
 
   function dispose() {

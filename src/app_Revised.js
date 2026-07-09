@@ -313,6 +313,23 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     audioManager.load();
     dataOverlayController.load();
 
+    const subtitleEl = document.getElementById("subtitleDisplay");
+    let subtitlesMap = {};
+    fetch("config/subtitles.json")
+      .then(r => r.json())
+      .then(data => { subtitlesMap = data.subtitles || {}; })
+      .catch(() => {});
+
+    EventBus.on("clip_started", (data) => {
+      if (!subtitleEl || !data || !data.clip) return;
+      const text = subtitlesMap[data.clip];
+      subtitleEl.textContent = text || "";
+      subtitleEl.hidden = !text;
+    });
+    EventBus.on("clip_ended", () => {
+      if (subtitleEl) subtitleEl.hidden = true;
+    });
+
     window.addEventListener("resize", onResize);
     ui.startArButton.addEventListener("click", startARSession);
     ui.resetButton.addEventListener("click", reset);
@@ -352,7 +369,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     EventBus.on("sequence_completed", (data) => {
       if (data && data.trigger === "state:Stage1") {
         audioManager.playSequence(
-          ["11b. thwo continers.mp3", "11c. the magma rises.mp3", "11d.as.mp3"],
+          ["11a__.mp3", "11b__.mp3", "11c__.mp3"],
           true,
           "event:post_stage1"
         );
