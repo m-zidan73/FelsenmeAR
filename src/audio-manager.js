@@ -70,6 +70,9 @@ export function createAudioManager({ audioMapUrl }) {
       });
     }
     currentAudio = audio;
+    audio.onended = () => {
+      if (currentAudio === audio) currentAudio = null;
+    };
     return audio;
   }
 
