@@ -1,49 +1,49 @@
 {
   "stages": [
     {
-      "index": 1,
-      "name": "Continental Collision",
-      "era": "Paleozoic",
-      "epoch": "~340 million years ago",
-      "rockType": "Magmatic / Metamorphic",
-      "plateName": "Gondwana",
-      "description": "The continental plates collide, pushing magma upward."
-    },
-    {
-      "index": 2,
-      "name": "Solid Quartz Diorite",
-      "era": "Permian",
-      "epoch": "~290 million years ago",
-      "rockType": "Plutonic Igneous",
-      "plateName": "Pangaea",
-      "description": "Magma cools and solidifies into quartz diorite."
-    },
-    {
-      "index": 3,
-      "name": "Cracked Slab of Diorite",
-      "era": "Triassic",
-      "epoch": "~245 million years ago",
-      "rockType": "Metamorphic",
-      "plateName": "Pangaea",
-      "description": "Tectonic stress cracks the solid rock slab."
+      "index": 5,
+      "name": "Gelifluction (Sorting)",
+      "era": "Quaternary Period",
+      "epoch": "~2.6 Ma – 10,000 years ago",
+      "rockType": "Granodiorite",
+      "plateName": "",
+      "description": ""
     },
     {
       "index": 4,
-      "name": "Rounded Boulders",
-      "era": "Jurassic",
-      "epoch": "~180 million years ago",
-      "rockType": "Sedimentary",
-      "plateName": "Laurasia",
-      "description": "Erosion rounds the sharp edges into boulders."
+      "name": "Woolsack Weathering (Rounding)",
+      "era": "Tertiary Period",
+      "epoch": "~50 Ma",
+      "rockType": "Quartz Diorite",
+      "plateName": "",
+      "description": "Process: Chemical weathering by acidic water"
     },
     {
-      "index": 5,
-      "name": "Final Boulder",
-      "era": "Cretaceous",
-      "epoch": "~100 million years ago",
+      "index": 3,
+      "name": "Cooling Joints (Diaclasas)",
+      "era": "",
+      "epoch": "~300 Ma",
       "rockType": "Quartz Diorite",
-      "plateName": "Laurasia",
-      "description": "The final boulder form, shaped by millions of years of geological forces."
+      "plateName": "",
+      "description": "Process: Thermal contraction"
+    },
+    {
+      "index": 2,
+      "name": "Pluton Formation",
+      "era": "Variscan Orogeny",
+      "epoch": "~340–330 Ma",
+      "rockType": "Quartz Diorite",
+      "plateName": "",
+      "description": "Depth: ~10–15 km"
+    },
+    {
+      "index": 1,
+      "name": "Magma Generation",
+      "era": "Subduction Zone",
+      "epoch": "~340 Ma",
+      "rockType": "Mantle + Crustal Melts",
+      "plateName": "",
+      "description": "Depth: ~12 km"
     }
   ]
 }

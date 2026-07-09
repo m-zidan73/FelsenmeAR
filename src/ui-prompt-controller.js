@@ -4,6 +4,7 @@ import { EventBus } from "./event-bus.js";
 export function createUIPromptController({ barElement, textElement }) {
   let currentText = "";
   let currentVisible = false;
+  let sliderEverShown = false;
 
   function show(text) {
     if (text === currentText && currentVisible) return;
@@ -30,36 +31,59 @@ export function createUIPromptController({ barElement, textElement }) {
   }
 
   const stateTextMap = {
-    Loading: "Loading 3D assets...",
-    Ready: "Press Start to begin",
+    Loading: "",
+    Ready: "",
     Scanning: "Move your device to scan the area",
     PlaneDetected: "A flat surface was found. Tap to place the rock formation.",
     FormationPlaced: "The formation is placed! Use the slider to explore geological stages.",
-    Stage5: "Final Boulder — the present-day form",
-    Stage4: "Rounded Boulders — erosion shapes the rock over time",
-    Stage3: "Cracked Slab of Diorite — tectonic forces at work",
-    Stage2: "Solid Quartz Diorite — magma cools underground",
-    Stage1: "Continental Collision — the beginning of the journey",
-    PinchActive: "Pinch inward to collide the plates",
+    Aligning: "Align the ghost rock with a real rock.",
+    Aligned: "Tap to start.",
+    RockRising: "",
+    SliderActive: "Slide left to go back in time.",
+    Stage5: "",
+    Stage4: "",
+    Stage3: "",
+    Stage2: "",
+    Stage1: "",
+    PinchReady: "Pinch inward to collide the plates.",
+    PinchActive: "Explore the stages freely.",
+    TrackingLost: "Tracking lost. Point back at the rock.",
     SessionEnded: ""
   };
 
   const unsubState = ExperienceStateManager.onStateChanged((newState) => {
+    if (newState === "SliderActive") sliderEverShown = true;
+
+    if (newState === "Stage5" && sliderEverShown) {
+      show("You've returned to the present.");
+      return;
+    }
+
     const text = stateTextMap[newState] || "";
     show(text);
   });
 
-  const unsubEvents = EventBus.on("subduction_progress", (data) => {
-    if (data.progress >= 1) {
-      show("The collision is complete! Slide to see the result.");
-    } else if (data.progress >= 0.1) {
+  const unsubSubduction = EventBus.on("subduction_progress", (data) => {
+    if (data && data.progress >= 0.1 && data.progress < 1) {
       show("Plates are colliding — watch the magma rise");
+    }
+  });
+
+  const unsubFormationPlaced = EventBus.on("formation_placed", () => {
+    sliderEverShown = false;
+  });
+
+  const unsubPinchPhase = EventBus.on("pinch_phase", (data) => {
+    if (data && typeof data.phase === "number") {
+      show("");
     }
   });
 
   function dispose() {
     unsubState();
-    unsubEvents();
+    unsubSubduction();
+    unsubFormationPlaced();
+    unsubPinchPhase();
   }
 
   return { show, hide, dispose };

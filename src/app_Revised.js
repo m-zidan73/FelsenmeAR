@@ -24,11 +24,11 @@ import { createAudioManager } from "./audio-manager.js";
 import { createDataOverlayController } from "./data-overlay-controller.js";
 
 const STAGE_DATA = [
-  { stage: 1, name: "Continental Collision", epoch: "~340 million years ago", era: "Paleozoic", rock: "Magmatic / Metamorphic" },
-  { stage: 2, name: "Solid Quartz Diorite", epoch: "~290 million years ago", era: "Permian", rock: "Plutonic Igneous" },
-  { stage: 3, name: "Cracked Slab of Diorite", epoch: "~245 million years ago", era: "Triassic", rock: "Metamorphic" },
-  { stage: 4, name: "Rounded Boulders", epoch: "~180 million years ago", era: "Jurassic", rock: "Sedimentary" },
-  { stage: 5, name: "Final Boulder", epoch: "Present Day", era: "Cretaceous", rock: "Quartz Diorite" }
+  { stage: 1, name: "Magma Generation", epoch: "~340 Ma", era: "Subduction Zone", rock: "Mantle + Crustal Melts" },
+  { stage: 2, name: "Pluton Formation", epoch: "~340–330 Ma", era: "Variscan Orogeny", rock: "Quartz Diorite" },
+  { stage: 3, name: "Cooling Joints (Diaclasas)", epoch: "~300 Ma", era: "", rock: "Quartz Diorite" },
+  { stage: 4, name: "Woolsack Weathering (Rounding)", epoch: "~50 Ma", era: "Tertiary Period", rock: "Quartz Diorite" },
+  { stage: 5, name: "Gelifluction (Sorting)", epoch: "~2.6 Ma – 10,000 years ago", era: "Quaternary Period", rock: "Granodiorite" }
 ];
 
 (function () {
@@ -147,9 +147,23 @@ const STAGE_DATA = [
   let pinchActive = false;
   let subductionElapsed = 0;
   let lastEmittedSubductionThreshold = 0;
+  let emittedPinchPhase = 0;
   let wasReticleVisible = false;
   let hadSession = false;
   let readyEmitted = false;
+
+  function reportPinchDebug(debug) {
+    const distance = Number.isFinite(debug.distance) ? " distance=" + debug.distance.toFixed(1) : "";
+    const delta = Number.isFinite(debug.distanceDelta) ? " delta=" + debug.distanceDelta.toFixed(1) : "";
+    setXRDebug(
+      "pinch " + debug.eventName +
+      " touches=" + debug.touchCount +
+      " active=" + (debug.pinchActive ? "yes" : "no") +
+      distance +
+      delta +
+      " stage=" + getCurrentStage()
+    );
+  }
 
   const arController = createArController({
     state,
@@ -204,11 +218,13 @@ const STAGE_DATA = [
         ExperienceStateManager.setState(ExperienceState.PinchActive);
       }
     },
+    onPinchDebug: reportPinchDebug,
     onPlacementTap: placeAtDetectedPlane
   });
 
   placementController = createPlacementController({
     state,
+    THREE,
     createGelifluctionInstance,
     createShadowReceiver,
     disposeObject,
@@ -258,6 +274,7 @@ const STAGE_DATA = [
     const stepIndex = Math.round(numericValue);
     const data = STAGE_DATA[stepIndex];
     if (!sliderTimeLabel || !data) return;
+    sliderTimeLabel.hidden = false;
     sliderTimeLabel.textContent = data.epoch;
     const percent = 10 + (numericValue / 4) * 80;
     sliderTimeLabel.style.left = percent + "%";
@@ -308,6 +325,26 @@ const STAGE_DATA = [
     EventBus.on("formation_placed", () => {
       updateRockBadge(5);
       updateSliderTimeLabel(4);
+      ExperienceStateManager.setState(ExperienceState.SliderActive);
+    });
+    EventBus.on("alignment_quality", (data) => {
+      if (data && data.quality > 0.95) {
+        ExperienceStateManager.setState(ExperienceState.Aligned);
+      }
+    });
+    EventBus.on("sequence_completed", (data) => {
+      if (data && data.trigger === "state:Stage1") {
+        promptController.show("Tap Next Chapter to explore this stage.");
+      }
+    });
+    EventBus.on("next_chapter", () => {
+      ExperienceStateManager.setState(ExperienceState.PinchReady);
+    });
+    EventBus.on("subduction_progress", (data) => {
+      if (data && data.progress >= 1) {
+        ExperienceStateManager.setState(ExperienceState.PinchActive);
+        EventBus.raise("pinch_reset", {});
+      }
     });
 
     installDebugHooks({
@@ -355,6 +392,13 @@ const STAGE_DATA = [
       if (pinchActive && currentStage === 1) {
         subductionElapsed += deltaSeconds;
         const progress = Math.min(subductionElapsed / 3, 1);
+
+        const pinchPhase = progress < 1 / 3 ? 1 : progress < 2 / 3 ? 2 : 3;
+        if (pinchPhase > emittedPinchPhase) {
+          emittedPinchPhase = pinchPhase;
+          EventBus.raise("pinch_phase", { phase: pinchPhase });
+        }
+
         const thresholds = [0, 0.3, 0.5, 0.8, 1.0];
         for (const t of thresholds) {
           if (progress >= t && lastEmittedSubductionThreshold < t) {
@@ -362,11 +406,13 @@ const STAGE_DATA = [
             EventBus.raise("subduction_progress", { progress: t });
             if (t >= 1) {
               pinchActive = false;
+              emittedPinchPhase = 0;
             }
           }
         }
       } else if (!pinchActive && currentStage === 1) {
         lastEmittedSubductionThreshold = 0;
+        emittedPinchPhase = 0;
       }
     } else {
       subductionElapsed = 0;

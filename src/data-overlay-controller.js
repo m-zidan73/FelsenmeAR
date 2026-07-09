@@ -1,4 +1,32 @@
 import { EventBus } from "./event-bus.js";
+import { ExperienceStateManager } from "./state-manager.js";
+
+const PINCH_STATS = {
+  1: {
+    name: "Continental Collision",
+    era: "Variscan Orogeny",
+    epoch: "~340 Ma",
+    rockType: "",
+    plateName: "Avalonia + Armorica",
+    description: ""
+  },
+  2: {
+    name: "Magma Ascent",
+    era: "",
+    epoch: "",
+    rockType: "",
+    plateName: "",
+    description: "Depth: ~12 km | Process: Partial melting + buoyancy"
+  },
+  3: {
+    name: "Pluton Solidified",
+    era: "",
+    epoch: "",
+    rockType: "Quartz Diorite (Granodiorite)",
+    plateName: "",
+    description: "Cooling time: millions of years"
+  }
+};
 
 export function createDataOverlayController({
   stageDataUrl,
@@ -11,6 +39,36 @@ export function createDataOverlayController({
 }) {
   let stageData = [];
   let loaded = false;
+
+  const elements = { nameElement, eraElement, epochElement, rockTypeElement, plateElement, descriptionElement };
+
+  function setField(el, value) {
+    if (!el) return;
+    const hasValue = value && value.trim() !== "";
+    el.textContent = hasValue ? value.trim() : "";
+    el.hidden = !hasValue;
+  }
+
+  function showData(data) {
+    if (!data) { hideAll(); return; }
+    setField(nameElement, data.name);
+    setField(eraElement, data.era);
+    setField(epochElement, data.epoch);
+    setField(rockTypeElement, data.rockType);
+    setField(plateElement, data.plateName);
+    setField(descriptionElement, data.description);
+  }
+
+  function showFormattedStats(formattedStr) {
+    if (!formattedStr) { hideAll(); return; }
+    const parts = formattedStr.split(" / ").map(s => s.trim());
+    setField(nameElement, parts[0] || "");
+    setField(eraElement, parts[1] || "");
+    setField(epochElement, parts[2] || "");
+    setField(rockTypeElement, parts[3] || "");
+    setField(plateElement, parts[4] || "");
+    setField(descriptionElement, parts[5] || "");
+  }
 
   async function load() {
     try {
@@ -25,37 +83,11 @@ export function createDataOverlayController({
 
   function showStageData(stageIndex) {
     const data = stageData.find(s => s.index === stageIndex);
-    if (!data) return;
-
-    if (nameElement) {
-      nameElement.textContent = data.name;
-      nameElement.hidden = false;
-    }
-    if (eraElement) {
-      eraElement.textContent = data.era;
-      eraElement.hidden = false;
-    }
-    if (epochElement) {
-      epochElement.textContent = data.epoch;
-      epochElement.hidden = false;
-    }
-    if (rockTypeElement) {
-      rockTypeElement.textContent = data.rockType;
-      rockTypeElement.hidden = false;
-    }
-    if (plateElement) {
-      plateElement.textContent = data.plateName;
-      plateElement.hidden = false;
-    }
-    if (descriptionElement) {
-      descriptionElement.textContent = data.description;
-      descriptionElement.hidden = false;
-    }
+    if (data) showData(data);
   }
 
   function hideAll() {
-    const elements = [nameElement, eraElement, epochElement, rockTypeElement, plateElement, descriptionElement];
-    elements.forEach(el => { if (el) el.hidden = true; });
+    Object.values(elements).forEach(el => { if (el) el.hidden = true; });
   }
 
   const unsubStage = EventBus.on("stage_changed", (data) => {
@@ -68,10 +100,48 @@ export function createDataOverlayController({
     showStageData(5);
   });
 
+  const unsubState = ExperienceStateManager.onStateChanged((newState) => {
+    if (newState === "PinchReady") {
+      showData(PINCH_STATS[1]);
+    } else if (newState === "TrackingLost") {
+      hideAll();
+    } else if (newState === "SliderActive") {
+      showStageData(5);
+    } else if (newState === "PinchActive") {
+      showStageData(1);
+    } else if (newState === "Aligning" || newState === "Aligned" || newState === "RockRising" || newState === "SessionEnded") {
+      hideAll();
+    }
+  });
+
+  const unsubPinchPhase = EventBus.on("pinch_phase", (data) => {
+    if (data && typeof data.phase === "number") {
+      const stats = PINCH_STATS[data.phase];
+      if (stats) showData(stats);
+    }
+  });
+
+  const unsubPlateTouched = EventBus.on("plate_touched", (data) => {
+    if (!data || !plateElement) return;
+    const originalText = plateElement.textContent;
+    const originalHidden = plateElement.hidden;
+    setField(plateElement, data.plateName || data);
+    setTimeout(() => {
+      if (originalHidden) {
+        plateElement.hidden = true;
+      } else {
+        setField(plateElement, originalText);
+      }
+    }, 3000);
+  });
+
   function dispose() {
     unsubStage();
     unsubFormation();
+    unsubState();
+    unsubPinchPhase();
+    unsubPlateTouched();
   }
 
-  return { load, showStageData, hideAll, dispose };
+  return { load, showStageData, hideAll, showFormattedStats, dispose };
 }

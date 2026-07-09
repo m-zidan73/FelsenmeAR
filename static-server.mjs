@@ -11,7 +11,8 @@ const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".png", "image/png"],
   [".glb", "model/gltf-binary"],
-  [".json", "application/json; charset=utf-8"]
+  [".json", "application/json; charset=utf-8"],
+  [".mp3", "audio/mpeg"]
 ]);
 
 const immutableModelPaths = new Set([

@@ -11,7 +11,13 @@ export const ExperienceState = Object.freeze({
   Stage3: "Stage3",
   Stage2: "Stage2",
   Stage1: "Stage1",
+  Aligning: "Aligning",
+  Aligned: "Aligned",
+  RockRising: "RockRising",
+  SliderActive: "SliderActive",
+  PinchReady: "PinchReady",
   PinchActive: "PinchActive",
+  TrackingLost: "TrackingLost",
   SessionEnded: "SessionEnded"
 });
 
@@ -32,6 +38,7 @@ export const ExperienceStateManager = {
 
   onStateChanged(callback) {
     stateChangeListeners.add(callback);
+    try { callback(currentState); } catch (e) { console.warn("StateManager:", e); }
     return () => stateChangeListeners.delete(callback);
   },
 

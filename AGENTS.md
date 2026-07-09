@@ -1,7 +1,7 @@
 # AGENTS.md — Contexto del proyecto FelsenmeAR
 
 ## Rama activa
-`ui-audio-refactor` (creada desde `origin/Refactor-Decoupled`)
+`audio-ui-integration` (basada en `origin/Refactor-Decoupled`)
 
 ## Proyecto
 WebXR (no AR.js). Hit-testing + anchors. Reticle verde + tap to place. Slider de 5 etapas geológicas. Pinch para subducción en Stage 1.
@@ -110,6 +110,22 @@ Slider 4 → Stage 5 (Final Boulder, Present Day)
 3. `node static-server.mjs` para servidor local
 4. Los archivos originales (`app.js`, `ar-controller.js`, etc.) NO deben modificarse directamente
 5. Para probar desde celular: `cloudflared tunnel --url http://localhost:5173`
+
+### ⚠️ Regla crítica: Sincronización con Refactor-Decoupled
+Cada vez que aparezca un **nuevo commit en `origin/Refactor-Decoupled`**, debes **pedir autorización antes de actuar**. NO hacer merge ni rebase automáticamente. El flujo correcto es:
+
+1. **Preguntar al usuario** si se debe integrar el nuevo commit
+2. Si autoriza, **revisar `app.js`** comparándolo con la versión anterior para detectar cambios en:
+   - Llamadas a `createPlacementController` (requiere `THREE`)
+   - Callbacks de `createCanvasInteractionController` (requiere `onPinchDebug`)
+   - Firmas de `requestStage` y `onStepSelected`
+   - Cualquier nueva dependencia o parámetro
+3. **Actualizar `app_Revised.js`** reflejando esos cambios manteniendo la instrumentación (EventBus, state machine, audio, UI controllers)
+4. **NUNCA modificar `app.js` ni archivos originales de `Refactor-Decoupled`** directamente
+
+### Historial de fixes en app_Revised.js
+- **`THREE` faltante en `createPlacementController`** — causaba crash en `orientFormationToCameraHeading()` al hacer `new THREE.Vector3()`, rompiendo todo el anchoring system. Fix: añadir `THREE,` como parámetro.
+- **`onPinchDebug` faltante** — no rompía la app (default `() => {}`), pero perdía debug info del pinch. Fix: añadir `reportPinchDebug` + pasarlo como callback.
 
 ### Comandos útiles
 ```powershell

@@ -1,18 +1,20 @@
 {
   "mappings": [
-    { "trigger": "state:Ready", "clip": "3.Tap.mp3", "interrupt": true, "label": "Tap to start" },
-    { "trigger": "state:Scanning", "clip": "3.Scan.mp3", "interrupt": false, "label": "Scan surface" },
-    { "trigger": "state:FormationPlaced", "clip": "4. ThisRockshaveaLongHistory.mp3", "interrupt": true, "label": "Rock history intro" },
-    { "trigger": "state:Stage5", "clip": "5.stage4.mp3", "interrupt": true, "label": "Stage 5 intro" },
-    { "trigger": "state:Stage4", "clip": "4. Slider.mp3", "interrupt": true, "label": "Stage 4 intro" },
-    { "trigger": "state:Stage3", "clip": "6.stage3.mp3", "interrupt": true, "label": "Stage 3 intro" },
-    { "trigger": "state:Stage2", "clip": "7. stage 2.mp3", "interrupt": true, "label": "Stage 2 intro" },
-    { "trigger": "state:Stage1", "clip": "8. stage1 continental colision.mp3", "interrupt": true, "label": "Stage 1 intro" },
-    { "trigger": "event:pinch_active", "clip": "8.s1-pushtheplatestogueter.mp3", "interrupt": false, "label": "Push plates together" },
-    { "trigger": "event:subduction_progress:0.5", "clip": "9.AsThePlatesCollide.mp3", "interrupt": false, "label": "Plates collide" },
-    { "trigger": "event:subduction_progress:0.8", "clip": "9b.TheMagmaNowLighter2.mp3", "interrupt": false, "label": "Magma rises" },
-    { "trigger": "event:subduction_progress:1.0", "clip": "9c.AndNowItCools.mp3", "interrupt": true, "label": "Magma cools" },
-    { "trigger": "state:Stage2", "clip": "10.YouvRechetheOrigin.mp3", "interrupt": true, "label": "Journey complete" }
+    { "trigger": "state:Ready", "clips": ["3.Tap.mp3"], "interrupt": true },
+    { "trigger": "state:Scanning", "clips": ["1c. Lets unvocer it.mp3"], "interrupt": true },
+    { "trigger": "state:PlaneDetected", "clips": ["3b. aling.mp3"] },
+    { "trigger": "state:FormationPlaced", "clips": ["4. ThisRockshaveaLongHistory.mp3"], "interrupt": true },
+    { "trigger": "state:Stage5", "clips": ["3a. you are looking.mp3", "3b. over millios on feaers.mp3"], "interrupt": true },
+    { "trigger": "state:Stage4", "clips": ["4a. about 50 milion.mp3", "4b. Rainwater seeped.mp3"], "interrupt": true },
+    { "trigger": "state:Stage3", "clips": ["5a. aroud 300 million.mp3", "5b. as it cooled.mp3"], "interrupt": true },
+    { "trigger": "state:Stage2", "clips": ["6a. around 340 millions.mp3", "6b. it spendss millions.mp3"], "interrupt": true },
+    { "trigger": "state:Stage1", "clips": ["7a. around 340 millions hot liquid.mp3", "7b. on plater slid.mp3", "7c. the heat melted.mp3", "7d. it finally sellted.mp3"], "interrupt": true },
+    { "trigger": "event:pinch_phase:1", "clips": ["8.s1-pushtheplatestogueter.mp3", "8aa. two continents are.mp3", "8ab. the heavier.mp3"], "interrupt": true },
+    { "trigger": "event:pinch_phase:2", "clips": ["8ba. the inmensi frictions .mp3", "8bb. the liquid magma.mp3"], "interrupt": true },
+    { "trigger": "event:pinch_phase:3", "clips": ["8ca. but it never.mp3", "8cb. it gets trapped.mp3"], "interrupt": true },
+    { "trigger": "event:subduction_progress:0.5", "clips": ["9.AsThePlatesCollide.mp3"], "interrupt": true },
+    { "trigger": "event:subduction_progress:0.8", "clips": ["9b.TheMagmaNowLighter2.mp3"], "interrupt": true },
+    { "trigger": "event:subduction_progress:1.0", "clips": ["9c.AndNowItCools.mp3"], "interrupt": true }
   ],
-  "audioBasePath": "Assets/Audio/wetransfer_8-stage1-continental-colision-mp3_2026-06-17_0331/"
+  "audioBasePath": "Audios/"
 }
