@@ -107,7 +107,9 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function updateStartingRockPlayback(previousStage, targetStage) {
-    if (previousStage === 5 && targetStage < 5) {
+    if (targetStage === 4 && previousStage === 3) {
+      startStartingRockAnimation(-1, startingRockDuration);
+    } else if (previousStage === 5 && targetStage < 5) {
       startStartingRockAnimation(1);
     } else if (previousStage < 5 && targetStage === 5) {
       startStartingRockAnimation(-1);
@@ -117,7 +119,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   function updateStageFourPlayback(previousStage, targetStage) {
     if (targetStage === 4 && previousStage === 5) {
       startStageFourAnimation(1);
-    } else if (targetStage === 4 && previousStage < 4) {
+    } else if (targetStage === 4 && previousStage === 3) {
       startStageFourAnimation(-1);
     } else if (previousStage === 4 && targetStage === 5) {
       startStageFourAnimation(-1);
@@ -178,7 +180,8 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     stageFourMixer.setTime(time);
   }
 
-  function startStartingRockAnimation(direction) {
+  function startStartingRockAnimation(direction, startTime = startingRockTime) {
+    seekStartingRockAnimation(startTime);
     startingRockDirection = direction;
   }
 
