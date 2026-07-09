@@ -20,10 +20,10 @@ const REQUIRED_NODE_NAMES = [
 ];
 
 const LABEL_MATERIALS = {
-  "1st Stage Rock": "Mantle + Crustal Melts",
-  "2nd Stage Rock": "Quartz Diorite",
-  "3rd Stage Rock": "Quartz Diorite",
-  "__rock_comp": "Granodiorite"
+  "1st Stage Rock": "Rock Composition: Mantle + Crustal Melts",
+  "2nd Stage Rock": "Rock Composition: Quartz Diorite",
+  "3rd Stage Rock": "Rock Composition: Quartz Diorite",
+  "__rock_comp": "Rock Composition: Granodiorite"
 };
 const LABEL_DEPTH = "Depth: ~12 km";
 const LABEL_DEPTH_KEY = "__depth_label";
