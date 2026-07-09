@@ -329,7 +329,6 @@ const STAGE_DATA = [
       updateRockBadge(1);
       updateSliderTimeLabel(0);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
-      requestStageWrapped(1, 1);
       if (state.formationLabels) {
         setLabelVisibilityByStage(state.formationLabels, 1);
       }
