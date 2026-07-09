@@ -332,8 +332,12 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
       const tutorialText = tutorialsMap[data.clip];
       if (tutorialText) tutorialController.addMessage(tutorialText);
     });
-    EventBus.on("clip_ended", () => {
+    EventBus.on("clip_ended", (data) => {
       if (subtitleEl) subtitleEl.hidden = true;
+      if (!data || !data.clip) return;
+      const chain = { "11a__.mp3": 2, "11b__.mp3": 3 };
+      const nextPhase = chain[data.clip];
+      if (nextPhase) EventBus.raise("pinch_phase", { phase: nextPhase });
     });
 
     window.addEventListener("resize", onResize);
