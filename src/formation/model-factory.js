@@ -23,19 +23,19 @@ const LABEL_MATERIALS = {
   "1st Stage Rock": "Mantle + Crustal Melts",
   "2nd Stage Rock": "Quartz Diorite",
   "3rd Stage Rock": "Quartz Diorite",
-  "Surrounding_Rocks": "Granodiorite",
-  "Starting_Rock": "Granodiorite"
+  "__rock_comp": "Granodiorite"
 };
 const LABEL_DEPTH = "Depth: ~12 km";
 const LABEL_DEPTH_KEY = "__depth_label";
+const LABEL_ROCK_COMP_KEY = "__rock_comp";
 
 const LABEL_VISIBILITY = {
-  5: ["Starting_Rock", "Surrounding_Rocks", LABEL_DEPTH_KEY],
+  5: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
+  4: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
   3: ["3rd Stage Rock"],
   2: ["2nd Stage Rock"],
   1: ["1st Stage Rock", LABEL_DEPTH_KEY]
 };
-LABEL_VISIBILITY[4] = LABEL_VISIBILITY[5];
 
 export function setLabelVisibilityByStage(labels, stage) {
   const visibleKeys = LABEL_VISIBILITY[stage] || [];
@@ -136,6 +136,31 @@ export function createGelifluctionModelFactory({ THREE }) {
 
     for (const name in LABEL_MATERIALS) {
       if (!Object.prototype.hasOwnProperty.call(LABEL_MATERIALS, name)) continue;
+      if (name === LABEL_ROCK_COMP_KEY) {
+        const startNode = nodes.Starting_Rock;
+        const surroundNode = nodes.Surrounding_Rocks;
+        let pos;
+        if (startNode && surroundNode) {
+          const b1 = new THREE.Box3().setFromObject(startNode);
+          const b2 = new THREE.Box3().setFromObject(surroundNode);
+          const union = b1.union(b2);
+          const center = union.getCenter(new THREE.Vector3());
+          const size = union.getSize(new THREE.Vector3());
+          pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
+        } else {
+          const fallback = startNode || surroundNode;
+          if (!fallback) continue;
+          const bounds = new THREE.Box3().setFromObject(fallback);
+          const center = bounds.getCenter(new THREE.Vector3());
+          const size = bounds.getSize(new THREE.Vector3());
+          pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
+        }
+        const sprite = makeLabel(LABEL_MATERIALS[name], pos, labelHeight);
+        root.add(sprite);
+        sprite.visible = false;
+        labels[name] = sprite;
+        continue;
+      }
       const target = nodes[name];
       if (!target) continue;
       const bounds = new THREE.Box3().setFromObject(target);
