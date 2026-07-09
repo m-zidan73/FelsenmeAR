@@ -2,6 +2,9 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
   const snapThreshold = 0.16;
   let currentStep = 0;
   let gestureCommitted = false;
+  let activationPromptActive = true;
+  let slidePromptActive = false;
+  let slidePromptConsumed = false;
 
   function initFormationSlider() {
     if (!ui.formationRange || !ui.formationSlider) {
@@ -10,7 +13,7 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
 
     ui.formationRange.addEventListener("pointerdown", () => {
       gestureCommitted = false;
-      ui.formationSlider.classList.remove("is-prompting", "is-activation-prompting");
+      clearPromptClasses();
       ui.formationSlider.classList.add("is-dragging");
     });
 
@@ -52,11 +55,17 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     const accepted = onStepSelected(requestedStep, currentStep);
     if (accepted) {
       currentStep = requestedStep;
-      ui.formationSlider.classList.remove("is-activation-prompting");
-      ui.formationSlider.classList.add("is-prompting");
-    } else if (currentStep === 0) {
-      ui.formationSlider.classList.add("is-activation-prompting");
+      activationPromptActive = false;
+      if (currentStep === 0 && !slidePromptConsumed) {
+        slidePromptActive = true;
+      } else {
+        slidePromptActive = false;
+        slidePromptConsumed = true;
+      }
+    } else if (activationPromptActive && currentStep === 0) {
+      slidePromptActive = false;
     }
+    applyPromptClasses();
     renderSliderValue(currentStep, true);
   }
 
@@ -81,6 +90,19 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     });
   }
 
+  function applyPromptClasses() {
+    clearPromptClasses();
+    if (activationPromptActive) {
+      ui.formationSlider.classList.add("is-activation-prompting");
+    } else if (slidePromptActive) {
+      ui.formationSlider.classList.add("is-prompting");
+    }
+  }
+
+  function clearPromptClasses() {
+    ui.formationSlider.classList.remove("is-prompting", "is-activation-prompting");
+  }
+
   function resetFormationSlider() {
     if (!ui.formationSlider || !ui.formationRange) {
       return;
@@ -88,8 +110,10 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
 
     currentStep = 0;
     gestureCommitted = false;
-    ui.formationSlider.classList.remove("is-prompting");
-    ui.formationSlider.classList.add("is-activation-prompting");
+    activationPromptActive = true;
+    slidePromptActive = false;
+    slidePromptConsumed = false;
+    applyPromptClasses();
     renderSliderValue(currentStep, true);
   }
 
