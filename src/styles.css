@@ -410,10 +410,23 @@ body.in-camera-ar .main-menu {
   transform: translate(-50%, -50%) scale(1.08);
 }
 
+.formation-slider.is-activation-prompting .formation-dot.is-active {
+  animation: sliderActivationBounce 0.9s ease-in-out infinite;
+}
 .formation-slider.is-prompting .formation-dot.is-active {
   animation: sliderPromptLeft 1.35s ease-in-out infinite;
 }
 
+@keyframes sliderActivationBounce {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  45% {
+    transform: translate(-50%, calc(-50% - 8px)) scale(1.08);
+  }
+}
 @keyframes sliderPromptLeft {
   0%,
   100% {
