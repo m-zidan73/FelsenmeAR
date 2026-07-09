@@ -20,29 +20,19 @@ const REQUIRED_NODE_NAMES = [
 ];
 
 const LABEL_MATERIALS = {
-  "1st Stage Rock": "Rock Composition: Mantle + Crustal Melts",
-  "2nd Stage Rock": "Rock Composition: Quartz Diorite",
-  "3rd Stage Rock": "Rock Composition: Quartz Diorite",
-  "__rock_comp": "Rock Composition: Granodiorite"
+  "1st Stage Rock": "Rock Composition: Mantle + Crustal Melts\nDepth: ~12 km below surface",
+  "2nd Stage Rock": "Rock Composition: Quartz Diorite\nDepth: ~10–15 km",
+  "3rd Stage Rock": "Rock Composition: Quartz Diorite\nDepth: ~10 km",
+  "__rock_comp": "Rock Composition: Granodiorite\nSurface Level"
 };
-const LABEL_DEPTH = "Depth: ~12 km";
-const LABEL_DEPTH_KEY = "__depth_label";
 const LABEL_ROCK_COMP_KEY = "__rock_comp";
 
-const LABEL_DEPTHS = {
-  1: "Depth: ~12 km below surface",
-  2: "Depth: ~10–15 km",
-  3: "Depth: ~10 km",
-  4: "Surface Level",
-  5: "Surface Level"
-};
-
 const LABEL_VISIBILITY = {
-  5: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
-  4: [LABEL_ROCK_COMP_KEY, LABEL_DEPTH_KEY],
-  3: ["3rd Stage Rock", LABEL_DEPTH_KEY],
-  2: ["2nd Stage Rock", LABEL_DEPTH_KEY],
-  1: ["1st Stage Rock", LABEL_DEPTH_KEY]
+  5: [LABEL_ROCK_COMP_KEY],
+  4: [LABEL_ROCK_COMP_KEY],
+  3: ["3rd Stage Rock"],
+  2: ["2nd Stage Rock"],
+  1: ["1st Stage Rock"]
 };
 
 export function setLabelVisibilityByStage(labels, stage) {
@@ -51,39 +41,6 @@ export function setLabelVisibilityByStage(labels, stage) {
     if (!Object.prototype.hasOwnProperty.call(labels, key)) continue;
     labels[key].visible = visibleKeys.indexOf(key) !== -1;
   }
-  const dl = labels[LABEL_DEPTH_KEY];
-  if (dl && LABEL_DEPTHS[stage]) {
-    updateLabelText(dl, LABEL_DEPTHS[stage]);
-  }
-}
-
-function updateLabelText(sprite, text) {
-  const canvas = sprite.material.map.image;
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const fontSize = 64;
-  const padding = 20;
-  ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
-  const metrics = ctx.measureText(text);
-  canvas.width = metrics.width + padding * 2;
-  canvas.height = fontSize + padding * 2;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "rgba(8, 10, 12, 0.85)";
-  roundRect(ctx, 0, 0, canvas.width, canvas.height, 14);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(246, 239, 230, 0.2)";
-  ctx.lineWidth = 2;
-  roundRect(ctx, 1, 1, canvas.width - 2, canvas.height - 2, 14);
-  ctx.stroke();
-  ctx.fillStyle = "#f6efe6";
-  ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-  sprite.material.map.needsUpdate = true;
-  const aspect = canvas.width / canvas.height;
-  const h = sprite.scale.y;
-  sprite.scale.set(h * aspect, h, 1);
 }
 
 export function createGelifluctionModelFactory({ THREE }) {
@@ -174,7 +131,6 @@ export function createGelifluctionModelFactory({ THREE }) {
     const offsetY = 0.12;
     const labelHeight = 0.1;
     const labels = {};
-    let lastLabelPos = null;
 
     for (const name in LABEL_MATERIALS) {
       if (!Object.prototype.hasOwnProperty.call(LABEL_MATERIALS, name)) continue;
@@ -201,7 +157,6 @@ export function createGelifluctionModelFactory({ THREE }) {
         root.add(sprite);
         sprite.visible = false;
         labels[name] = sprite;
-        lastLabelPos = pos;
         continue;
       }
       const target = nodes[name];
@@ -214,16 +169,7 @@ export function createGelifluctionModelFactory({ THREE }) {
       root.add(sprite);
       sprite.visible = false;
       labels[name] = sprite;
-      lastLabelPos = pos;
     }
-
-    const depthPos = lastLabelPos ? lastLabelPos.clone().add(new THREE.Vector3(0, 0.1, 0)) : new THREE.Vector3(0, 0.5, 0);
-    const sprite = makeLabel(LABEL_DEPTH, depthPos, labelHeight);
-    sprite.renderOrder = 999;
-    sprite.material.depthTest = false;
-    root.add(sprite);
-    sprite.visible = false;
-    labels[LABEL_DEPTH_KEY] = sprite;
 
     return labels;
   }
@@ -232,12 +178,13 @@ export function createGelifluctionModelFactory({ THREE }) {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const fontSize = 64;
+    const lineHeight = fontSize * 1.3;
+    const lines = text.split("\n");
     ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
-    const metrics = ctx.measureText(text);
-    const textWidth = metrics.width;
+    const maxWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
     const padding = 20;
-    canvas.width = textWidth + padding * 2;
-    canvas.height = fontSize + padding * 2;
+    canvas.width = maxWidth + padding * 2;
+    canvas.height = lines.length * lineHeight + padding * 2;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "rgba(8, 10, 12, 0.85)";
@@ -253,7 +200,9 @@ export function createGelifluctionModelFactory({ THREE }) {
     ctx.font = "bold " + fontSize + "px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    lines.forEach((line, i) => {
+      ctx.fillText(line, canvas.width / 2, padding + lineHeight * (i + 0.5));
+    });
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
