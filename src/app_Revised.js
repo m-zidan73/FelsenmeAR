@@ -47,20 +47,10 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     setScanPromptVisible
   } = menuUi;
 
-  const formationSliderUi = createFormationSlider({
-    ui,
-    clamp: THREE.MathUtils.clamp,
-    onStepSelected(stepIndex, previousStep) {
-      return requestStageWrapped(stepIndex + 1, previousStep + 1);
-    }
-  });
-  const { initFormationSlider, resetFormationSlider, setPinchPromptVisible } = formationSliderUi;
-
   const stageController = createGelifluctionStageController({
     config: CONFIG,
     THREE,
-    updateHud,
-    onSubductionPromptVisibleChange: setPinchPromptVisible
+    updateHud
   });
   const {
     getCurrentStage,
@@ -93,6 +83,15 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     }
     return accepted;
   }
+
+  const formationSliderUi = createFormationSlider({
+    ui,
+    clamp: THREE.MathUtils.clamp,
+    onStepSelected(stepIndex, previousStep) {
+      return requestStageWrapped(stepIndex + 1, previousStep + 1);
+    }
+  });
+  const { initFormationSlider, resetFormationSlider } = formationSliderUi;
 
   const sceneController = createSceneController({
     state,
