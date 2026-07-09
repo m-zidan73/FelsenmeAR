@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>AR Island Prototype - Web</title>
-    <link rel="stylesheet" href="src/styles.css?v=main-menu-2">
+    <link rel="stylesheet" href="src/styles.css?v=pinch-prompt-1">
     <script type="importmap">
       {
         "imports": {
@@ -13,7 +13,7 @@
         }
       }
     </script>
-    <script type="module" src="src/app.js?v=starting-rock-outline-1"></script>
+    <script type="module" src="src/app.js?v=pinch-prompt-1"></script>
   </head>
   <body>
     <main id="app">
@@ -44,6 +44,10 @@
         </button>
         <div class="placement-controls">
           <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera on top of a flat surface</p>
+        </div>
+        <div id="pinchPrompt" class="pinch-prompt" hidden aria-hidden="true">
+          <img class="pinch-prompt-icon pinch-prompt-icon-left" src="Assets/Swipe%20Right%20White.png" alt="">
+          <img class="pinch-prompt-icon pinch-prompt-icon-right" src="Assets/Swipe%20Left%20White.png" alt="">
         </div>
         <div class="bottom-ui" hidden>
           <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">

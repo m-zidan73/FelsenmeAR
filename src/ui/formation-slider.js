@@ -114,8 +114,15 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     slidePromptActive = false;
     slidePromptConsumed = false;
     applyPromptClasses();
+    setPinchPromptVisible(false);
     renderSliderValue(currentStep, true);
   }
 
-  return { initFormationSlider, resetFormationSlider };
+  function setPinchPromptVisible(isVisible) {
+    if (ui.pinchPrompt) {
+      ui.pinchPrompt.hidden = !isVisible;
+    }
+  }
+
+  return { initFormationSlider, resetFormationSlider, setPinchPromptVisible };
 }

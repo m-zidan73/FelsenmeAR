@@ -41,10 +41,20 @@ import { createMenuUi } from "./ui/menu.js";
     setScanPromptVisible
   } = menuUi;
 
+  const formationSliderUi = createFormationSlider({
+    ui,
+    clamp: THREE.MathUtils.clamp,
+    onStepSelected(stepIndex) {
+      return requestStage(stepIndex + 1);
+    }
+  });
+  const { initFormationSlider, resetFormationSlider, setPinchPromptVisible } = formationSliderUi;
+
   const stageController = createGelifluctionStageController({
     config: CONFIG,
     THREE,
-    updateHud
+    updateHud,
+    onSubductionPromptVisibleChange: setPinchPromptVisible
   });
   const {
     getCurrentStage,
@@ -54,15 +64,6 @@ import { createMenuUi } from "./ui/menu.js";
     setPinchActive,
     update: updateFormationAnimation
   } = stageController;
-
-  const formationSliderUi = createFormationSlider({
-    ui,
-    clamp: THREE.MathUtils.clamp,
-    onStepSelected(stepIndex) {
-      return requestStage(stepIndex + 1);
-    }
-  });
-  const { initFormationSlider, resetFormationSlider } = formationSliderUi;
 
   const sceneController = createSceneController({
     state,
