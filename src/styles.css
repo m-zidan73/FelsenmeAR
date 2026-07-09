@@ -473,6 +473,63 @@ body.in-camera-ar .main-menu {
   animation: promptBounce 420ms ease;
 }
 
+.pinch-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.pinch-prompt[hidden] {
+  display: none !important;
+}
+
+.pinch-prompt-icon {
+  position: absolute;
+  width: clamp(58px, 18vw, 172px);
+  height: clamp(58px, 18vw, 172px);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+  opacity: 1;
+}
+
+.pinch-prompt-icon-left {
+  left: calc(50% - var(--pinch-travel, clamp(58px, 18vw, 172px)) - 20px);
+  animation: pinchPromptLeft 1.6s ease-in-out infinite;
+}
+
+.pinch-prompt-icon-right {
+  right: calc(50% - var(--pinch-travel, clamp(58px, 18vw, 172px)) - 20px);
+  animation: pinchPromptRight 1.6s ease-in-out infinite;
+}
+
+@keyframes pinchPromptLeft {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  50% {
+    transform: translateX(calc(var(--pinch-travel, clamp(58px, 18vw, 172px)) * 0.4));
+    opacity: 0.3;
+  }
+}
+
+@keyframes pinchPromptRight {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  50% {
+    transform: translateX(calc(var(--pinch-travel, clamp(58px, 18vw, 172px)) * -0.4));
+    opacity: 0.3;
+  }
+}
+
 @keyframes promptBounce {
   0%,
   100% {

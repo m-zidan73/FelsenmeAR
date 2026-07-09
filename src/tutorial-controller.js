@@ -116,7 +116,7 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
   const unsubPinch = EventBus.on("pinch_progress", (data) => {
     if (data && data.active && collapseEnabled && !hasPinched) {
       hasPinched = true;
-      scheduleAutoCollapse(2000);
+      hide();
     }
   });
 
@@ -131,12 +131,6 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
     hide();
   });
 
-  const unsubSubduction = EventBus.on("subduction_progress", (data) => {
-    if (data && data.progress >= 0.1 && data.progress < 1) {
-      pushToHistory("Plates are colliding — watch the magma rise");
-    }
-  });
-
   const unsubFormationPlaced = EventBus.on("formation_placed", () => {
     addMessage("The formation is placed! Use the slider to explore geological stages.");
   });
@@ -144,7 +138,6 @@ export function createTutorialController({ toggleElement, iconBtn, panelElement,
   function dispose() {
     unsubState();
     unsubStageChanged();
-    unsubSubduction();
     unsubPinch();
     unsubSessionStart();
     unsubSessionEnd();

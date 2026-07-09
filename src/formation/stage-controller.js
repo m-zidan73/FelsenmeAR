@@ -1,6 +1,11 @@
 import { getDescendantMeshes, setMeshesOpacity } from "../three-utils.js";
 
-export function createGelifluctionStageController({ config, THREE, updateHud }) {
+export function createGelifluctionStageController({
+  config,
+  THREE,
+  updateHud,
+  onSubductionPromptVisibleChange = () => {}
+}) {
   let instance = null;
   let currentStage = 1;
   let isActivated = false;
@@ -16,6 +21,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   let startingRockDuration = 0;
   let startingRockDirection = 0;
   let subductionMixer = null;
+  let subductionAction = null;
   let subductionTime = 0;
   let subductionComplete = false;
   let pinchActive = false;
@@ -54,7 +60,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     seekStartingRockAnimation(0);
 
     subductionMixer = new THREE.AnimationMixer(instance.model);
-    const subductionAction = subductionMixer.clipAction(instance.subductionClip);
+    subductionAction = subductionMixer.clipAction(instance.subductionClip);
     subductionAction.setLoop(THREE.LoopOnce, 1);
     subductionAction.clampWhenFinished = true;
     subductionAction.play();
@@ -76,6 +82,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       isActivated = true;
       crossfade = null;
       resetSubductionAnimation();
+      setSubductionPromptVisible(true);
       applyStageTransition(targetStage);
       startStartingRockAnimation(1);
       updateHud("Stage 1 ready.");
@@ -91,6 +98,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     interruptActiveTransition(previousStage, targetStage);
     if (targetStage === 1) {
       resetSubductionAnimation();
+      setSubductionPromptVisible(true);
     }
     applyStageTransition(targetStage);
     updateStartingRockPlayback(previousStage, targetStage);
@@ -112,6 +120,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
     if (previousStage === 1 && targetStage !== 1) {
       resetSubductionAnimation();
+      setSubductionPromptVisible(false);
     }
   }
 
@@ -350,10 +359,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
     const endpointTolerance = 0.000001;
     if (subductionTime >= duration - endpointTolerance) {
-      subductionTime = duration;
-      subductionMixer.setTime(subductionTime);
-      subductionComplete = true;
-      pinchActive = false;
+      holdSubductionAnimationAtEnd(duration);
     }
   }
 
@@ -365,13 +371,36 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       && !subductionComplete;
   }
 
+  function holdSubductionAnimationAtEnd(duration) {
+    subductionTime = duration;
+    if (subductionAction) {
+      subductionAction.enabled = true;
+      subductionAction.paused = false;
+    }
+    subductionMixer.setTime(subductionTime);
+    if (subductionAction) {
+      subductionAction.paused = true;
+    }
+    subductionComplete = true;
+    pinchActive = false;
+    setSubductionPromptVisible(false);
+  }
+
   function resetSubductionAnimation() {
     pinchActive = false;
     subductionComplete = false;
     subductionTime = 0;
+    if (subductionAction) {
+      subductionAction.enabled = true;
+      subductionAction.paused = false;
+    }
     if (subductionMixer) {
       subductionMixer.setTime(0);
     }
+  }
+
+  function setSubductionPromptVisible(isVisible) {
+    onSubductionPromptVisibleChange(Boolean(isVisible));
   }
 
   function setObjectOpacity(object, opacity) {
@@ -447,10 +476,12 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     startingRockDuration = 0;
     startingRockDirection = 0;
     subductionMixer = null;
+    subductionAction = null;
     subductionTime = 0;
     subductionComplete = false;
     pinchActive = false;
     pendingStageFiveSlopeHide = false;
+    setSubductionPromptVisible(false);
   }
 
   return {

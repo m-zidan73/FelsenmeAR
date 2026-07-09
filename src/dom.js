@@ -20,6 +20,7 @@ export function getUiElements() {
     geoStatus: document.getElementById("geoStatus"),
     geoDistanceValue: document.getElementById("geoDistanceValue"),
     geoHeadingValue: document.getElementById("geoHeadingValue"),
-    geoGateValue: document.getElementById("geoGateValue")
+    geoGateValue: document.getElementById("geoGateValue"),
+    pinchPrompt: document.getElementById("pinchPrompt")
   };
 }
