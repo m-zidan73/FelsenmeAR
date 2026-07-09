@@ -215,12 +215,13 @@ export function createGelifluctionModelFactory({ THREE }) {
     }
 
     const depthPos = makeDepthLabelPosition(nodes);
-    if (depthPos) {
-      const sprite = makeLabel(LABEL_DEPTH, depthPos, labelHeight);
-      root.add(sprite);
-      sprite.visible = false;
-      labels[LABEL_DEPTH_KEY] = sprite;
-    }
+    const pos = depthPos || new THREE.Vector3(0, 0.4, 0);
+    const sprite = makeLabel(LABEL_DEPTH, pos, labelHeight);
+    sprite.renderOrder = 999;
+    sprite.material.depthTest = false;
+    root.add(sprite);
+    sprite.visible = false;
+    labels[LABEL_DEPTH_KEY] = sprite;
 
     return labels;
   }
