@@ -19,7 +19,7 @@ import { createMenuUi } from "./ui/menu.js";
 
 import { EventBus } from "./event-bus.js";
 import { ExperienceState, ExperienceStateManager } from "./state-manager.js";
-import { createUIPromptController } from "./ui-prompt-controller.js";
+import { createTutorialController } from "./tutorial-controller.js";
 import { createAudioManager } from "./audio-manager.js";
 import { createDataOverlayController } from "./data-overlay-controller.js";
 
@@ -235,16 +235,26 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
   });
   const { placeFormation, reset, returnToMainMenu, updateFormationPlacement } = placementController;
 
-  const tutorialBarEl = document.getElementById("tutorialBar");
+  const tutorialToggleEl = document.getElementById("tutorialToggle");
+  const tutorialIconBtn = document.getElementById("tutorialIconBtn");
+  const tutorialPanelEl = document.getElementById("tutorialPanel");
   const tutorialTextEl = document.getElementById("tutorialText");
+  const tutorialPrevBtn = document.getElementById("tutorialPrev");
+  const tutorialNextBtn = document.getElementById("tutorialNext");
+  const tutorialIndicator = document.getElementById("tutorialPageIndicator");
   const sliderTimeLabel = document.getElementById("sliderTimeLabel");
   const rockBadge = document.getElementById("rockInfoBadge");
   const rockBadgeMaterial = document.getElementById("rockBadgeMaterial");
   const rockBadgeEra = document.getElementById("rockBadgeEra");
 
-  const promptController = createUIPromptController({
-    barElement: tutorialBarEl,
-    textElement: tutorialTextEl
+  const tutorialController = createTutorialController({
+    toggleElement: tutorialToggleEl,
+    iconBtn: tutorialIconBtn,
+    panelElement: tutorialPanelEl,
+    textElement: tutorialTextEl,
+    prevBtn: tutorialPrevBtn,
+    nextBtn: tutorialNextBtn,
+    indicator: tutorialIndicator
   });
 
   const audioManager = createAudioManager({
@@ -340,7 +350,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     });
     EventBus.on("sequence_completed", (data) => {
       if (data && data.trigger === "state:Stage1") {
-        promptController.show("Tap Next Chapter to explore this stage.");
+        tutorialController.addMessage("Tap Next Chapter to explore this stage.");
       }
     });
     EventBus.on("next_chapter", () => {

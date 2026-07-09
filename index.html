@@ -45,8 +45,18 @@
         <div class="placement-controls">
           <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera on top of a flat surface</p>
         </div>
-        <div id="tutorialBar" class="tutorial-bar" hidden>
-          <span id="tutorialText" class="tutorial-text">Align the ghost rock</span>
+        <div id="tutorialToggle" class="tutorial-toggle" hidden>
+          <button id="tutorialIconBtn" class="tutorial-icon-btn" type="button" aria-label="Toggle tutorial">
+            <span class="tutorial-icon">?</span>
+          </button>
+          <div id="tutorialPanel" class="tutorial-panel" hidden>
+            <span id="tutorialText" class="tutorial-text"></span>
+            <div class="tutorial-nav">
+              <button id="tutorialPrev" class="tutorial-nav-btn" type="button">‹</button>
+              <span id="tutorialPageIndicator" class="tutorial-indicator"></span>
+              <button id="tutorialNext" class="tutorial-nav-btn" type="button">›</button>
+            </div>
+          </div>
         </div>
         <div class="bottom-ui" hidden>
           <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">
