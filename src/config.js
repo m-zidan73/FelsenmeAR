@@ -1,5 +1,4 @@
 export const CONFIG = {
-  stageFiveRevealDelaySeconds: 2,
   formationFadeDurationSeconds: 1,
   pinchDistanceThresholdPixels: 1,
   pinchActivityTimeoutMs: 100,

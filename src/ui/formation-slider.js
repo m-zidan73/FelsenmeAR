@@ -1,6 +1,6 @@
 export function createFormationSlider({ ui, clamp, onStepSelected }) {
   const snapThreshold = 0.16;
-  let currentStep = 4;
+  let currentStep = 0;
   let gestureCommitted = false;
 
   function initFormationSlider() {
@@ -49,7 +49,7 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
 
     gestureCommitted = true;
     const requestedStep = Math.round(clamp(Number(rawValue) || 0, 0, 4));
-    const accepted = requestedStep !== currentStep && onStepSelected(requestedStep, currentStep);
+    const accepted = onStepSelected(requestedStep, currentStep);
     if (accepted) {
       currentStep = requestedStep;
     }
@@ -82,7 +82,7 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
       return;
     }
 
-    currentStep = 4;
+    currentStep = 0;
     gestureCommitted = false;
     ui.formationSlider.classList.add("is-prompting");
     renderSliderValue(currentStep, true);

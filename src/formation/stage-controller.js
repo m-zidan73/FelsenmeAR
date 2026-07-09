@@ -2,8 +2,8 @@ import { getDescendantMeshes, setMeshesOpacity } from "../three-utils.js";
 
 export function createGelifluctionStageController({ config, THREE, updateHud }) {
   let instance = null;
-  let currentStage = 5;
-  let revealDelaySeconds = null;
+  let currentStage = 1;
+  let isActivated = false;
   let crossfade = null;
   let stageFourMixer = null;
   let stageFourActions = [];
@@ -22,8 +22,8 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   function preparePlacement(nextInstance) {
     reset();
     instance = nextInstance;
-    currentStage = 5;
-    revealDelaySeconds = config.stageFiveRevealDelaySeconds;
+    currentStage = 1;
+    isActivated = false;
 
     const nodes = managedNodes();
     nodes.forEach((object) => {
@@ -58,11 +58,28 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     subductionAction.play();
     subductionMixer.setTime(0);
 
-    updateHud("Gelifluction placed. Stage 5 is preparing.");
+    updateHud("Gelifluction placed. Tap Stage 1 to begin.");
   }
 
   function requestStage(targetStage) {
-    if (!instance || targetStage === currentStage || targetStage < 1 || targetStage > 5) {
+    if (!instance || targetStage < 1 || targetStage > 5) {
+      return false;
+    }
+
+    if (!isActivated) {
+      if (targetStage !== 1) {
+        return false;
+      }
+
+      isActivated = true;
+      crossfade = null;
+      applyStageTransition(targetStage);
+      startStartingRockAnimation(1);
+      updateHud("Stage 1 ready.");
+      return true;
+    }
+
+    if (targetStage === currentStage) {
       return false;
     }
 
@@ -79,7 +96,6 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
 
   function interruptActiveTransition(previousStage, targetStage) {
     crossfade = null;
-    revealDelaySeconds = null;
 
     if (targetStage !== 4 && !(previousStage === 4 && targetStage === 5)) {
       stageFourDirection = 0;
@@ -99,8 +115,10 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function updateStageFourPlayback(previousStage, targetStage) {
-    if (previousStage === 5 && targetStage === 4) {
+    if (targetStage === 4 && previousStage === 5) {
       startStageFourAnimation(1);
+    } else if (targetStage === 4 && previousStage < 4) {
+      startStageFourAnimation(-1);
     } else if (previousStage === 4 && targetStage === 5) {
       startStageFourAnimation(-1);
     } else if (targetStage !== 4) {
@@ -204,14 +222,6 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
       return;
     }
 
-    if (revealDelaySeconds !== null) {
-      revealDelaySeconds -= deltaSeconds;
-      if (revealDelaySeconds <= 0) {
-        revealDelaySeconds = null;
-        startCrossfade([], stageObjects(5));
-      }
-    }
-
     updateCrossfade(deltaSeconds);
     updateStageFourAnimation(deltaSeconds);
     updateStartingRockAnimation(deltaSeconds);
@@ -286,7 +296,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function updateSubductionAnimation(deltaSeconds) {
-    if (!pinchActive || currentStage !== 1 || !subductionMixer) {
+    if (!pinchActive || !isActivated || currentStage !== 1 || !subductionMixer) {
       return;
     }
 
@@ -295,7 +305,7 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
   }
 
   function setPinchActive(isActive) {
-    pinchActive = Boolean(isActive) && currentStage === 1;
+    pinchActive = Boolean(isActive) && isActivated && currentStage === 1;
   }
 
   function resetSubductionAnimation() {
@@ -365,8 +375,8 @@ export function createGelifluctionStageController({ config, THREE, updateHud }) 
     }
 
     instance = null;
-    currentStage = 5;
-    revealDelaySeconds = null;
+    currentStage = 1;
+    isActivated = false;
     crossfade = null;
     stageFourMixer = null;
     stageFourActions = [];
