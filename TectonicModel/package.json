@@ -1,0 +1,19 @@
+{
+  "name": "felsenmear",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.175.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "cloudflared": "^0.7.1",
+    "vite": "^6.3.0"
+  }
+}

@@ -264,5 +264,9 @@ export function createAudioManager({ audioMapUrl }) {
     unsubSubduction();
   }
 
-  return { load, playClip, playSequence, dispose };
+  function hasPlayed(key) {
+    return playedOnce.has(key);
+  }
+
+  return { load, playClip, playSequence, dispose, hasPlayed };
 }

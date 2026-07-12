@@ -140,7 +140,6 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
   let pinchActive = false;
   let subductionElapsed = 0;
   let lastEmittedSubductionThreshold = 0;
-  let emittedPinchPhase = 0;
   let wasReticleVisible = false;
   let hadSession = false;
   let readyEmitted = false;
@@ -209,6 +208,9 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
       EventBus.raise("pinch_progress", { active });
       if (active && getCurrentStage() === 1) {
         ExperienceStateManager.setState(ExperienceState.PinchActive);
+        const phases = [1, 2, 3];
+        const next = phases.find(p => !audioManager.hasPlayed("pinch_phase:" + p));
+        if (next) EventBus.raise("pinch_phase", { phase: next });
       }
     },
     onPinchDebug: reportPinchDebug,
@@ -392,7 +394,6 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     EventBus.on("subduction_progress", (data) => {
       if (data && data.progress >= 1) {
         ExperienceStateManager.setState(ExperienceState.PinchActive);
-        EventBus.raise("pinch_reset", {});
       }
     });
 
@@ -439,30 +440,19 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
 
       const currentStage = getCurrentStage();
       if (pinchActive && currentStage === 1) {
-        subductionElapsed += deltaSeconds;
-        const progress = Math.min(subductionElapsed / 3, 1);
-
-        const pinchPhase = progress < 1 / 3 ? 1 : progress < 2 / 3 ? 2 : 3;
-        if (pinchPhase > emittedPinchPhase) {
-          emittedPinchPhase = pinchPhase;
-          EventBus.raise("pinch_phase", { phase: pinchPhase });
-        }
+        subductionElapsed = Math.min(subductionElapsed + deltaSeconds, 3);
+        const progress = subductionElapsed / 3;
 
         const thresholds = [0, 0.3, 0.5, 0.8, 1.0];
         for (const t of thresholds) {
           if (progress >= t && lastEmittedSubductionThreshold < t) {
             lastEmittedSubductionThreshold = t;
             EventBus.raise("subduction_progress", { progress: t });
-            if (t >= 1) {
-              pinchActive = false;
-              emittedPinchPhase = 0;
-            }
           }
         }
       } else if (!pinchActive && currentStage === 1) {
         subductionElapsed = 0;
         lastEmittedSubductionThreshold = 0;
-        emittedPinchPhase = 0;
       }
     } else {
       subductionElapsed = 0;
