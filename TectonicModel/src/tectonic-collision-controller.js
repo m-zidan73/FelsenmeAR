@@ -12,7 +12,7 @@ const PROGRESS_THRESHOLDS = [0, 0.3, 0.5, 0.8, 1];
 const DEFAULT_TRANSFORM = {
   position: [0, 0, 0],
   rotationDegrees: [0, 0, 0],
-  scaleMultiplier: 1,
+  scaleMultiplier: 1 / 3,
 };
 
 export function createTectonicCollisionController({
