@@ -101,7 +101,26 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
     THREE,
     disposeObject
   });
-  const { createShadowReceiver, initializeScene, onResize, setPlacementReticleModel } = sceneController;
+  const {
+    createShadowReceiver,
+    initializeScene,
+    onResize,
+    setPlacementReticleModel: setPlacementReticleModelOriginal
+  } = sceneController;
+
+  function setPlacementReticleModel(source) {
+    setPlacementReticleModelOriginal(source);
+
+    const model = state.placementReticle?.getObjectByName("PolyCam Rock Sample");
+    if (!model) return;
+
+    model.position.set(0, 0, 0);
+    model.scale.multiplyScalar(1.3);
+
+    const bounds = new THREE.Box3().setFromObject(model);
+    const center = bounds.getCenter(new THREE.Vector3());
+    model.position.set(-center.x, -bounds.min.y + 0.01, -center.z);
+  }
 
   const modelFactory = createGelifluctionModelFactory({ THREE });
   const { createGelifluctionInstance, validateGelifluctionAsset } = modelFactory;
