@@ -35,6 +35,11 @@ export function buildUI(model) {
       <input id="bend-slider" type="range" min="0" max="2" step="0.05" value="0.2" style="width:90px;">
       <span id="bend-label" style="min-width:32px;text-align:right;">0.2</span>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:11px;">Stretch X</label>
+      <input id="stretch-slider" type="range" min="0.5" max="2.5" step="0.05" value="1.0" style="width:90px;">
+      <span id="stretch-label" style="min-width:32px;text-align:right;">1.0</span>
+    </div>
   `;
   document.body.appendChild(panel);
 
@@ -51,6 +56,8 @@ export function buildUI(model) {
   const hLabel = panel.querySelector("#h-label");
   const bendSlider = panel.querySelector("#bend-slider");
   const bendLabel = panel.querySelector("#bend-label");
+  const stretchSlider = panel.querySelector("#stretch-slider");
+  const stretchLabel = panel.querySelector("#stretch-label");
 
   let currentPhaseUI = 0;
   let isAnimatingUI = false;
@@ -135,6 +142,12 @@ export function buildUI(model) {
     const val = parseFloat(bendSlider.value);
     model.bending = val;
     bendLabel.textContent = val.toFixed(2);
+  };
+
+  stretchSlider.oninput = () => {
+    const val = parseFloat(stretchSlider.value);
+    model.stretch = val;
+    stretchLabel.textContent = val.toFixed(2);
   };
 
   scrubSlider.oninput = () => {

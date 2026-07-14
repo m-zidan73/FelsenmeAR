@@ -113,6 +113,7 @@ export class FelsenmeARModel {
     this._isAnimating = false;
     this._horizontal = 0.5;
     this._bending = 0.2;
+    this._stretch = 1.0;
     this._duration = BASE_DURATION;
     this._speed = 1;
     this._scrubbing = false;
@@ -130,6 +131,8 @@ export class FelsenmeARModel {
     this._origA = null;
     this._origB = null;
     this._tA = null;
+    this._zMinA = null;
+    this._zMaxA = null;
     this._magmas = [];
     this._sphereMesh = null;
     this._sphereOrigScale = null;
@@ -164,6 +167,7 @@ export class FelsenmeARModel {
   get loaded() { return this._loaded; }
   get horizontal() { return this._horizontal; }
   get bending() { return this._bending; }
+  get stretch() { return this._stretch; }
   get speed() { return this._speed; }
 
   set horizontal(v) {
@@ -173,6 +177,11 @@ export class FelsenmeARModel {
 
   set bending(v) {
     this._bending = v;
+    this._applyDeformation(this._animTime);
+  }
+
+  set stretch(v) {
+    this._stretch = v;
     this._applyDeformation(this._animTime);
   }
 
@@ -313,6 +322,8 @@ export class FelsenmeARModel {
               const data = precomputeMesh(child);
               this._origA = data.orig;
               this._tA = data.t;
+              this._zMinA = data.zMin;
+              this._zMaxA = data.zMax;
               child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
             } else if (child.name === "CapaInferiorB") {
               this._capaB = child;
@@ -460,7 +471,10 @@ export class FelsenmeARModel {
     if (this._capaA && this._origA && this._tA) {
       const arrA = this._capaA.geometry.attributes.position.array;
       arrA.set(this._origA);
+      const zMax = this._zMaxA;
+      const s = this._stretch;
       for (let i = 0, vi = 0; i < arrA.length; i += 3, vi++) {
+        arrA[i + 2] = zMax + (arrA[i + 2] - zMax) * s;
         arrA[i + 2] += dz;
         arrA[i + 1] += dyBend * this._tA[vi];
       }
