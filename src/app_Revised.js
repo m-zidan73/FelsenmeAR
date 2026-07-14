@@ -22,6 +22,7 @@ import { ExperienceState, ExperienceStateManager } from "./state-manager.js";
 import { createTutorialController } from "./tutorial-controller.js";
 import { createAudioManager } from "./audio-manager.js";
 import { createDataOverlayController } from "./data-overlay-controller.js";
+import { createTectonicCollisionController } from "../TectonicModel/src/tectonic-collision-controller.js";
 
 (function () {
   installRuntimeErrorCapture();
@@ -137,14 +138,17 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
 
   let interactionController;
   let placementController;
-  let pinchActive = false;
-  let subductionElapsed = 0;
-  let lastEmittedSubductionThreshold = 0;
   let wasReticleVisible = false;
   let hadSession = false;
   let readyEmitted = false;
 
+  const tectonicCollisionController = createTectonicCollisionController({
+    EventBus,
+    setXRDebug
+  });
+
   function reportPinchDebug(debug) {
+    tectonicCollisionController.handlePinchDebug(debug);
     const distance = Number.isFinite(debug.distance) ? " distance=" + debug.distance.toFixed(1) : "";
     const delta = Number.isFinite(debug.distanceDelta) ? " delta=" + debug.distanceDelta.toFixed(1) : "";
     setXRDebug(
@@ -157,6 +161,12 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     );
   }
 
+  function placeFormationWrapped(center, anchor) {
+    placementController.placeFormation(center, anchor);
+    ExperienceStateManager.setState(ExperienceState.FormationPlaced);
+    EventBus.raise("formation_placed", {});
+  }
+
   const arController = createArController({
     state,
     ui,
@@ -164,11 +174,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     bounceScanPrompt,
     captureCompassHeading,
     getPlacementGateStatus,
-    placeFormation: (center, anchor) => {
-      placementController.placeFormation(center, anchor);
-      ExperienceStateManager.setState(ExperienceState.FormationPlaced);
-      EventBus.raise("formation_placed", {});
-    },
+    placeFormation: placeFormationWrapped,
     refreshReadyState: () => {
       refreshReadyState();
       if (!readyEmitted && !state.modelLoadError && state.modelsLoaded && state.arSupported && !ui.startArButton.disabled) {
@@ -203,14 +209,19 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
     pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
     onPinchChange: (active) => {
-      setPinchActive(active);
-      pinchActive = active;
+      const tectonicPhase = tectonicCollisionController.handlePinchChange(active);
+      const tectonicActive = tectonicCollisionController.isReplacementActive();
+      setPinchActive(tectonicActive ? false : active);
       EventBus.raise("pinch_progress", { active });
       if (active && getCurrentStage() === 1) {
         ExperienceStateManager.setState(ExperienceState.PinchActive);
-        const phases = [1, 2, 3];
-        const next = phases.find(p => !audioManager.hasPlayed("pinch_phase:" + p));
-        if (next) EventBus.raise("pinch_phase", { phase: next });
+        if (tectonicPhase) {
+          EventBus.raise("pinch_phase", { phase: tectonicPhase });
+        } else if (!tectonicActive) {
+          const phases = [1, 2, 3];
+          const next = phases.find(p => !audioManager.hasPlayed("pinch_phase:" + p));
+          if (next) EventBus.raise("pinch_phase", { phase: next });
+        }
       }
     },
     onPinchDebug: reportPinchDebug,
@@ -236,7 +247,21 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     setXRDebug,
     updateHud
   });
-  const { placeFormation, reset, returnToMainMenu, updateFormationPlacement } = placementController;
+  const {
+    reset: resetPlacement,
+    returnToMainMenu: returnToMainMenuPlacement,
+    updateFormationPlacement
+  } = placementController;
+
+  function reset() {
+    tectonicCollisionController.reset();
+    resetPlacement();
+  }
+
+  function returnToMainMenu() {
+    tectonicCollisionController.reset();
+    returnToMainMenuPlacement();
+  }
 
   const tutorialToggleEl = document.getElementById("tutorialToggle");
   const tutorialIconBtn = document.getElementById("tutorialIconBtn");
@@ -356,6 +381,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
 
     EventBus.on("stage_changed", (data) => {
       if (data && typeof data.stage === "number") {
+        tectonicCollisionController.handleStageChange(data.stage);
         updateRockBadge(data.stage);
         if (state.formationLabels) {
           setLabelVisibilityByStage(state.formationLabels, data.stage);
@@ -363,6 +389,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
       }
     });
     EventBus.on("formation_placed", () => {
+      tectonicCollisionController.attach(state.formationRoot);
       updateSliderTimeLabel(0);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
       if (state.formationLabels) {
@@ -374,11 +401,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
         ExperienceStateManager.setState(ExperienceState.Aligned);
       }
     });
-    EventBus.on("sequence_completed", (data) => {
-      if (data && data.trigger === "state:Stage1") {
-        subductionElapsed = 0;
-      }
-    });
+
     EventBus.on("next_chapter", () => {
       ExperienceStateManager.setState(ExperienceState.PinchReady);
       const p = dataOverlayController.getPinchData();
@@ -391,6 +414,9 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
         rockBadge.style.animation = "badgeIn 350ms ease";
       }
     });
+    EventBus.on("tectonic_animation_complete", () => {
+      setPinchPromptVisible(false);
+    });
     EventBus.on("subduction_progress", (data) => {
       if (data && data.progress >= 1) {
         ExperienceStateManager.setState(ExperienceState.PinchActive);
@@ -401,7 +427,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
       state,
       THREE,
       getCurrentStage,
-      placeFormation,
+      placeFormation: placeFormationWrapped,
       reset,
       updateFormationPlacement
     });
@@ -422,6 +448,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
       ExperienceStateManager.setState(ExperienceState.Scanning);
       EventBus.raise("session_started", {});
     } else if (!hasSession && hadSession) {
+      tectonicCollisionController.reset();
       EventBus.raise("session_ended", {});
       ExperienceStateManager.setState(ExperienceState.SessionEnded);
     }
@@ -437,26 +464,7 @@ import { createDataOverlayController } from "./data-overlay-controller.js";
     }
     if (state.formationPlaced) {
       updateFormationAnimation(deltaSeconds);
-
-      const currentStage = getCurrentStage();
-      if (pinchActive && currentStage === 1) {
-        subductionElapsed = Math.min(subductionElapsed + deltaSeconds, 3);
-        const progress = subductionElapsed / 3;
-
-        const thresholds = [0, 0.3, 0.5, 0.8, 1.0];
-        for (const t of thresholds) {
-          if (progress >= t && lastEmittedSubductionThreshold < t) {
-            lastEmittedSubductionThreshold = t;
-            EventBus.raise("subduction_progress", { progress: t });
-          }
-        }
-      } else if (!pinchActive && currentStage === 1) {
-        subductionElapsed = 0;
-        lastEmittedSubductionThreshold = 0;
-      }
-    } else {
-      subductionElapsed = 0;
-      lastEmittedSubductionThreshold = 0;
+      tectonicCollisionController.update(deltaSeconds);
     }
 
     state.renderer.render(state.scene, state.camera);

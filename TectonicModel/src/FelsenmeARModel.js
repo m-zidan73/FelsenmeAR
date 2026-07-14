@@ -4,6 +4,16 @@ import { createWaveCurve } from "./wavePath.js";
 
 const BASE_DURATION = 8;
 const PHASE_DURATION = BASE_DURATION / 3;
+const REQUIRED_MESH_NAMES = [
+  "CapaInferiorA",
+  "CapaInferiorB",
+  "CapaSuperiorA",
+  "CapaSuperiorB",
+  "Magma1",
+  "Magma2",
+  "Sphere",
+  "Cylinder",
+];
 
 function makeCanvas(stripes, c1, c2) {
   const size = 512;
@@ -88,23 +98,32 @@ function resolveMaterial(meshName, override, fallback) {
 }
 
 export class FelsenmeARModel {
-  constructor(scene, options = {}) {
-    this.scene = scene;
+  constructor(parent, options = {}) {
+    if (!parent || typeof parent.add !== "function") {
+      throw new Error("FelsenmeARModel requires a Three.js parent object");
+    }
+
+    this.parent = parent;
     this.options = options;
+    this.modelUrl = options.modelUrl || "FelsenmeAR.glb";
     const mats = options.materials || {};
 
     this._animTime = 0;
     this._currentPhase = 0;
     this._isAnimating = false;
-    this._phaseStartReal = 0;
     this._horizontal = 0.5;
     this._bending = 0.2;
     this._duration = BASE_DURATION;
+    this._speed = 1;
     this._scrubbing = false;
+    this._loaded = false;
+    this._disposed = false;
+    this._lastUpdateTime = null;
 
     this._onPhaseChange = null;
     this._onComplete = null;
     this._onLoadCallback = null;
+    this._onErrorCallback = null;
 
     this._capaA = null;
     this._capaB = null;
@@ -121,6 +140,7 @@ export class FelsenmeARModel {
     this._cylinderYOffset = 0;
 
     this.root = new THREE.Group();
+    this.root.name = "FelsenmeAR Tectonic Root";
     this.meshes = new Map();
 
     this._subductionCurve = createWaveCurve();
@@ -128,7 +148,7 @@ export class FelsenmeARModel {
     this._curveEnd = this._subductionCurve.getPointAt(1);
     this._tempP = new THREE.Vector3();
 
-    this.scene.add(this.root);
+    this.parent.add(this.root);
     this._loadModel(mats);
   }
 
@@ -140,8 +160,11 @@ export class FelsenmeARModel {
     return this._duration > 0 ? Math.min(this._animTime / this._duration, 1) : 0;
   }
   get complete() { return this._currentPhase >= 3; }
+  get isAnimating() { return this._isAnimating; }
+  get loaded() { return this._loaded; }
   get horizontal() { return this._horizontal; }
   get bending() { return this._bending; }
+  get speed() { return this._speed; }
 
   set horizontal(v) {
     this._horizontal = v;
@@ -154,7 +177,8 @@ export class FelsenmeARModel {
   }
 
   set speed(v) {
-    this._duration = BASE_DURATION / v;
+    const nextSpeed = Number(v);
+    this._speed = Number.isFinite(nextSpeed) && nextSpeed > 0 ? nextSpeed : 1;
   }
 
   // ── Callbacks ──
@@ -162,35 +186,26 @@ export class FelsenmeARModel {
   onPhaseChange(fn) { this._onPhaseChange = fn; }
   onComplete(fn) { this._onComplete = fn; }
   onLoad(fn) { this._onLoadCallback = fn; }
+  onError(fn) { this._onErrorCallback = fn; }
 
   // ── Control ──
 
   playPhase1() {
-    console.log("playPhase1 called, phase:", this._currentPhase);
-    if (this._currentPhase >= 3) return;
-    this._animTime = 0;
-    this._phaseStartReal = performance.now();
-    this._isAnimating = true;
-    console.log("playPhase1 done, _isAnimating:", this._isAnimating, "startReal:", this._phaseStartReal);
+    return this._startPhase(0);
   }
 
   playPhase2() {
-    if (this._currentPhase >= 3) return;
-    this._animTime = PHASE_DURATION;
-    this._phaseStartReal = performance.now();
-    this._isAnimating = true;
+    return this._startPhase(1);
   }
 
   playPhase3() {
-    if (this._currentPhase >= 3) return;
-    this._animTime = 2 * PHASE_DURATION;
-    this._phaseStartReal = performance.now();
-    this._isAnimating = true;
+    return this._startPhase(2);
   }
 
   togglePlay() {
+    if (!this._loaded || this.complete) return false;
     this._isAnimating = !this._isAnimating;
-    if (this._isAnimating) this._phaseStartReal = performance.now();
+    this._lastUpdateTime = null;
     return this._isAnimating;
   }
 
@@ -199,12 +214,16 @@ export class FelsenmeARModel {
     this._currentPhase = 0;
     this._isAnimating = false;
     this._scrubbing = false;
+    this._lastUpdateTime = null;
     this._resetMeshes();
   }
 
   setProgress(t) {
+    const progress = THREE.MathUtils.clamp(Number(t) || 0, 0, 1);
     this._scrubbing = true;
-    this._animTime = t * BASE_DURATION;
+    this._isAnimating = false;
+    this._animTime = progress * BASE_DURATION;
+    this._currentPhase = progress >= 1 ? 3 : Math.floor(progress * 3);
     this._applyDeformation(this._animTime);
   }
 
@@ -230,15 +249,23 @@ export class FelsenmeARModel {
 
   // ── Main update (call each frame from host loop) ──
 
-  update() {
-    console.log("update called, _isAnimating:", this._isAnimating, "_scrubbing:", this._scrubbing, "_animTime:", this._animTime, "_currentPhase:", this._currentPhase);
-    if (this._isAnimating && !this._scrubbing) {
-      const realElapsed = (performance.now() - this._phaseStartReal) / 1000;
-      this._animTime = this._currentPhase * PHASE_DURATION + realElapsed;
+  update(deltaSeconds) {
+    if (this._isAnimating && !this._scrubbing && this._loaded && !this._disposed) {
+      let delta = 0;
+      if (Number.isFinite(deltaSeconds)) {
+        delta = Math.max(0, deltaSeconds);
+        this._lastUpdateTime = null;
+      } else {
+        const now = performance.now();
+        delta = this._lastUpdateTime === null ? 0 : Math.max(0, (now - this._lastUpdateTime) / 1000);
+        this._lastUpdateTime = now;
+      }
+      this._animTime += delta * this._speed;
       const phaseEnd = (this._currentPhase + 1) * PHASE_DURATION;
       if (this._animTime >= phaseEnd) {
         this._animTime = phaseEnd;
         this._isAnimating = false;
+        this._lastUpdateTime = null;
         this._currentPhase++;
         if (this._currentPhase >= 3) {
           if (this._onComplete) this._onComplete();
@@ -250,65 +277,135 @@ export class FelsenmeARModel {
     }
   }
 
-  // ── Internal ──
-
-  _loadModel(mats) {
-    console.log("GLTFLoader loading from: FelsenmeAR.glb");
-    new GLTFLoader().load("FelsenmeAR.glb",
-      (gltf) => {
-      console.log("GLTF loaded OK");
-      const root = gltf.scene;
-      try {
-        this.root.add(root);
-        console.log("root added");
-        root.traverse((child) => {
-          if (!child.isMesh) return;
-          this.meshes.set(child.name, child);
-          if (child.name === "CapaInferiorA") {
-            this._capaA = child;
-            const data = precomputeMesh(child);
-            this._origA = data.orig; this._tA = data.t;
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
-          } else if (child.name === "CapaInferiorB") {
-            this._capaB = child;
-            const data = precomputeMesh(child);
-            this._origB = data.orig;
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatB);
-          } else if (child.name === "CapaSuperiorA" || child.name === "CapaSuperior.copia" || child.name === "Cube.001") {
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
-            if (child.name === "CapaSuperiorA" && !this._sphereStartPos) {
-              child.geometry.computeBoundingBox();
-              const bb = child.geometry.boundingBox;
-              this._sphereStartPos = new THREE.Vector3();
-              this._sphereStartPos.y = child.position.y + (bb ? bb.min.y : 0);
-            }
-          } else if (child.name === "CapaSuperiorB") {
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatB);
-          } else if (child.name === "Magma1" || child.name === "Cube") {
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatMagma(0xff4400));
-            this._magmas.push({ mesh: child, origZ: child.position.z });
-          } else if (child.name === "Magma2") {
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatMagma(0xff2200));
-          } else if (child.name === "Sphere") {
-            this._sphereMesh = child;
-            this._sphereOrigScale = child.scale.clone();
-            this._sphereEndPos = child.position.clone();
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere());
-          } else if (child.name === "Cylinder") {
-            this._cylinderMesh = child;
-            this._cylinderOrigScale = child.scale.clone();
-            if (this._sphereEndPos) this._cylinderYOffset = this._sphereEndPos.y - child.position.y;
-            child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere());
-          }
-        });
-        console.log("traverse done");
-        this.showInitial();
-        const cb = this.options.onLoad || this._onLoadCallback;
-        if (cb) { console.log("calling onLoad"); cb(this); }
-      } catch (e) { console.error("GLTF callback error:", e); }
-    }, undefined, (err) => console.error("GLTF error:", err));
+  dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
+    this._isAnimating = false;
+    this._lastUpdateTime = null;
+    this.root.removeFromParent();
+    this.root.traverse((child) => {
+      if (child.geometry) child.geometry.dispose();
+      if (!child.material) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => material.dispose());
+    });
+    this.meshes.clear();
   }
 
+  // Internal
+  _loadModel(mats) {
+    new GLTFLoader().load(
+      this.modelUrl,
+      (gltf) => {
+        const importedRoot = gltf.scene;
+        try {
+          if (this._disposed) {
+            this._disposeImportedRoot(importedRoot);
+            return;
+          }
+
+          this.root.add(importedRoot);
+          importedRoot.traverse((child) => {
+            if (!child.isMesh) return;
+            this.meshes.set(child.name, child);
+            if (child.name === "CapaInferiorA") {
+              this._capaA = child;
+              const data = precomputeMesh(child);
+              this._origA = data.orig;
+              this._tA = data.t;
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
+            } else if (child.name === "CapaInferiorB") {
+              this._capaB = child;
+              const data = precomputeMesh(child);
+              this._origB = data.orig;
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatB);
+            } else if (child.name === "CapaSuperiorA" || child.name === "CapaSuperior.copia" || child.name === "Cube.001") {
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
+              if (child.name === "CapaSuperiorA" && !this._sphereStartPos) {
+                child.geometry.computeBoundingBox();
+                const bb = child.geometry.boundingBox;
+                this._sphereStartPos = new THREE.Vector3();
+                this._sphereStartPos.y = child.position.y + (bb ? bb.min.y : 0);
+              }
+            } else if (child.name === "CapaSuperiorB") {
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatB);
+            } else if (child.name === "Magma1" || child.name === "Cube") {
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatMagma(0xff4400));
+              this._magmas.push({ mesh: child, origZ: child.position.z });
+            } else if (child.name === "Magma2") {
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatMagma(0xff2200));
+            } else if (child.name === "Sphere") {
+              this._sphereMesh = child;
+              this._sphereOrigScale = child.scale.clone();
+              this._sphereEndPos = child.position.clone();
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere());
+            } else if (child.name === "Cylinder") {
+              this._cylinderMesh = child;
+              this._cylinderOrigScale = child.scale.clone();
+              if (this._sphereEndPos) {
+                this._cylinderYOffset = this._sphereEndPos.y - child.position.y;
+              }
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere());
+            }
+          });
+
+          const missingMeshes = REQUIRED_MESH_NAMES.filter((name) => !this.meshes.has(name));
+          if (missingMeshes.length) {
+            throw new Error("FelsenmeAR model is missing meshes: " + missingMeshes.join(", "));
+          }
+
+          this._loaded = true;
+          this.showInitial();
+          const callback = this.options.onLoad || this._onLoadCallback;
+          if (callback) callback(this);
+        } catch (error) {
+          importedRoot.removeFromParent();
+          this._disposeImportedRoot(importedRoot);
+          this._handleLoadError(error);
+        }
+      },
+      undefined,
+      (error) => this._handleLoadError(error)
+    );
+  }
+
+  _startPhase(phaseIndex) {
+    if (
+      !this._loaded
+      || this._disposed
+      || this._isAnimating
+      || this._currentPhase !== phaseIndex
+      || phaseIndex < 0
+      || phaseIndex >= 3
+    ) {
+      return false;
+    }
+
+    this._scrubbing = false;
+    this._animTime = phaseIndex * PHASE_DURATION;
+    this._lastUpdateTime = null;
+    this._isAnimating = true;
+    return true;
+  }
+
+  _handleLoadError(error) {
+    if (this._disposed) return;
+    this._loaded = false;
+    this._isAnimating = false;
+    const normalizedError = error instanceof Error ? error : new Error(String(error));
+    const callback = this.options.onError || this._onErrorCallback;
+    if (callback) callback(normalizedError);
+    else console.error("FelsenmeAR model load failed:", normalizedError);
+  }
+
+  _disposeImportedRoot(root) {
+    root.traverse((child) => {
+      if (child.geometry) child.geometry.dispose();
+      if (!child.material) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => material.dispose());
+    });
+  }
   _applyDeformation(time) {
     const progress = Math.min(time / this._duration, 1);
 
