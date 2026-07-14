@@ -127,6 +127,73 @@ Cada vez que aparezca un **nuevo commit en `origin/Refactor-Decoupled`**, debes 
 - **`THREE` faltante en `createPlacementController`** — causaba crash en `orientFormationToCameraHeading()` al hacer `new THREE.Vector3()`, rompiendo todo el anchoring system. Fix: añadir `THREE,` como parámetro.
 - **`onPinchDebug` faltante** — no rompía la app (default `() => {}`), pero perdía debug info del pinch. Fix: añadir `reportPinchDebug` + pasarlo como callback.
 
+### Blender MCP — Conexión local (TCP raw, no WebSocket)
+
+Blender corre con el addon **BlenderMCP v1.2** (ahujas) escuchando en `localhost:9876`.
+
+**⚠️ El protocolo NO es MCP estándar ni WebSocket.** Es TCP raw con mensajes JSON.
+
+```
+TCP connect → enviar JSON → recibir JSON
+```
+
+Ejemplos de comandos (`type` + `params`):
+
+| Comando | Descripción |
+|---------|-------------|
+| `get_scene_info` | Lista objetos de la escena |
+| `get_object_info` | Detalle de un objeto (`name`) |
+| `execute_code` | Ejecuta Blender Python (`code`) |
+| `get_viewport_screenshot` | Captura screenshot (`filepath`, `max_size`) |
+
+**Conexión desde opencode (PowerShell):**
+```powershell
+$c = New-Object System.Net.Sockets.TcpClient
+$c.ConnectAsync("127.0.0.1", 9876).Wait(3000)
+$s = $c.GetStream()
+$msg = '{"type":"get_scene_info","params":{}}'
+$b = [System.Text.Encoding]::UTF8.GetBytes($msg)
+$s.Write($b, 0, $b.Length)
+Start-Sleep 2
+$buf = New-Object byte[] 65536
+$r = $s.Read($buf, 0, $buf.Length)
+[System.Text.Encoding]::UTF8.GetString($buf, 0, $r)
+$c.Dispose()
+```
+
+**Para enviar Blender Python:**
+```powershell
+# {"type":"execute_code","params":{"code":"..."}}
+$msg = '{"type":"execute_code","params":{"code":"bpy.ops.export_scene.gltf(filepath=\"C:\\\\temp\\\\model.glb\")"}}'
+```
+
+**Ubicación del addon:** `%APPDATA%\Blender Foundation\Blender\5.1\scripts\addons\addon.py`
+
+### Túnel trycloudflare para TectonicModel
+
+**Proyecto actual:** `D:\GIT\P4\WebXR-FelsenmeAR\TectonicModel` (Vite, puerto 5173)
+
+```powershell
+# 1. Iniciar Vite (ventana separada)
+Start-Process powershell -ArgumentList "-NoExit", "npx vite --host 0.0.0.0 --port 5173" -WorkingDirectory "D:\GIT\P4\WebXR-FelsenmeAR\TectonicModel"
+
+# 2. Iniciar tunnel (ventana separada)
+$env:TEMP\cloudflared.exe tunnel --url http://localhost:5173
+```
+
+**URL tipo:** `https://xxxx.trycloudflare.com`
+
+Si sale `Blocked request. This host is not allowed`, agregar en `vite.config.js`:
+```js
+server: { allowedHosts: true }
+```
+
+### Túnel trycloudflare para Blender MCP
+
+```powershell
+$env:TEMP\cloudflared.exe tunnel --url http://localhost:9876
+```
+
 ### Comandos útiles
 ```powershell
 node static-server.mjs
@@ -134,4 +201,8 @@ node static-server.mjs
 
 $env:TEMP\cloudflared.exe tunnel --url http://localhost:5173
 # Da URL HTTPS para probar en celular
+
+# Ruta cloudflared
+$env:TEMP\cloudflared.exe
+# Versión: 2026.7.0
 ```
