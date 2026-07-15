@@ -282,6 +282,16 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
     returnToMainMenuPlacement();
   }
 
+  function getTectonicPlacementOptions() {
+    return {
+      scene: state.scene,
+      formationRoot: state.formationRoot,
+      position: state.placementCenter,
+      planeHeight: state.planeHeight,
+      quaternion: state.formationRoot ? state.formationRoot.quaternion : null
+    };
+  }
+
   const tutorialToggleEl = ui.tutorialToggle;
   const tutorialIconBtn = ui.tutorialIconButton;
   const tutorialPanelEl = ui.tutorialPanel;
@@ -408,7 +418,7 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
       }
     });
     EventBus.on("formation_placed", () => {
-      tectonicCollisionController.attach(state.formationRoot);
+      tectonicCollisionController.attach(getTectonicPlacementOptions());
       updateSliderTimeLabel(0);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
       if (state.formationLabels) {
@@ -480,6 +490,7 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
     }
     if (state.formationPlaced) {
       updateFormationAnimation(deltaSeconds);
+      tectonicCollisionController.updatePlacement(getTectonicPlacementOptions());
       tectonicCollisionController.update(deltaSeconds);
     }
 

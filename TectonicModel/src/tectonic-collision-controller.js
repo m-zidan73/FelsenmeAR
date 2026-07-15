@@ -23,6 +23,8 @@ export function createTectonicCollisionController({
   setXRDebug = () => {},
 }) {
   let formationRoot = null;
+  let sceneRoot = null;
+  let placementRoot = null;
   let modelParent = null;
   let model = null;
   let gesturePrompt = null;
@@ -35,23 +37,30 @@ export function createTectonicCollisionController({
   let releaseObserved = true;
   let emittedProgress = new Set();
 
-  function attach(nextFormationRoot) {
+  function attach(options = {}) {
     reset();
 
-    formationRoot = nextFormationRoot || null;
-    modelParent = findModelParent(formationRoot);
-    legacyStageOneNodes = findLegacyStageOneNodes(modelParent);
+    const attachment = normalizeAttachmentOptions(options);
+    formationRoot = attachment.formationRoot;
+    sceneRoot = attachment.sceneRoot;
+    legacyStageOneNodes = findLegacyStageOneNodes(formationRoot);
 
-    if (!modelParent || legacyStageOneNodes.length !== LEGACY_STAGE_ONE_NODE_NAMES.length) {
-      handleModelError(new Error("Could not find the legacy Stage 1 model hierarchy"));
+    if (!sceneRoot || typeof sceneRoot.add !== "function") {
+      handleModelError(new Error("Could not find the scene root for the tectonic model"));
       return false;
     }
+
+    placementRoot = new THREE.Group();
+    placementRoot.name = "FelsenmeAR Tectonic Placement Root";
+    sceneRoot.add(placementRoot);
+    modelParent = placementRoot;
+    updatePlacement(attachment);
 
     const nextModel = new FelsenmeARModel(modelParent, {
       modelUrl,
       onLoad(loadedModel) {
         if (model !== loadedModel) return;
-        alignToLegacyStageOne();
+        alignToPlacementRoot();
         gesturePrompt = createWorldPinchPrompt({
           parent: model.root,
           bounds: getLocalBounds(model.root),
@@ -72,6 +81,26 @@ export function createTectonicCollisionController({
     model.onPhaseChange(handleIntermediatePhaseComplete);
     model.onComplete(handleAnimationComplete);
     return true;
+  }
+
+  function updatePlacement(options = {}) {
+    if (!placementRoot) return;
+    const position = options.position;
+    const quaternion = options.quaternion;
+    const planeHeight = Number.isFinite(options.planeHeight) ? options.planeHeight : null;
+
+    if (position && typeof position.copy === "function") {
+      placementRoot.position.copy(position);
+      if (planeHeight !== null) {
+        placementRoot.position.y = planeHeight;
+      }
+    }
+
+    if (quaternion && typeof quaternion.copy === "function") {
+      placementRoot.quaternion.copy(quaternion);
+    }
+
+    placementRoot.updateMatrixWorld(true);
   }
 
   function handleStageChange(stage) {
@@ -137,6 +166,11 @@ export function createTectonicCollisionController({
     if (model) model.dispose();
 
     formationRoot = null;
+    sceneRoot = null;
+    if (placementRoot) {
+      placementRoot.removeFromParent();
+    }
+    placementRoot = null;
     modelParent = null;
     model = null;
     gesturePrompt = null;
@@ -216,7 +250,7 @@ export function createTectonicCollisionController({
     });
   }
 
-  function alignToLegacyStageOne() {
+  function alignToPlacementRoot() {
     if (!model || !modelParent) return;
 
     const resolvedTransform = {
@@ -233,35 +267,19 @@ export function createTectonicCollisionController({
       THREE.MathUtils.degToRad(rotation[1] || 0),
       THREE.MathUtils.degToRad(rotation[2] || 0)
     );
-    model.root.scale.setScalar(1);
+    model.root.scale.setScalar(scaleMultiplier);
     modelParent.updateMatrixWorld(true);
 
-    const targetBounds = getCombinedBounds(legacyStageOneNodes);
-    const sourceBounds = new THREE.Box3().setFromObject(model.root);
-    if (targetBounds.isEmpty() || sourceBounds.isEmpty()) {
-      throw new Error("Could not measure Stage 1 model bounds");
+    const bounds = new THREE.Box3().setFromObject(model.root);
+    if (bounds.isEmpty()) {
+      throw new Error("Could not measure tectonic model bounds");
     }
 
-    const targetSize = targetBounds.getSize(new THREE.Vector3());
-    const sourceSize = sourceBounds.getSize(new THREE.Vector3());
-    const targetSpan = Math.max(targetSize.x, targetSize.z);
-    const sourceSpan = Math.max(sourceSize.x, sourceSize.z);
-    if (targetSpan <= 0 || sourceSpan <= 0) {
-      throw new Error("Stage 1 model bounds have an invalid size");
-    }
+    const center = bounds.getCenter(new THREE.Vector3());
+    const bottomCenter = new THREE.Vector3(center.x, bounds.min.y, center.z);
+    const bottomCenterLocal = modelParent.worldToLocal(bottomCenter.clone());
 
-    model.root.scale.setScalar((targetSpan / sourceSpan) * scaleMultiplier);
-    modelParent.updateMatrixWorld(true);
-
-    const scaledSourceBounds = new THREE.Box3().setFromObject(model.root);
-    const targetCenter = targetBounds.getCenter(new THREE.Vector3());
-    const sourceCenter = scaledSourceBounds.getCenter(new THREE.Vector3());
-    const targetBottom = new THREE.Vector3(targetCenter.x, targetBounds.min.y, targetCenter.z);
-    const sourceBottom = new THREE.Vector3(sourceCenter.x, scaledSourceBounds.min.y, sourceCenter.z);
-    const targetLocal = modelParent.worldToLocal(targetBottom.clone());
-    const sourceLocal = modelParent.worldToLocal(sourceBottom.clone());
-
-    model.root.position.add(targetLocal.sub(sourceLocal));
+    model.root.position.sub(bottomCenterLocal);
     model.root.position.add(new THREE.Vector3().fromArray(correctionPosition));
     modelParent.updateMatrixWorld(true);
   }
@@ -282,9 +300,24 @@ export function createTectonicCollisionController({
     return localBounds;
   }
 
-  function findModelParent(root) {
-    if (!root) return null;
-    return root.getObjectByName("Gelifluction") || root.children[0] || root;
+  function normalizeAttachmentOptions(options) {
+    if (options && typeof options.add === "function") {
+      return {
+        sceneRoot: options,
+        formationRoot: null,
+        position: null,
+        quaternion: null,
+        planeHeight: null,
+      };
+    }
+
+    return {
+      sceneRoot: options.sceneRoot || options.scene || null,
+      formationRoot: options.formationRoot || null,
+      position: options.position || null,
+      quaternion: options.quaternion || null,
+      planeHeight: options.planeHeight,
+    };
   }
 
   function findLegacyStageOneNodes(root) {
@@ -292,12 +325,6 @@ export function createTectonicCollisionController({
     return LEGACY_STAGE_ONE_NODE_NAMES
       .map((name) => root.getObjectByName(name) || root.getObjectByName(name.replaceAll(" ", "_")))
       .filter(Boolean);
-  }
-
-  function getCombinedBounds(objects) {
-    return objects.reduce((bounds, object) => {
-      return bounds.union(new THREE.Box3().setFromObject(object));
-    }, new THREE.Box3());
   }
 
   function handleModelError(error) {
@@ -328,6 +355,7 @@ export function createTectonicCollisionController({
     isReplacementActive,
     reset,
     setGesturePromptVisible,
+    updatePlacement,
     update,
   };
 }
