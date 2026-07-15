@@ -7,6 +7,7 @@ export function getUiElements() {
     loadingFill: document.getElementById("loadingFill"),
     loadingStateLabel: document.getElementById("loadingStateLabel"),
     scanPrompt: document.getElementById("scanPrompt"),
+    stageInstruction: document.getElementById("stageInstruction"),
     xrDebugText: document.getElementById("xrDebugText"),
     startArButton: document.getElementById("startArButton"),
     resetButton: document.getElementById("resetButton"),
@@ -21,6 +22,24 @@ export function getUiElements() {
     geoDistanceValue: document.getElementById("geoDistanceValue"),
     geoHeadingValue: document.getElementById("geoHeadingValue"),
     geoGateValue: document.getElementById("geoGateValue"),
-    pinchPrompt: document.getElementById("pinchPrompt")
+    tutorialToggle: document.getElementById("tutorialToggle"),
+    tutorialIconButton: document.getElementById("tutorialIconBtn"),
+    tutorialPanel: document.getElementById("tutorialPanel"),
+    tutorialText: document.getElementById("tutorialText"),
+    tutorialPreviousButton: document.getElementById("tutorialPrev"),
+    tutorialNextButton: document.getElementById("tutorialNext"),
+    tutorialPageIndicator: document.getElementById("tutorialPageIndicator"),
+    sliderTimeLabel: document.getElementById("sliderTimeLabel"),
+    rockInfoBadge: document.getElementById("rockInfoBadge"),
+    rockBadgeMaterial: document.getElementById("rockBadgeMaterial"),
+    rockBadgeEra: document.getElementById("rockBadgeEra"),
+    dataOverlay: document.getElementById("dataOverlay"),
+    stageName: document.getElementById("stageName"),
+    stageEra: document.getElementById("stageEra"),
+    stageEpoch: document.getElementById("stageEpoch"),
+    stageRockType: document.getElementById("stageRockType"),
+    stagePlate: document.getElementById("stagePlate"),
+    stageDescription: document.getElementById("stageDescription"),
+    subtitleDisplay: document.getElementById("subtitleDisplay")
   };
 }
