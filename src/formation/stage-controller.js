@@ -2,7 +2,7 @@ import { getDescendantMeshes, setMeshesOpacity } from "../three-utils.js";
 
 const STARTING_ROCK_INITIAL_SCALE = 1.3;
 const STARTING_ROCK_FINAL_SCALE = STARTING_ROCK_INITIAL_SCALE * 0.5;
-const STARTING_ROCK_MOVE_SECONDS = 2;
+const STARTING_ROCK_MOVE_SECONDS = 6;
 
 export function createGelifluctionStageController({
   config,
@@ -35,6 +35,10 @@ export function createGelifluctionStageController({
   const tempTargetWorld = new THREE.Vector3();
   const tempPosition = new THREE.Vector3();
   const tempScale = new THREE.Vector3();
+  const tempBounds = new THREE.Box3();
+  const tempCenterWorld = new THREE.Vector3();
+  const tempPivotWorld = new THREE.Vector3();
+  const tempCenterOffset = new THREE.Vector3();
 
   function preparePlacement(nextInstance) {
     reset();
@@ -244,14 +248,22 @@ export function createGelifluctionStageController({
 
   function resolveStartingRockTargetPosition() {
     const startingRock = instance?.nodes?.Starting_Rock;
-    if (!startingRock || !startingRock.parent) return null;
+    if (!startingRock || !startingRock.parent || !startingRockBase) return null;
 
     const sphereWorld = getStageOneTargetPosition(tempSphereWorld);
     if (!sphereWorld) return null;
 
-    startingRock.getWorldPosition(tempRockWorld);
-    tempTargetWorld.copy(sphereWorld);
-    tempTargetWorld.z = tempRockWorld.z;
+    const originalScale = startingRock.scale.clone();
+    startingRock.scale.copy(startingRockBase.scale).multiplyScalar(STARTING_ROCK_FINAL_SCALE);
+    startingRock.updateMatrixWorld(true);
+    tempBounds.setFromObject(startingRock);
+    tempBounds.getCenter(tempCenterWorld);
+    startingRock.getWorldPosition(tempPivotWorld);
+    tempCenterOffset.subVectors(tempCenterWorld, tempPivotWorld);
+    startingRock.scale.copy(originalScale);
+    startingRock.updateMatrixWorld(true);
+
+    tempTargetWorld.copy(sphereWorld).sub(tempCenterOffset);
     return startingRock.parent.worldToLocal(tempTargetWorld.clone());
   }
 

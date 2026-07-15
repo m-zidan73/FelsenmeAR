@@ -236,7 +236,7 @@ export class FelsenmeARModel {
   getSphereWorldPosition(target = new THREE.Vector3()) {
     if (!this._sphereMesh) return null;
     this._sphereMesh.updateMatrixWorld(true);
-    return this._sphereMesh.getWorldPosition(target);
+    return new THREE.Box3().setFromObject(this._sphereMesh).getCenter(target);
   }
   get horizontal() { return this._horizontal; }
   get bending() { return this._bending; }
