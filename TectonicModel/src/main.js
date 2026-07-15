@@ -52,6 +52,7 @@ scene.add(grid);
 // ── Animation Loop ──
 renderer.setAnimationLoop(() => {
   model.update();
+  if (model.__ui) model.__ui.updateDisplay();
   controls.update();
   renderer.render(scene, camera);
 });
