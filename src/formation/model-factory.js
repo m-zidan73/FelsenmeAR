@@ -5,8 +5,9 @@ import {
   getImportedObjectByName
 } from "../three-utils.js";
 
-const STARTING_ROCK_OUTLINE_SCALE = 1.0375;
+const STARTING_ROCK_OUTLINE_SCALE = 1.035;
 const STARTING_ROCK_OUTLINE_OPACITY = 0.3;
+const STARTING_ROCK_OUTLINE_COLOR = 0x39ff14;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -50,10 +51,6 @@ export function createGelifluctionModelFactory({ THREE }) {
       throw new Error("Gelifluction model is missing nodes: " + missingNodes.join(", "));
     }
 
-    const startingRockClip = gltf.animations.find((clip) => clip.name === "Starting_RockAction");
-    if (!startingRockClip) {
-      throw new Error("Gelifluction model is missing Starting_RockAction");
-    }
 
     const subductionClip = gltf.animations.find((clip) => clip.name === "Subduction_Animation");
     if (!subductionClip) {
@@ -61,17 +58,18 @@ export function createGelifluctionModelFactory({ THREE }) {
     }
 
     const stageFourClips = gltf.animations.filter((clip) => (
-      clip.name !== "Starting_RockAction" && clip.name !== "Subduction_Animation"
+      clip.name !== "Subduction_Animation"
+      && !clip.tracks.some((track) => track.name.startsWith("Starting_Rock"))
     ));
     if (stageFourClips.length !== 23) {
       throw new Error("Expected 23 Stage 4 animation clips, found " + stageFourClips.length);
     }
 
-    return { stageFourClips, startingRockClip, subductionClip };
+    return { stageFourClips, subductionClip };
   }
 
   function createGelifluctionInstance(gltf) {
-    const { stageFourClips, startingRockClip, subductionClip } = validateGelifluctionAsset(gltf);
+    const { stageFourClips, subductionClip } = validateGelifluctionAsset(gltf);
     const root = new THREE.Group();
     root.name = "Gelifluction Root";
 
@@ -98,7 +96,6 @@ export function createGelifluctionModelFactory({ THREE }) {
       nodes,
       labels,
       stageFourClips,
-      startingRockClip,
       subductionClip
     };
   }
@@ -106,19 +103,18 @@ export function createGelifluctionModelFactory({ THREE }) {
   function addStartingRockOutline(startingRock) {
     getDescendantMeshes(startingRock).forEach((mesh) => {
       const material = new THREE.MeshBasicMaterial({
-        color: 0x00e5ff,
-        blending: THREE.AdditiveBlending,
+        color: STARTING_ROCK_OUTLINE_COLOR,
         opacity: STARTING_ROCK_OUTLINE_OPACITY,
         side: THREE.BackSide,
         transparent: true,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
         toneMapped: false
       });
       material.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
 
       const outline = new THREE.Mesh(mesh.geometry.clone(), material);
-      outline.name = mesh.name + " Outline";
+      outline.name = mesh.name + " Silhouette";
       outline.scale.setScalar(STARTING_ROCK_OUTLINE_SCALE);
       outline.castShadow = false;
       outline.receiveShadow = false;
