@@ -31,7 +31,12 @@ import { createTapRaycaster } from "./tap-raycaster.js";
   const state = createAppState();
   const ui = getUiElements();
   const hudUi = createHudUi({ ui });
-  const { setXRDebug, updateHud } = hudUi;
+  const { setStageInstructionVisible, setXRDebug, updateHud } = hudUi;
+
+  const tectonicCollisionController = createTectonicCollisionController({
+    EventBus,
+    setXRDebug
+  });
 
   const menuUi = createMenuUi({
     state,
@@ -56,13 +61,15 @@ import { createTapRaycaster } from "./tap-raycaster.js";
       return requestStageWrapped(stepIndex + 1, previousStep + 1);
     }
   });
-  const { initFormationSlider, resetFormationSlider, setPinchPromptVisible } = formationSliderUi;
+  const { initFormationSlider, resetFormationSlider } = formationSliderUi;
 
   const stageController = createGelifluctionStageController({
     config: CONFIG,
     THREE,
     updateHud,
-    onSubductionPromptVisibleChange: setPinchPromptVisible
+    getStageOneTargetPosition: tectonicCollisionController.getSphereWorldPosition,
+    onStageInstructionVisibleChange: setStageInstructionVisible,
+    onSubductionPromptVisibleChange: tectonicCollisionController.setGesturePromptVisible
   });
   const {
     getCurrentStage,
@@ -162,11 +169,6 @@ import { createTapRaycaster } from "./tap-raycaster.js";
   let hadSession = false;
   let readyEmitted = false;
   const activeGrabs = new Map();
-
-  const tectonicCollisionController = createTectonicCollisionController({
-    EventBus,
-    setXRDebug
-  });
 
   const tapRaycaster = createTapRaycaster({
     getCamera: () => state.camera
@@ -319,26 +321,39 @@ import { createTapRaycaster } from "./tap-raycaster.js";
   } = placementController;
 
   function reset() {
+    setStageInstructionVisible(false);
     tectonicCollisionController.reset();
     resetPlacement();
   }
 
   function returnToMainMenu() {
+    setStageInstructionVisible(false);
     tectonicCollisionController.reset();
     returnToMainMenuPlacement();
   }
 
-  const tutorialToggleEl = document.getElementById("tutorialToggle");
-  const tutorialIconBtn = document.getElementById("tutorialIconBtn");
-  const tutorialPanelEl = document.getElementById("tutorialPanel");
-  const tutorialTextEl = document.getElementById("tutorialText");
-  const tutorialPrevBtn = document.getElementById("tutorialPrev");
-  const tutorialNextBtn = document.getElementById("tutorialNext");
-  const tutorialIndicator = document.getElementById("tutorialPageIndicator");
-  const sliderTimeLabel = document.getElementById("sliderTimeLabel");
-  const rockBadge = document.getElementById("rockInfoBadge");
-  const rockBadgeMaterial = document.getElementById("rockBadgeMaterial");
-  const rockBadgeEra = document.getElementById("rockBadgeEra");
+  function getTectonicPlacementOptions() {
+    return {
+      scene: state.scene,
+      formationRoot: state.formationRoot,
+      position: state.placementCenter,
+      planeHeight: state.planeHeight,
+      quaternion: state.formationRoot ? state.formationRoot.quaternion : null,
+      camera: state.camera
+    };
+  }
+
+  const tutorialToggleEl = ui.tutorialToggle;
+  const tutorialIconBtn = ui.tutorialIconButton;
+  const tutorialPanelEl = ui.tutorialPanel;
+  const tutorialTextEl = ui.tutorialText;
+  const tutorialPrevBtn = ui.tutorialPreviousButton;
+  const tutorialNextBtn = ui.tutorialNextButton;
+  const tutorialIndicator = ui.tutorialPageIndicator;
+  const sliderTimeLabel = ui.sliderTimeLabel;
+  const rockBadge = ui.rockInfoBadge;
+  const rockBadgeMaterial = ui.rockBadgeMaterial;
+  const rockBadgeEra = ui.rockBadgeEra;
 
   const tutorialController = createTutorialController({
     toggleElement: tutorialToggleEl,
@@ -356,12 +371,12 @@ import { createTapRaycaster } from "./tap-raycaster.js";
 
   const dataOverlayController = createDataOverlayController({
     stageDataUrl: "config/stage-data.json",
-    nameElement: document.getElementById("stageName"),
-    eraElement: document.getElementById("stageEra"),
-    epochElement: document.getElementById("stageEpoch"),
-    rockTypeElement: document.getElementById("stageRockType"),
-    plateElement: document.getElementById("stagePlate"),
-    descriptionElement: document.getElementById("stageDescription")
+    nameElement: ui.stageName,
+    eraElement: ui.stageEra,
+    epochElement: ui.stageEpoch,
+    rockTypeElement: ui.stageRockType,
+    plateElement: ui.stagePlate,
+    descriptionElement: ui.stageDescription
   });
 
   function updateSliderTimeLabel(rawSliderValue) {
@@ -405,7 +420,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     audioManager.load();
     dataOverlayController.load();
 
-    const subtitleEl = document.getElementById("subtitleDisplay");
+    const subtitleEl = ui.subtitleDisplay;
     let subtitlesMap = {};
     let tutorialsMap = {};
     fetch("config/subtitles.json")
@@ -457,7 +472,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
       }
     });
     EventBus.on("formation_placed", () => {
-      tectonicCollisionController.attach(state.formationRoot);
+      tectonicCollisionController.attach(getTectonicPlacementOptions());
       updateSliderTimeLabel(0);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
       if (state.formationLabels) {
@@ -487,9 +502,6 @@ import { createTapRaycaster } from "./tap-raycaster.js";
         void rockBadge.offsetHeight;
         rockBadge.style.animation = "badgeIn 350ms ease";
       }
-    });
-    EventBus.on("tectonic_animation_complete", () => {
-      setPinchPromptVisible(false);
     });
     EventBus.on("subduction_progress", (data) => {
       if (data && data.progress >= 1) {
@@ -522,6 +534,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
       ExperienceStateManager.setState(ExperienceState.Scanning);
       EventBus.raise("session_started", {});
     } else if (!hasSession && hadSession) {
+      setStageInstructionVisible(false);
       tectonicCollisionController.reset();
       EventBus.raise("session_ended", {});
       ExperienceStateManager.setState(ExperienceState.SessionEnded);
@@ -538,6 +551,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     }
     if (state.formationPlaced) {
       updateFormationAnimation(deltaSeconds);
+      tectonicCollisionController.updatePlacement(getTectonicPlacementOptions());
       tectonicCollisionController.update(deltaSeconds);
     }
 
