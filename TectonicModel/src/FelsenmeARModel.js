@@ -459,6 +459,12 @@ export class FelsenmeARModel {
 
   triggerShakeLower() {
     const meshes = [this._capaA, this._capaB].filter(Boolean);
+    for (const child of this._quickShakeMeshes) {
+      if (child) {
+        child.position.x -= this._quickShakeOffset;
+        child.position.y -= this._quickShakeOffset * 0.5;
+      }
+    }
     this._applyGlow(meshes);
     this._quickShakeMeshes = meshes;
     this._quickShakeTime = 0;
@@ -493,6 +499,12 @@ export class FelsenmeARModel {
     if (supB) meshes.push(supB);
     if (this._sphereMesh) meshes.push(this._sphereMesh);
     if (this._cylinderMesh) meshes.push(this._cylinderMesh);
+    for (const child of this._quickShakeMeshes) {
+      if (child) {
+        child.position.x -= this._quickShakeOffset;
+        child.position.y -= this._quickShakeOffset * 0.5;
+      }
+    }
     this._applyGlow([supA, supB, this._sphereMesh, this._cylinderMesh].filter(Boolean));
     this._quickShakeMeshes = meshes;
     this._quickShakeTime = 0;
