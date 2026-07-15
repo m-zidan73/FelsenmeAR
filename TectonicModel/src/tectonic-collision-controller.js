@@ -132,10 +132,6 @@ export function createTectonicCollisionController({
     return Boolean(model && ready && !failed && stageOneActive && model.root.visible);
   }
 
-  function isComplete() {
-    return Boolean(model && model.complete);
-  }
-
   function activateReplacement() {
     if (!model || !ready || failed) return;
 
@@ -284,7 +280,6 @@ export function createTectonicCollisionController({
     handlePinchChange,
     handlePinchDebug,
     handleStageChange,
-    isComplete,
     isReplacementActive,
     reset,
     update,

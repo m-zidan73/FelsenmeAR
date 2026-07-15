@@ -234,7 +234,6 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
     pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
     onPinchChange: (active) => {
-      if (tectonicCollisionController.isComplete()) return;
       if (active) {
         if (getCurrentStage() === 1) {
           const plates = Array.from(activeGrabs.values());
@@ -280,10 +279,6 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     onTap: (x, y) => tapRaycaster.handleTap(x, y, window.innerWidth, window.innerHeight),
     onTouchStart: (x, y, pointerId) => {
       if (getCurrentStage() !== 1 || !audioManager.canAdvancePinch()) return;
-      if (tectonicCollisionController.isComplete()) {
-        EventBus.raise("tectonic_show_final", {});
-        return;
-      }
       const hit = tapRaycaster.handleTouchStart(x, y, window.innerWidth, window.innerHeight);
       if (hit) {
         activeGrabs.set(pointerId, hit.meshName);

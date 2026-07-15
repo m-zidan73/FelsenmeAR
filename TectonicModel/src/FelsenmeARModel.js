@@ -387,10 +387,8 @@ export class FelsenmeARModel {
     this._lastAnimCylPos.set(NaN, NaN, NaN);
     this._shakeAmplitude = 0;
     this._applyDeformation(BASE_DURATION);
-    const allMeshes = Array.from(this.meshes.values()).filter(Boolean);
-    this._applyGlow(allMeshes);
-    this._modelQuickShakeTime = 0;
-    this._modelQuickShakeAmp = 0.059;
+    this.triggerShakeLower();
+    setTimeout(() => this.triggerShakeUpper(), 250);
   }
 
   _clearAllGlow() {
