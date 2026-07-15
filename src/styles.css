@@ -914,9 +914,13 @@ body:not(.in-camera-ar) .telemetry {
   }
 
   .bottom-ui {
+    position: fixed;
+    left: 50%;
+    bottom: calc(10px + max(6px, env(safe-area-inset-bottom)) + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
     width: min(58vw, 760px);
     max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    margin-bottom: max(6px, env(safe-area-inset-bottom));
+    margin-bottom: 0;
   }
 
   .formation-slider {
