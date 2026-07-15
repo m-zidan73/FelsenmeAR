@@ -123,7 +123,7 @@ export class FelsenmeARModel {
     this._shakeAmplitude = 0;
     this._shakeDecay = 2.5;
     this._shakeFreq = 12;
-    this._tremorAudio = new Audio("audio/tectonic-passage.mp3");
+    this._tremorAudio = new Audio("TectonicModel/dist/audio/tectonic-passage.mp3");
     this._tremorAudio.loop = true;
     this._tremorAudio.volume = 1.0;
     this._tremorOrigVol = 1.0;
@@ -138,7 +138,7 @@ export class FelsenmeARModel {
     this._modelQuickShakeTime = 0;
     this._modelQuickShakeDecay = 4;
     this._modelQuickShakeFreq = 15;
-    this._quickAudio = new Audio("audio/tectonic-passage.mp3");
+    this._quickAudio = new Audio("TectonicModel/dist/audio/tectonic-passage.mp3");
     this._quickAudio.volume = 1.0;
 
     this._onPhaseChange = null;
