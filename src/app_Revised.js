@@ -265,6 +265,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     onPlacementTap: placeAtDetectedPlane,
     onTap: (x, y) => tapRaycaster.handleTap(x, y, window.innerWidth, window.innerHeight),
     onTouchStart: (x, y, pointerId) => {
+      if (getCurrentStage() !== 1 || !audioManager.canAdvancePinch()) return;
       const hit = tapRaycaster.handleTouchStart(x, y, window.innerWidth, window.innerHeight);
       if (hit) {
         activeGrabs.set(pointerId, hit.meshName);
