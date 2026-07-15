@@ -389,6 +389,7 @@ export class FelsenmeARModel {
   }
 
   triggerShakeLower() {
+    this._tremorAudio.pause();
     this._quickAudio.currentTime = 21.5;
     this._quickAudio.volume = 0;
     this._quickAudio.play().catch(() => {});
@@ -410,11 +411,13 @@ export class FelsenmeARModel {
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
         this._quickAudio.volume = 1.0;
+        this._tremorAudio.play().catch(() => {});
       }, 2000);
     }, 4000);
   }
 
   triggerShakeUpper() {
+    this._tremorAudio.pause();
     const meshes = [];
     const supA = this.meshes.get("CapaSuperiorA");
     const supB = this.meshes.get("CapaSuperiorB");
@@ -443,11 +446,13 @@ export class FelsenmeARModel {
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
         this._quickAudio.volume = 1.0;
+        this._tremorAudio.play().catch(() => {});
       }, 2000);
     }, 4000);
   }
 
   _triggerModelShake() {
+    this._tremorAudio.pause();
     this._modelQuickShakeTime = 0;
     this._modelQuickShakeAmp = 0.059;
     this._quickAudio.pause();
@@ -466,6 +471,7 @@ export class FelsenmeARModel {
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
         this._quickAudio.volume = 1.0;
+        this._tremorAudio.play().catch(() => {});
       }, 2000);
     }, 4000);
   }
