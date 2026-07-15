@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>AR Island Prototype - Web</title>
-    <link rel="stylesheet" href="src/styles.css?v=pinch-prompt-1">
+    <link rel="stylesheet" href="src/styles.css?v=world-pinch-1">
     <script type="importmap">
       {
         "imports": {
@@ -44,11 +44,8 @@
         </button>
         <div class="placement-controls">
           <p id="scanPrompt" class="scan-prompt" hidden>Please face the camera on top of a flat surface</p>
-          <div id="pinchPrompt" class="pinch-prompt" hidden aria-hidden="true">
-            <img class="pinch-prompt-icon pinch-prompt-icon-left" src="Assets/Swipe%20Right%20White.png" alt="">
-            <img class="pinch-prompt-icon pinch-prompt-icon-right" src="Assets/Swipe%20Left%20White.png" alt="">
-          </div>
         </div>
+        <div id="stageInstruction" class="stage-instruction" hidden>Tap on the 1st Stage</div>
         <div id="tutorialToggle" class="tutorial-toggle" hidden>
           <button id="tutorialIconBtn" class="tutorial-icon-btn" type="button" aria-label="Toggle tutorial">
             <span class="tutorial-icon">?</span>
@@ -84,7 +81,6 @@
               </li>
             </ol>
             <div class="formation-track-wrap">
-<div id="sliderTimeLabel" class="slider-time-label" hidden>Present Day</div>
               <input id="formationRange" class="formation-range" type="range" min="0" max="4" step="0.001" value="0" aria-label="Rock formation step">
               <div class="formation-track" aria-hidden="true">
                 <span class="formation-fill"></span>
