@@ -1,6 +1,6 @@
 import { getDescendantMeshes, setMeshesOpacity } from "../three-utils.js";
 
-const STARTING_ROCK_INITIAL_SCALE = 1.3;
+const STARTING_ROCK_INITIAL_SCALE = 1;
 const STARTING_ROCK_FINAL_SCALE = STARTING_ROCK_INITIAL_SCALE * 0.5;
 const STARTING_ROCK_MOVE_SECONDS = 6;
 
