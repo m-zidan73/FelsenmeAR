@@ -16,6 +16,8 @@ export function createAudioManager({ audioMapUrl }) {
   let deferredState = null;
   let sequenceGap = 0;
   let pendingPlaneDetected = false;
+  let _pinchGate = 0;
+  let _tectonicBg = null;
 
   function attachUnlock() {
     if (unlockAttached) return;
@@ -127,6 +129,22 @@ export function createAudioManager({ audioMapUrl }) {
     return audioMap.mappings.find(m => m.trigger === trigger);
   }
 
+  function _startTectonicBg() {
+    _stopTectonicBg();
+    _tectonicBg = new Audio("TectonicModel/dist/audio/tectonic-passage.mp3");
+    _tectonicBg.currentTime = 19;
+    _tectonicBg.volume = 0.6;
+    _tectonicBg.play().catch(() => {});
+  }
+
+  function _stopTectonicBg() {
+    if (_tectonicBg) {
+      _tectonicBg.pause();
+      _tectonicBg.src = "";
+      _tectonicBg = null;
+    }
+  }
+
   function handleStateChange(newState) {
     if (!loaded) {
       pendingState = newState;
@@ -172,7 +190,24 @@ export function createAudioManager({ audioMapUrl }) {
         playedOnce.delete("pinch_phase:1");
         playedOnce.delete("pinch_phase:2");
         playedOnce.delete("pinch_phase:3");
+        _pinchGate = 0;
+        _stopTectonicBg();
+        if (mapping.clips) {
+          playSequence(mapping.clips, mapping.interrupt !== false, "state:" + newState, mapping.gap || 0);
+        } else if (mapping.clip) {
+          playClip(mapping.clip, mapping.interrupt !== false);
+        }
+        const handler = (ev) => {
+          if (ev && ev.trigger === "state:Stage1") {
+            EventBus.off("sequence_completed", handler);
+            _pinchGate = 1;
+          }
+        };
+        EventBus.on("sequence_completed", handler);
+        return;
       }
+      _pinchGate = 0;
+      _stopTectonicBg();
       if (mapping.clips) {
         playSequence(mapping.clips, mapping.interrupt !== false, "state:" + newState, mapping.gap || 0);
       } else if (mapping.clip) {
@@ -183,14 +218,27 @@ export function createAudioManager({ audioMapUrl }) {
 
   function handlePinchPhase(data) {
     if (!data || typeof data.phase !== "number") return;
+    if (data.phase !== _pinchGate) return;
     const key = "pinch_phase:" + data.phase;
     if (playedOnce.has(key)) return;
     const mapping = findMapping("event:" + key);
     if (mapping && mapping.clips) {
       playedOnce.add(key);
+      _pinchGate = 0;
+      _startTectonicBg();
       setTimeout(() => {
         playSequence(mapping.clips, mapping.interrupt !== false, "event:" + key);
       }, 1000);
+      const handler = (ev) => {
+        if (ev && ev.trigger === "event:" + key) {
+          EventBus.off("sequence_completed", handler);
+          setTimeout(() => {
+            _stopTectonicBg();
+            _pinchGate = data.phase + 1;
+          }, 1000);
+        }
+      };
+      EventBus.on("sequence_completed", handler);
     }
   }
 
@@ -259,6 +307,7 @@ export function createAudioManager({ audioMapUrl }) {
       currentAudio.pause();
       currentAudio.src = "";
     }
+    _stopTectonicBg();
     unsubState();
     unsubPinchPhase();
     unsubPinchReset();
@@ -271,5 +320,9 @@ export function createAudioManager({ audioMapUrl }) {
     return playedOnce.has(key);
   }
 
-  return { load, playClip, playSequence, dispose, hasPlayed };
+  function canAdvancePinch() {
+    return _pinchGate > 0;
+  }
+
+  return { load, playClip, playSequence, dispose, hasPlayed, canAdvancePinch };
 }

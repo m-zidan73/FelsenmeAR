@@ -233,6 +233,11 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
     pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
     onPinchChange: (active) => {
+      if (active && getCurrentStage() === 1 && !audioManager.canAdvancePinch()) {
+        setPinchActive(false);
+        EventBus.raise("pinch_progress", { active: false });
+        return;
+      }
       const tectonicPhase = tectonicCollisionController.handlePinchChange(active);
       const tectonicActive = tectonicCollisionController.isReplacementActive();
       setPinchActive(tectonicActive ? false : active);
