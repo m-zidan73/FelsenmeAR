@@ -4,12 +4,50 @@ import { createWaveCurve } from "./wavePath.js";
 
 const BASE_DURATION = 8;
 const PHASE_DURATION = BASE_DURATION / 3;
+
+const SELECTED_STRETCH_VERTS = new Set([
+  8, 9, 10, 11, 12, 13, 14, 15, 39, 40, 41, 42,
+  87, 88, 89, 90,
+  402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415,
+  416, 417, 418, 419, 420, 421, 422, 423, 424, 425, 426, 427, 428, 429,
+  430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443,
+  444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 454, 455, 456, 457,
+  458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 471,
+  472, 473,
+  569, 570, 571, 572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582,
+  583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596,
+  597, 598, 599, 600, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610,
+  611, 612, 613, 614, 615, 616, 617, 618, 619, 620, 621, 622, 623, 624,
+  625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638,
+  639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652,
+  653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, 664, 665, 666,
+  667, 668, 669, 670, 671, 672, 673, 674, 675, 676, 677, 678, 679, 680,
+  681, 682, 683, 684, 685, 686, 687, 688, 689, 690, 691, 692, 693, 694,
+  695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708,
+  709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 721, 722,
+  723, 724, 725, 726, 727, 728, 729, 730, 731, 732, 733, 734, 735, 736,
+  737, 738, 739, 740, 741, 742, 743, 744, 745, 746, 747, 748, 749, 750,
+  751, 752, 753, 754, 755, 756, 757, 758, 759, 760, 761, 762, 763, 764,
+  765, 766, 767, 768, 769, 770, 771, 772, 773, 774, 775, 776, 777, 778,
+  779, 780, 781, 782, 783, 784, 785, 786, 787, 788, 789, 790, 791, 792,
+  793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805, 806,
+  807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819, 820,
+  821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834,
+  835, 836, 837, 838, 839, 840, 841, 842, 843, 844, 845, 846, 847, 848,
+  849, 850, 851, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862,
+  863, 864, 865, 866, 867, 868, 869, 870, 871, 872, 873, 874, 875, 876,
+  877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890,
+  891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 903, 904,
+  905, 906, 907, 908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918,
+  919, 920, 921, 922, 923, 924, 925, 926, 927, 928, 929, 930, 931, 932,
+  933, 934, 935, 936, 937, 938, 939, 940, 941, 942, 943,
+]);
+
 const REQUIRED_MESH_NAMES = [
   "CapaInferiorA",
   "CapaInferiorB",
   "CapaSuperiorA",
   "CapaSuperiorB",
-  "Magma1",
   "Magma2",
   "Sphere",
   "Cylinder",
@@ -50,6 +88,14 @@ function toTex(canvas) {
 const _texA = toTex(makeCanvas(14, new THREE.Color(0xdd9944), new THREE.Color(0xffcc88)));
 const _texB = toTex(makeCanvas(10, new THREE.Color(0x2a3a5a), new THREE.Color(0x5a7a9a)));
 
+const _texLoader = new THREE.TextureLoader();
+const _lavaColor = _texLoader.load("textures/Lava_002_COLOR.png");
+const _lavaNormal = _texLoader.load("textures/Lava_002_NRM.png");
+const _lavaSpec = _texLoader.load("textures/Lava_002_SPEC.png");
+_lavaNormal.wrapS = _lavaNormal.wrapT = THREE.RepeatWrapping;
+_lavaSpec.wrapS = _lavaSpec.wrapT = THREE.RepeatWrapping;
+_lavaColor.anisotropy = _lavaNormal.anisotropy = _lavaSpec.anisotropy = 4;
+
 function defaultMatA() {
   return new THREE.MeshStandardMaterial({
     map: _texA, color: 0xffffff, flatShading: true, roughness: 0.8, metalness: 0.1,
@@ -62,9 +108,12 @@ function defaultMatB() {
   });
 }
 
-function defaultMatMagma(emissive) {
+function defaultMatMagma() {
   return new THREE.MeshStandardMaterial({
-    color: 0xff6600, emissive, emissiveIntensity: 0.6, flatShading: true,
+    map: _lavaColor,
+    normalMap: _lavaNormal,
+    color: 0xffffff,
+    roughness: 0.5, metalness: 0,
   });
 }
 
@@ -112,8 +161,9 @@ export class FelsenmeARModel {
     this._currentPhase = 0;
     this._isAnimating = false;
     this._horizontal = 0.5;
-    this._bending = 0.2;
+    this._bending = 0.5;
     this._stretch = 1.0;
+    this._verticalStretch = 1;
     this._duration = BASE_DURATION;
     this._speed = 1;
     this._scrubbing = false;
@@ -133,7 +183,14 @@ export class FelsenmeARModel {
     this._tA = null;
     this._zMinA = null;
     this._zMaxA = null;
+    this._selectedVertsYMax = null;
+    this._selectedVertsYMin = null;
     this._magmas = [];
+    this._magma2Mesh = null;
+    this._origMagma2 = null;
+    this._magma2AnchorZ = null;
+    this._magma2Flatten = 1.0;
+    this._magma2OffsetZ = 0;
     this._sphereMesh = null;
     this._sphereOrigScale = null;
     this._sphereStartPos = null;
@@ -168,6 +225,9 @@ export class FelsenmeARModel {
   get horizontal() { return this._horizontal; }
   get bending() { return this._bending; }
   get stretch() { return this._stretch; }
+  get verticalStretch() { return this._verticalStretch; }
+  get magma2Flatten() { return this._magma2Flatten; }
+  get magma2OffsetZ() { return this._magma2OffsetZ; }
   get speed() { return this._speed; }
 
   set horizontal(v) {
@@ -182,6 +242,21 @@ export class FelsenmeARModel {
 
   set stretch(v) {
     this._stretch = v;
+    this._applyDeformation(this._animTime);
+  }
+
+  set verticalStretch(v) {
+    this._verticalStretch = v;
+    this._applyDeformation(this._animTime);
+  }
+
+  set magma2Flatten(v) {
+    this._magma2Flatten = v;
+    this._applyDeformation(this._animTime);
+  }
+
+  set magma2OffsetZ(v) {
+    this._magma2OffsetZ = v;
     this._applyDeformation(this._animTime);
   }
 
@@ -224,7 +299,12 @@ export class FelsenmeARModel {
     this._isAnimating = false;
     this._scrubbing = false;
     this._lastUpdateTime = null;
-    this._resetMeshes();
+    this._stretch = 0.70;
+    this._verticalStretch = 0.05;
+    this._bending = 0.5;
+    this._magma2Flatten = 1.0;
+    this._magma2OffsetZ = 0;
+    this._applyDeformation(0);
   }
 
   setProgress(t) {
@@ -233,6 +313,17 @@ export class FelsenmeARModel {
     this._isAnimating = false;
     this._animTime = progress * BASE_DURATION;
     this._currentPhase = progress >= 1 ? 3 : Math.floor(progress * 3);
+    if (progress <= 1 / 3) {
+      this._stretch = 0.70 + (0.90 - 0.70) * (progress / (1 / 3));
+    } else if (progress <= 2 / 3) {
+      this._stretch = 0.90 + (1.0 - 0.90) * ((progress - 1 / 3) / (1 / 3));
+    } else {
+      this._stretch = 1.0 + (1.05 - 1.0) * ((progress - 2 / 3) / (1 / 3));
+    }
+    this._verticalStretch = 0.05 + (1.10 - 0.05) * progress;
+    this._bending = 0.50 + (0.10 - 0.50) * progress;
+    this._magma2Flatten = 1.0 + (0.84 - 1.0) * progress;
+    this._magma2OffsetZ = 0 + (-0.11 - 0) * progress;
     this._applyDeformation(this._animTime);
   }
 
@@ -245,6 +336,11 @@ export class FelsenmeARModel {
     this._animTime = 0;
     this._currentPhase = 0;
     this._scrubbing = false;
+    this._stretch = 0.70;
+    this._verticalStretch = 0.05;
+    this._bending = 0.5;
+    this._magma2Flatten = 1.0;
+    this._magma2OffsetZ = 0;
     this._applyDeformation(0);
   }
 
@@ -253,6 +349,11 @@ export class FelsenmeARModel {
     this._animTime = BASE_DURATION;
     this._currentPhase = 3;
     this._scrubbing = false;
+    this._stretch = 1.05;
+    this._verticalStretch = 1.10;
+    this._bending = 0.10;
+    this._magma2Flatten = 0.84;
+    this._magma2OffsetZ = -0.11;
     this._applyDeformation(BASE_DURATION);
   }
 
@@ -282,6 +383,18 @@ export class FelsenmeARModel {
           if (this._onPhaseChange) this._onPhaseChange(this._currentPhase);
         }
       }
+      const p = this.progress;
+      if (p <= 1 / 3) {
+        this._stretch = 0.70 + (0.90 - 0.70) * (p / (1 / 3));
+      } else if (p <= 2 / 3) {
+        this._stretch = 0.90 + (1.0 - 0.90) * ((p - 1 / 3) / (1 / 3));
+      } else {
+        this._stretch = 1.0 + (1.05 - 1.0) * ((p - 2 / 3) / (1 / 3));
+      }
+      this._verticalStretch = 0.05 + (1.10 - 0.05) * p;
+      this._bending = 0.50 + (0.10 - 0.50) * p;
+      this._magma2Flatten = 1.0 + (0.84 - 1.0) * p;
+      this._magma2OffsetZ = 0 + (-0.11 - 0) * p;
       this._applyDeformation(this._animTime);
     }
   }
@@ -324,6 +437,19 @@ export class FelsenmeARModel {
               this._tA = data.t;
               this._zMinA = data.zMin;
               this._zMaxA = data.zMax;
+              {
+                const origArr = this._origA;
+                let maxY = -Infinity, minY = Infinity;
+                for (let vi = 0; vi < origArr.length / 3; vi++) {
+                  if (SELECTED_STRETCH_VERTS.has(vi)) {
+                    const y = origArr[vi * 3 + 1];
+                    if (y > maxY) maxY = y;
+                    if (y < minY) minY = y;
+                  }
+                }
+                this._selectedVertsYMax = maxY;
+                this._selectedVertsYMin = minY;
+              }
               child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
             } else if (child.name === "CapaInferiorB") {
               this._capaB = child;
@@ -340,11 +466,15 @@ export class FelsenmeARModel {
               }
             } else if (child.name === "CapaSuperiorB") {
               child.material = resolveMaterial(child.name, mats[child.name], defaultMatB);
-            } else if (child.name === "Magma1" || child.name === "Cube") {
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatMagma(0xff4400));
-              this._magmas.push({ mesh: child, origZ: child.position.z });
+              child.geometry.computeBoundingBox();
+              const bb = child.geometry.boundingBox;
+              if (bb && this._magma2AnchorZ === null) {
+                this._magma2AnchorZ = bb.min.z;
+              }
             } else if (child.name === "Magma2") {
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatMagma(0xff2200));
+              this._magma2Mesh = child;
+              const arr = child.geometry.attributes.position.array;
+              this._origMagma2 = new Float32Array(arr);
             } else if (child.name === "Sphere") {
               this._sphereMesh = child;
               this._sphereOrigScale = child.scale.clone();
@@ -468,14 +598,32 @@ export class FelsenmeARModel {
       m.mesh.position.z = m.origZ + dz;
     }
 
+    if (this._magma2Mesh && this._origMagma2 && this._magma2AnchorZ !== null) {
+      const arrM2 = this._magma2Mesh.geometry.attributes.position.array;
+      arrM2.set(this._origMagma2);
+      const anchorZ = this._magma2AnchorZ;
+      const f = this._magma2Flatten;
+      const offsetZ = this._magma2OffsetZ;
+      for (let i = 0; i < arrM2.length; i += 3) {
+        arrM2[i + 2] = anchorZ + (arrM2[i + 2] - anchorZ) * f + offsetZ;
+      }
+      this._magma2Mesh.geometry.attributes.position.needsUpdate = true;
+      this._magma2Mesh.geometry.computeVertexNormals();
+    }
+
     if (this._capaA && this._origA && this._tA) {
       const arrA = this._capaA.geometry.attributes.position.array;
       arrA.set(this._origA);
       const zMax = this._zMaxA;
       const s = this._stretch;
+      const vs = this._verticalStretch;
+      const topY = this._selectedVertsYMax;
       for (let i = 0, vi = 0; i < arrA.length; i += 3, vi++) {
         arrA[i + 2] = zMax + (arrA[i + 2] - zMax) * s;
         arrA[i + 2] += dz;
+        if (vs > 0 && SELECTED_STRETCH_VERTS.has(vi)) {
+          arrA[i + 1] = topY + (arrA[i + 1] - topY) * vs;
+        }
         arrA[i + 1] += dyBend * this._tA[vi];
       }
       this._capaA.geometry.attributes.position.needsUpdate = true;
