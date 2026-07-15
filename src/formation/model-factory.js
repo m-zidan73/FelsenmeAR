@@ -5,8 +5,8 @@ import {
   getImportedObjectByName
 } from "../three-utils.js";
 
+const STARTING_ROCK_OUTLINE_SCALE = 1.0375;
 const STARTING_ROCK_OUTLINE_OPACITY = 0.3;
-const STARTING_ROCK_OUTLINE_COLOR = 0x39ff14;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -101,18 +101,21 @@ export function createGelifluctionModelFactory({ THREE }) {
 
   function addStartingRockOutline(startingRock) {
     getDescendantMeshes(startingRock).forEach((mesh) => {
-      const geometry = new THREE.EdgesGeometry(mesh.geometry);
-      const material = new THREE.LineBasicMaterial({
-        color: STARTING_ROCK_OUTLINE_COLOR,
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x00e5ff,
+        blending: THREE.AdditiveBlending,
         opacity: STARTING_ROCK_OUTLINE_OPACITY,
+        side: THREE.BackSide,
         transparent: true,
         depthWrite: false,
+        depthTest: false,
         toneMapped: false
       });
       material.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
 
-      const outline = new THREE.LineSegments(geometry, material);
-      outline.name = mesh.name + " Edges";
+      const outline = new THREE.Mesh(mesh.geometry.clone(), material);
+      outline.name = mesh.name + " Outline";
+      outline.scale.setScalar(STARTING_ROCK_OUTLINE_SCALE);
       outline.castShadow = false;
       outline.receiveShadow = false;
       outline.renderOrder = 1;
