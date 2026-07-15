@@ -30,7 +30,7 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
   const state = createAppState();
   const ui = getUiElements();
   const hudUi = createHudUi({ ui });
-  const { setXRDebug, updateHud } = hudUi;
+  const { setStageInstructionVisible, setXRDebug, updateHud } = hudUi;
 
   const tectonicCollisionController = createTectonicCollisionController({
     EventBus,
@@ -66,6 +66,8 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
     config: CONFIG,
     THREE,
     updateHud,
+    getStageOneTargetPosition: tectonicCollisionController.getSphereWorldPosition,
+    onStageInstructionVisibleChange: setStageInstructionVisible,
     onSubductionPromptVisibleChange: tectonicCollisionController.setGesturePromptVisible
   });
   const {
@@ -273,11 +275,13 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
   } = placementController;
 
   function reset() {
+    setStageInstructionVisible(false);
     tectonicCollisionController.reset();
     resetPlacement();
   }
 
   function returnToMainMenu() {
+    setStageInstructionVisible(false);
     tectonicCollisionController.reset();
     returnToMainMenuPlacement();
   }
@@ -475,6 +479,7 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
       ExperienceStateManager.setState(ExperienceState.Scanning);
       EventBus.raise("session_started", {});
     } else if (!hasSession && hadSession) {
+      setStageInstructionVisible(false);
       tectonicCollisionController.reset();
       EventBus.raise("session_ended", {});
       ExperienceStateManager.setState(ExperienceState.SessionEnded);

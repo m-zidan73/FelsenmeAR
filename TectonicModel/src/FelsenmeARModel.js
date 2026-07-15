@@ -232,6 +232,12 @@ export class FelsenmeARModel {
   get complete() { return this._currentPhase >= 3; }
   get isAnimating() { return this._isAnimating; }
   get loaded() { return this._loaded; }
+
+  getSphereWorldPosition(target = new THREE.Vector3()) {
+    if (!this._sphereMesh) return null;
+    this._sphereMesh.updateMatrixWorld(true);
+    return this._sphereMesh.getWorldPosition(target);
+  }
   get horizontal() { return this._horizontal; }
   get bending() { return this._bending; }
   get stretch() { return this._stretch; }

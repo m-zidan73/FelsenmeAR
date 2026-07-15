@@ -246,6 +246,28 @@ body.in-camera-ar .main-menu {
   backdrop-filter: blur(8px);
 }
 
+.stage-instruction {
+  position: fixed;
+  top: min(66.666svh, calc(100svh - 176px - env(safe-area-inset-bottom)));
+  left: 50%;
+  z-index: 26;
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  padding: 14px 22px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(246, 239, 230, 0.42);
+  border-radius: 18px;
+  background: rgba(8, 10, 12, 0.72);
+  color: #f6efe6;
+  font-size: clamp(1.05rem, 3.5vw, 1.65rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.72);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
 .tutorial-toggle {
   position: fixed;
   top: calc(max(12px, env(safe-area-inset-top)) + 76px);

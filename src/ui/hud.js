@@ -9,7 +9,14 @@ export function createHudUi({ ui }) {
     ui.xrDebugText.textContent = "XR: " + message;
   }
 
+  function setStageInstructionVisible(visible, message = "Tap on the 1st Stage") {
+    if (!ui.stageInstruction) return;
+    ui.stageInstruction.textContent = message;
+    ui.stageInstruction.hidden = !visible;
+  }
+
   return {
+    setStageInstructionVisible,
     setXRDebug,
     updateHud
   };

@@ -194,6 +194,13 @@ export function createTectonicCollisionController({
     return Boolean(model && ready && !failed && stageOneActive && model.root.visible);
   }
 
+  function getSphereWorldPosition(target = new THREE.Vector3()) {
+    if (!model || !ready || failed || typeof model.getSphereWorldPosition !== "function") {
+      return null;
+    }
+    return model.getSphereWorldPosition(target);
+  }
+
   function activateReplacement() {
     if (!model || !ready || failed) return;
 
@@ -356,6 +363,7 @@ export function createTectonicCollisionController({
     handlePinchChange,
     handlePinchDebug,
     handleStageChange,
+    getSphereWorldPosition,
     isReplacementActive,
     reset,
     setGesturePromptVisible,
