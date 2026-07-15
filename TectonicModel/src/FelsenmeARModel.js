@@ -125,8 +125,8 @@ export class FelsenmeARModel {
     this._shakeFreq = 12;
     this._tremorAudio = new Audio("audio/tectonic-passage.mp3");
     this._tremorAudio.loop = true;
-    this._tremorAudio.volume = 0.25;
-    this._tremorOrigVol = 0.25;
+    this._tremorAudio.volume = 0.6;
+    this._tremorOrigVol = 0.6;
     this._tremorFadeRemaining = 0;
     this._quickShakeMeshes = [];
     this._quickShakeTime = 0;
@@ -139,7 +139,7 @@ export class FelsenmeARModel {
     this._modelQuickShakeDecay = 4;
     this._modelQuickShakeFreq = 15;
     this._quickAudio = new Audio("audio/tectonic-passage.mp3");
-    this._quickAudio.volume = 0.25;
+    this._quickAudio.volume = 0.6;
 
     this._onPhaseChange = null;
     this._onComplete = null;
@@ -394,7 +394,7 @@ export class FelsenmeARModel {
     this._quickAudio.play().catch(() => {});
     setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
     setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
-    setTimeout(() => { this._quickAudio.volume = 0.25; }, 500);
+    setTimeout(() => { this._quickAudio.volume = 0.6; }, 500);
     setTimeout(() => {
       this._quickShakeMeshes = [this._capaA, this._capaB].filter(Boolean);
       this._quickShakeTime = 0;
@@ -409,7 +409,7 @@ export class FelsenmeARModel {
         clearInterval(fadeId);
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
-        this._quickAudio.volume = 0.25;
+        this._quickAudio.volume = 0.6;
       }, 2000);
     }, 4000);
   }
@@ -427,7 +427,7 @@ export class FelsenmeARModel {
     this._quickAudio.play().catch(() => {});
     setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
     setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
-    setTimeout(() => { this._quickAudio.volume = 0.25; }, 500);
+    setTimeout(() => { this._quickAudio.volume = 0.6; }, 500);
     setTimeout(() => {
       this._quickShakeMeshes = meshes;
       this._quickShakeTime = 0;
@@ -442,7 +442,7 @@ export class FelsenmeARModel {
         clearInterval(fadeId);
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
-        this._quickAudio.volume = 0.25;
+        this._quickAudio.volume = 0.6;
       }, 2000);
     }, 4000);
   }
@@ -456,7 +456,7 @@ export class FelsenmeARModel {
     this._quickAudio.play().catch(() => {});
     setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
     setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
-    setTimeout(() => { this._quickAudio.volume = 0.25; }, 500);
+    setTimeout(() => { this._quickAudio.volume = 0.6; }, 500);
     setTimeout(() => {
       const fadeId = setInterval(() => {
         if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.025;
@@ -465,7 +465,7 @@ export class FelsenmeARModel {
         clearInterval(fadeId);
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
-        this._quickAudio.volume = 0.25;
+        this._quickAudio.volume = 0.6;
       }, 2000);
     }, 4000);
   }

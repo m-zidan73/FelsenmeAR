@@ -172,6 +172,14 @@ export function createAudioManager({ audioMapUrl }) {
         playedOnce.delete("pinch_phase:1");
         playedOnce.delete("pinch_phase:2");
         playedOnce.delete("pinch_phase:3");
+        setTimeout(() => {
+          if (mapping.clips) {
+            playSequence(mapping.clips, mapping.interrupt !== false, "state:" + newState, mapping.gap || 0);
+          } else if (mapping.clip) {
+            playClip(mapping.clip, mapping.interrupt !== false);
+          }
+        }, 1000);
+        return;
       }
       if (mapping.clips) {
         playSequence(mapping.clips, mapping.interrupt !== false, "state:" + newState, mapping.gap || 0);
