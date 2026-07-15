@@ -19,6 +19,10 @@ export function buildUI(model) {
       <button id="btn-inicial" style="flex:1;">Inicial</button>
       <button id="btn-final" style="flex:1;">Final</button>
     </div>
+    <div style="display:flex;gap:6px;margin-top:4px;border-top:1px solid #555;padding-top:4px;">
+      <button id="btn-shake-lower" style="flex:1;background:#553;color:#fa8;">Temblor Inferior</button>
+      <button id="btn-shake-upper" style="flex:1;background:#535;color:#f8a;">Temblor Superior</button>
+    </div>
     <div id="phase-label" style="text-align:center;font-size:11px;color:#ff8;">Phase 0 / 3</div>
     <div style="display:flex;align-items:center;gap:8px;">
       <label style="font-size:11px;">Speed</label>
@@ -176,6 +180,11 @@ export function buildUI(model) {
     phaseLabel.textContent = "Static: Completo";
     updateTimeDisplay();
   };
+
+  const btnShakeLower = panel.querySelector("#btn-shake-lower");
+  const btnShakeUpper = panel.querySelector("#btn-shake-upper");
+  btnShakeLower.onclick = () => { model.triggerShakeLower(); };
+  btnShakeUpper.onclick = () => { model.triggerShakeUpper(); };
 
   speedSlider.oninput = () => {
     const val = parseFloat(speedSlider.value);

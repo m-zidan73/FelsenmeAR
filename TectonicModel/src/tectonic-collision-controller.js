@@ -189,6 +189,32 @@ export function createTectonicCollisionController({
     });
   }
 
+  // ── EventBus-triggerable actions ──
+
+  EventBus.on("tectonic_show_initial", () => {
+    if (!ready || !model || failed) return;
+    model.showInitial();
+    EventBus.raise("tectonic_initial_shown", {});
+  });
+
+  EventBus.on("tectonic_show_final", () => {
+    if (!ready || !model || failed) return;
+    model.showFinal();
+    EventBus.raise("tectonic_final_shown", {});
+  });
+
+  EventBus.on("tectonic_shake_lower", () => {
+    if (!ready || !model || failed) return;
+    model.triggerShakeLower();
+    EventBus.raise("tectonic_shake_lower_triggered", {});
+  });
+
+  EventBus.on("tectonic_shake_upper", () => {
+    if (!ready || !model || failed) return;
+    model.triggerShakeUpper();
+    EventBus.raise("tectonic_shake_upper_triggered", {});
+  });
+
   function alignToLegacyStageOne() {
     if (!model || !modelParent) return;
 

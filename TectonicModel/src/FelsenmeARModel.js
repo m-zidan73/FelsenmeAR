@@ -4,6 +4,8 @@ import { createWaveCurve } from "./wavePath.js";
 
 const BASE_DURATION = 8;
 const PHASE_DURATION = BASE_DURATION / 3;
+const TREMOR_FADE_DELAY = 1.5;
+const TREMOR_FADE_DURATION = 3.0;
 
 const SELECTED_STRETCH_VERTS = new Set([
   8, 9, 10, 11, 12, 13, 14, 15, 39, 40, 41, 42,
@@ -116,6 +118,28 @@ export class FelsenmeARModel {
     this._loaded = false;
     this._disposed = false;
     this._lastUpdateTime = null;
+    this._modelGroup = null;
+    this._shakeTime = 0;
+    this._shakeAmplitude = 0;
+    this._shakeDecay = 2.5;
+    this._shakeFreq = 12;
+    this._tremorAudio = new Audio("audio/tectonic-passage.mp3");
+    this._tremorAudio.loop = true;
+    this._tremorAudio.volume = 0.25;
+    this._tremorOrigVol = 0.25;
+    this._tremorFadeRemaining = 0;
+    this._quickShakeMeshes = [];
+    this._quickShakeTime = 0;
+    this._quickShakeAmp = 0;
+    this._quickShakeOffset = 0;
+    this._quickShakeDecay = 4;
+    this._quickShakeFreq = 15;
+    this._modelQuickShakeAmp = 0;
+    this._modelQuickShakeTime = 0;
+    this._modelQuickShakeDecay = 4;
+    this._modelQuickShakeFreq = 15;
+    this._quickAudio = new Audio("audio/tectonic-passage.mp3");
+    this._quickAudio.volume = 0.25;
 
     this._onPhaseChange = null;
     this._onComplete = null;
@@ -188,31 +212,37 @@ export class FelsenmeARModel {
 
   set horizontal(v) {
     this._horizontal = v;
+    this._shakeAmplitude = 0;
     this._applyDeformation(this._animTime);
   }
 
   set bending(v) {
     this._bending = v;
+    this._shakeAmplitude = 0;
     this._applyDeformation(this._animTime);
   }
 
   set stretch(v) {
     this._stretch = v;
+    this._shakeAmplitude = 0;
     this._applyDeformation(this._animTime);
   }
 
   set verticalStretch(v) {
     this._verticalStretch = v;
+    this._shakeAmplitude = 0;
     this._applyDeformation(this._animTime);
   }
 
   set magma2Flatten(v) {
     this._magma2Flatten = v;
+    this._shakeAmplitude = 0;
     this._applyDeformation(this._animTime);
   }
 
   set magma2OffsetZ(v) {
     this._magma2OffsetZ = v;
+    this._shakeAmplitude = 0;
     this._applyDeformation(this._animTime);
   }
 
@@ -258,6 +288,8 @@ export class FelsenmeARModel {
     if (!this._loaded || this.complete) return false;
     this._isAnimating = !this._isAnimating;
     this._lastUpdateTime = null;
+    if (!this._isAnimating) this._tremorAudio.pause();
+    else this._tremorAudio.play().catch(() => {});
     return this._isAnimating;
   }
 
@@ -274,6 +306,8 @@ export class FelsenmeARModel {
     this._magma2OffsetZ = 0;
     this._lastAnimSpherePos.set(NaN, NaN, NaN);
     this._lastAnimCylPos.set(NaN, NaN, NaN);
+    this._shakeAmplitude = 0;
+    this._tremorAudio.pause();
     this._applyDeformation(0);
     if (this._sphereMesh && this._sphereAnimStart) {
       this._sphereMesh.position.x = this._sphereAnimStart.x;
@@ -302,6 +336,7 @@ export class FelsenmeARModel {
     this._bending = 0.50 + (0.10 - 0.50) * progress;
     this._magma2Flatten = 1.0 + (0.84 - 1.0) * progress;
     this._magma2OffsetZ = 0 + (-0.11 - 0) * progress;
+    this._shakeAmplitude = 0;
     this._applyDeformation(this._animTime);
   }
 
@@ -321,6 +356,8 @@ export class FelsenmeARModel {
     this._magma2OffsetZ = 0;
     this._lastAnimSpherePos.set(NaN, NaN, NaN);
     this._lastAnimCylPos.set(NaN, NaN, NaN);
+    this._shakeAmplitude = 0;
+    this._tremorAudio.pause();
     this._applyDeformation(0);
     if (this._sphereMesh && this._sphereAnimStart) {
       this._sphereMesh.position.x = this._sphereAnimStart.x;
@@ -330,6 +367,7 @@ export class FelsenmeARModel {
       this._cylinderMesh.position.x = this._cylinderAnimStart.x;
       this._cylinderMesh.position.y = this._cylinderAnimStart.y;
     }
+    this._triggerModelShake();
   }
 
   showFinal() {
@@ -344,7 +382,92 @@ export class FelsenmeARModel {
     this._magma2OffsetZ = -0.11;
     this._lastAnimSpherePos.set(NaN, NaN, NaN);
     this._lastAnimCylPos.set(NaN, NaN, NaN);
+    this._shakeAmplitude = 0;
+    this._tremorAudio.pause();
     this._applyDeformation(BASE_DURATION);
+    this._triggerModelShake();
+  }
+
+  triggerShakeLower() {
+    this._quickAudio.currentTime = 21.5;
+    this._quickAudio.volume = 0;
+    this._quickAudio.play().catch(() => {});
+    setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
+    setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
+    setTimeout(() => { this._quickAudio.volume = 0.25; }, 500);
+    setTimeout(() => {
+      this._quickShakeMeshes = [this._capaA, this._capaB].filter(Boolean);
+      this._quickShakeTime = 0;
+      this._quickShakeAmp = 0.059;
+      this._quickShakeOffset = 0;
+    }, 250);
+    setTimeout(() => {
+      const fadeId = setInterval(() => {
+        if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.025;
+      }, 100);
+      setTimeout(() => {
+        clearInterval(fadeId);
+        this._quickAudio.pause();
+        this._quickAudio.currentTime = 0;
+        this._quickAudio.volume = 0.25;
+      }, 2000);
+    }, 4000);
+  }
+
+  triggerShakeUpper() {
+    const meshes = [];
+    const supA = this.meshes.get("CapaSuperiorA");
+    const supB = this.meshes.get("CapaSuperiorB");
+    if (supA) meshes.push(supA);
+    if (supB) meshes.push(supB);
+    if (this._sphereMesh) meshes.push(this._sphereMesh);
+    if (this._cylinderMesh) meshes.push(this._cylinderMesh);
+    this._quickAudio.currentTime = 21.5;
+    this._quickAudio.volume = 0;
+    this._quickAudio.play().catch(() => {});
+    setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
+    setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
+    setTimeout(() => { this._quickAudio.volume = 0.25; }, 500);
+    setTimeout(() => {
+      this._quickShakeMeshes = meshes;
+      this._quickShakeTime = 0;
+      this._quickShakeAmp = 0.059;
+      this._quickShakeOffset = 0;
+    }, 250);
+    setTimeout(() => {
+      const fadeId = setInterval(() => {
+        if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.025;
+      }, 100);
+      setTimeout(() => {
+        clearInterval(fadeId);
+        this._quickAudio.pause();
+        this._quickAudio.currentTime = 0;
+        this._quickAudio.volume = 0.25;
+      }, 2000);
+    }, 4000);
+  }
+
+  _triggerModelShake() {
+    this._modelQuickShakeTime = 0;
+    this._modelQuickShakeAmp = 0.059;
+    this._quickAudio.pause();
+    this._quickAudio.currentTime = 21.5;
+    this._quickAudio.volume = 0;
+    this._quickAudio.play().catch(() => {});
+    setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
+    setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
+    setTimeout(() => { this._quickAudio.volume = 0.25; }, 500);
+    setTimeout(() => {
+      const fadeId = setInterval(() => {
+        if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.025;
+      }, 100);
+      setTimeout(() => {
+        clearInterval(fadeId);
+        this._quickAudio.pause();
+        this._quickAudio.currentTime = 0;
+        this._quickAudio.volume = 0.25;
+      }, 2000);
+    }, 4000);
   }
 
   // ── Main update (call each frame from host loop) ──
@@ -368,8 +491,12 @@ export class FelsenmeARModel {
         this._lastUpdateTime = null;
         this._currentPhase++;
         if (this._currentPhase >= 3) {
+          this._triggerShake(0.045, 8, 40);
+          this._tremorFadeRemaining = TREMOR_FADE_DELAY + TREMOR_FADE_DURATION;
           if (this._onComplete) this._onComplete();
         } else {
+          this._triggerShake(0.045 + this._currentPhase * 0.01, 8, 40);
+          this._tremorFadeRemaining = TREMOR_FADE_DELAY + TREMOR_FADE_DURATION;
           if (this._onPhaseChange) this._onPhaseChange(this._currentPhase);
         }
       }
@@ -387,6 +514,19 @@ export class FelsenmeARModel {
       this._magma2OffsetZ = 0 + (-0.11 - 0) * p;
     }
     if (this._loaded && !this._disposed) {
+      if (this._shakeAmplitude > 0) this._shakeTime += 0.016;
+      if (this._shakeAmplitude > 0 && this._shakeAmplitude < 0.001) this._shakeAmplitude = 0;
+      if (this._tremorFadeRemaining > 0) {
+        this._tremorFadeRemaining -= 0.016;
+        if (this._tremorFadeRemaining <= TREMOR_FADE_DELAY) {
+          const fadeT = Math.max(0, this._tremorFadeRemaining / TREMOR_FADE_DURATION);
+          this._tremorAudio.volume = this._tremorOrigVol * fadeT;
+        }
+        if (this._tremorFadeRemaining <= 0) {
+          this._tremorAudio.pause();
+          this._tremorAudio.volume = this._tremorOrigVol;
+        }
+      }
       this._applyDeformation(this._animTime);
     }
   }
@@ -396,6 +536,8 @@ export class FelsenmeARModel {
     this._disposed = true;
     this._isAnimating = false;
     this._lastUpdateTime = null;
+    this._tremorAudio.pause();
+    this._tremorAudio.src = "";
     this.root.removeFromParent();
     this.root.traverse((child) => {
       if (child.geometry) child.geometry.dispose();
@@ -419,6 +561,7 @@ export class FelsenmeARModel {
           }
 
           this.root.add(importedRoot);
+          this._modelGroup = importedRoot;
           importedRoot.traverse((child) => {
             if (!child.isMesh) return;
             this.meshes.set(child.name, child);
@@ -525,7 +668,6 @@ export class FelsenmeARModel {
     if (
       !this._loaded
       || this._disposed
-      || this._isAnimating
       || this._currentPhase !== phaseIndex
       || phaseIndex < 0
       || phaseIndex >= 3
@@ -537,6 +679,12 @@ export class FelsenmeARModel {
     this._animTime = phaseIndex * PHASE_DURATION;
     this._lastUpdateTime = null;
     this._isAnimating = true;
+    this._triggerShake(0.045 + phaseIndex * 0.01, 2.5, 12);
+    this._tremorAudio.pause();
+    this._tremorAudio.volume = this._tremorOrigVol;
+    this._tremorFadeRemaining = 0;
+    this._tremorAudio.currentTime = 19;
+    this._tremorAudio.play().catch(() => {});
     return true;
   }
 
@@ -558,6 +706,14 @@ export class FelsenmeARModel {
       materials.forEach((material) => material.dispose());
     });
   }
+
+  _triggerShake(amplitude, decay, freq) {
+    this._shakeAmplitude = amplitude;
+    this._shakeTime = 0;
+    this._shakeDecay = decay;
+    this._shakeFreq = freq;
+  }
+
   _applyDeformation(time) {
     const progress = Math.min(time / this._duration, 1);
     const phase2t = Math.max(0, Math.min((progress - 1 / 3) * 3, 1));
@@ -566,6 +722,22 @@ export class FelsenmeARModel {
     const dz = (this._curveEnd.z - this._curveStart.z) * progress * this._horizontal;
     this._subductionCurve.getPointAt(progress, this._tempP);
     const dyBend = (this._tempP.y - this._curveStart.y) * this._bending;
+    const globalX = -this._horizontal * 0.5 * progress;
+    const shake = this._shakeAmplitude * Math.exp(-this._shakeDecay * this._shakeTime) * Math.sin(this._shakeFreq * this._shakeTime);
+    const tremor = this._isAnimating ? 0.01 * (Math.sin(17 * time) * 0.5 + Math.sin(31 * time) * 0.5) : 0;
+    if (this._modelGroup) {
+      this._modelGroup.position.x = globalX + shake + tremor;
+      this._modelGroup.position.y = tremor * 0.5;
+    }
+    if (this._modelQuickShakeAmp > 0) {
+      const qs = this._modelQuickShakeAmp * Math.exp(-this._modelQuickShakeDecay * this._modelQuickShakeTime) * Math.cos(this._modelQuickShakeFreq * this._modelQuickShakeTime);
+      this._modelGroup.position.x += qs;
+      this._modelGroup.position.y += qs * 0.5;
+      this._modelQuickShakeTime += 0.016;
+      if (Math.abs(qs) < 0.0005) {
+        this._modelQuickShakeAmp = 0;
+      }
+    }
 
       if (this._sphereMesh && this._sphereOrigScale) {
         const phase2delayed = Math.max(0, (phase2t - 0.9) / 0.1);
@@ -676,6 +848,28 @@ export class FelsenmeARModel {
       }
       this._capaA.geometry.attributes.position.needsUpdate = true;
       this._capaA.geometry.computeVertexNormals();
+    }
+    if (this._quickShakeAmp > 0) {
+      const qs = this._quickShakeAmp * Math.exp(-this._quickShakeDecay * this._quickShakeTime) * Math.cos(this._quickShakeFreq * this._quickShakeTime);
+      const delta = qs - this._quickShakeOffset;
+      this._quickShakeOffset = qs;
+      for (const child of this._quickShakeMeshes) {
+        if (!child) continue;
+        child.position.x += delta;
+        child.position.y += delta * 0.5;
+      }
+      this._quickShakeTime += 0.016;
+      if (Math.abs(qs) < 0.0005) {
+        const finalDelta = -this._quickShakeOffset;
+        for (const child of this._quickShakeMeshes) {
+          if (!child) continue;
+          child.position.x += finalDelta;
+          child.position.y += finalDelta * 0.5;
+        }
+        this._quickShakeAmp = 0;
+        this._quickShakeMeshes = [];
+        this._quickShakeOffset = 0;
+      }
     }
   }
 
