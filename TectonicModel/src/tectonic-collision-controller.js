@@ -132,6 +132,10 @@ export function createTectonicCollisionController({
     return Boolean(model && ready && !failed && stageOneActive && model.root.visible);
   }
 
+  function isComplete() {
+    return Boolean(model && model.complete);
+  }
+
   function activateReplacement() {
     if (!model || !ready || failed) return;
 
@@ -196,6 +200,10 @@ export function createTectonicCollisionController({
 
   EventBus.on("grab_start", ({ target, meshName }) => {
     if (target !== "tectonic_plates" || !ready || !model || failed) return;
+    if (model.complete) {
+      EventBus.raise("tectonic_show_final", {});
+      return;
+    }
     if (meshName.includes("CapaInferior")) {
       model.grabLower(true);
     } else if (meshName.includes("CapaSuperior")) {
@@ -204,7 +212,7 @@ export function createTectonicCollisionController({
   });
 
   EventBus.on("grab_end", ({ meshName }) => {
-    if (!ready || !model || failed) return;
+    if (!ready || !model || failed || model.complete) return;
     if (meshName && meshName.includes("CapaInferior")) {
       model.grabLower(false);
     } else if (meshName && meshName.includes("CapaSuperior")) {
@@ -280,6 +288,7 @@ export function createTectonicCollisionController({
     handlePinchChange,
     handlePinchDebug,
     handleStageChange,
+    isComplete,
     isReplacementActive,
     reset,
     update,
