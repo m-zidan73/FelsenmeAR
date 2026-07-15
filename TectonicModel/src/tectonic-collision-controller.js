@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { FelsenmeARModel } from "./FelsenmeARModel.js";
+import { createWorldPinchPrompt } from "./world-pinch-prompt.js";
 
 const LEGACY_STAGE_ONE_NODE_NAMES = [
   "Earth_Crust_Right",
@@ -24,6 +25,8 @@ export function createTectonicCollisionController({
   let formationRoot = null;
   let modelParent = null;
   let model = null;
+  let gesturePrompt = null;
+  let gesturePromptRequested = false;
   let legacyStageOneNodes = [];
   let stageOneActive = false;
   let ready = false;
@@ -49,6 +52,10 @@ export function createTectonicCollisionController({
       onLoad(loadedModel) {
         if (model !== loadedModel) return;
         alignToLegacyStageOne();
+        gesturePrompt = createWorldPinchPrompt({
+          parent: model.root,
+          bounds: getLocalBounds(model.root),
+        });
         ready = true;
         failed = false;
         EventBus.raise("tectonic_model_ready", {});
@@ -69,6 +76,7 @@ export function createTectonicCollisionController({
 
   function handleStageChange(stage) {
     stageOneActive = stage === 1;
+    if (!stageOneActive) gesturePromptRequested = false;
     resetGestureState();
     resetProgressEvents();
 
@@ -79,7 +87,13 @@ export function createTectonicCollisionController({
       activateReplacement();
     } else {
       model.root.visible = false;
+      syncGesturePromptVisibility();
     }
+  }
+
+  function setGesturePromptVisible(visible) {
+    gesturePromptRequested = Boolean(visible);
+    syncGesturePromptVisibility();
   }
 
   function handlePinchChange(active) {
@@ -109,6 +123,7 @@ export function createTectonicCollisionController({
     if (!isReplacementActive()) return;
 
     model.update(deltaSeconds);
+    if (gesturePrompt) gesturePrompt.update(deltaSeconds);
     emitProgressMilestones(model.progress);
   }
 
@@ -118,11 +133,14 @@ export function createTectonicCollisionController({
         node.visible = true;
       });
     }
+    if (gesturePrompt) gesturePrompt.dispose();
     if (model) model.dispose();
 
     formationRoot = null;
     modelParent = null;
     model = null;
+    gesturePrompt = null;
+    gesturePromptRequested = false;
     legacyStageOneNodes = [];
     stageOneActive = false;
     ready = false;
@@ -147,6 +165,7 @@ export function createTectonicCollisionController({
     });
     model.showInitial();
     model.root.visible = true;
+    syncGesturePromptVisibility();
     emitProgressMilestones(0);
   }
 
@@ -156,6 +175,8 @@ export function createTectonicCollisionController({
   }
 
   function handleAnimationComplete() {
+    gesturePromptRequested = false;
+    syncGesturePromptVisibility();
     emitProgressMilestones(1);
     EventBus.raise("tectonic_phase_completed", { phase: 3 });
     EventBus.raise("tectonic_animation_complete", {});
@@ -170,6 +191,12 @@ export function createTectonicCollisionController({
       && !model.complete
       && isReplacementActive()
     );
+  }
+
+  function syncGesturePromptVisibility() {
+    if (gesturePrompt) {
+      gesturePrompt.setVisible(gesturePromptRequested && isReplacementActive());
+    }
   }
 
   function resetGestureState() {
@@ -239,6 +266,22 @@ export function createTectonicCollisionController({
     modelParent.updateMatrixWorld(true);
   }
 
+  function getLocalBounds(root) {
+    root.updateMatrixWorld(true);
+    const worldBounds = new THREE.Box3().setFromObject(root);
+    const localBounds = new THREE.Box3().makeEmpty();
+
+    for (const x of [worldBounds.min.x, worldBounds.max.x]) {
+      for (const y of [worldBounds.min.y, worldBounds.max.y]) {
+        for (const z of [worldBounds.min.z, worldBounds.max.z]) {
+          localBounds.expandByPoint(root.worldToLocal(new THREE.Vector3(x, y, z)));
+        }
+      }
+    }
+
+    return localBounds;
+  }
+
   function findModelParent(root) {
     if (!root) return null;
     return root.getObjectByName("Gelifluction") || root.children[0] || root;
@@ -260,6 +303,7 @@ export function createTectonicCollisionController({
   function handleModelError(error) {
     failed = true;
     ready = false;
+    if (gesturePrompt) gesturePrompt.setVisible(false);
     if (model) model.root.visible = false;
     if (stageOneActive) {
       legacyStageOneNodes.forEach((node) => {
@@ -283,6 +327,7 @@ export function createTectonicCollisionController({
     handleStageChange,
     isReplacementActive,
     reset,
+    setGesturePromptVisible,
     update,
   };
 }

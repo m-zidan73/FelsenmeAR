@@ -21,7 +21,6 @@ export function getUiElements() {
     geoDistanceValue: document.getElementById("geoDistanceValue"),
     geoHeadingValue: document.getElementById("geoHeadingValue"),
     geoGateValue: document.getElementById("geoGateValue"),
-    pinchPrompt: document.getElementById("pinchPrompt"),
     tutorialToggle: document.getElementById("tutorialToggle"),
     tutorialIconButton: document.getElementById("tutorialIconBtn"),
     tutorialPanel: document.getElementById("tutorialPanel"),

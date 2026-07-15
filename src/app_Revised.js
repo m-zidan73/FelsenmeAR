@@ -32,6 +32,11 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
   const hudUi = createHudUi({ ui });
   const { setXRDebug, updateHud } = hudUi;
 
+  const tectonicCollisionController = createTectonicCollisionController({
+    EventBus,
+    setXRDebug
+  });
+
   const menuUi = createMenuUi({
     state,
     ui,
@@ -55,13 +60,13 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
       return requestStageWrapped(stepIndex + 1, previousStep + 1);
     }
   });
-  const { initFormationSlider, resetFormationSlider, setPinchPromptVisible } = formationSliderUi;
+  const { initFormationSlider, resetFormationSlider } = formationSliderUi;
 
   const stageController = createGelifluctionStageController({
     config: CONFIG,
     THREE,
     updateHud,
-    onSubductionPromptVisibleChange: setPinchPromptVisible
+    onSubductionPromptVisibleChange: tectonicCollisionController.setGesturePromptVisible
   });
   const {
     getCurrentStage,
@@ -160,11 +165,6 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
   let wasReticleVisible = false;
   let hadSession = false;
   let readyEmitted = false;
-
-  const tectonicCollisionController = createTectonicCollisionController({
-    EventBus,
-    setXRDebug
-  });
 
   function reportPinchDebug(debug) {
     tectonicCollisionController.handlePinchDebug(debug);
@@ -432,9 +432,6 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
         void rockBadge.offsetHeight;
         rockBadge.style.animation = "badgeIn 350ms ease";
       }
-    });
-    EventBus.on("tectonic_animation_complete", () => {
-      setPinchPromptVisible(false);
     });
     EventBus.on("subduction_progress", (data) => {
       if (data && data.progress >= 1) {
