@@ -55,6 +55,27 @@ export function buildUI(model) {
       <input id="magma2oz-slider" type="range" min="-0.5" max="0.5" step="0.01" value="0" style="width:90px;">
       <span id="magma2oz-label" style="min-width:32px;text-align:right;">0.0</span>
     </div>
+    <div style="margin-top:4px;border-top:1px solid #555;padding-top:4px;"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:11px;">Sphere V</label>
+      <input id="sphere-v" type="range" min="-2" max="3" step="0.01" value="1.96" style="width:90px;">
+      <span id="sphere-v-label" style="min-width:32px;text-align:right;">1.96</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:11px;">Sphere L</label>
+      <input id="sphere-l" type="range" min="-2" max="3" step="0.01" value="1.26" style="width:90px;">
+      <span id="sphere-l-label" style="min-width:32px;text-align:right;">1.26</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:11px;">Cylinder V</label>
+      <input id="cyl-v" type="range" min="-2" max="3" step="0.01" value="1.63" style="width:90px;">
+      <span id="cyl-v-label" style="min-width:32px;text-align:right;">1.63</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:11px;">Cylinder L</label>
+      <input id="cyl-l" type="range" min="-2" max="3" step="0.01" value="1.19" style="width:90px;">
+      <span id="cyl-l-label" style="min-width:32px;text-align:right;">1.19</span>
+    </div>
   `;
   document.body.appendChild(panel);
 
@@ -79,6 +100,15 @@ export function buildUI(model) {
   const magma2Label = panel.querySelector("#magma2-label");
   const magma2ozSlider = panel.querySelector("#magma2oz-slider");
   const magma2ozLabel = panel.querySelector("#magma2oz-label");
+
+  const sphereVSlider = panel.querySelector("#sphere-v");
+  const sphereVLabel = panel.querySelector("#sphere-v-label");
+  const sphereLSlider = panel.querySelector("#sphere-l");
+  const sphereLLabel = panel.querySelector("#sphere-l-label");
+  const cylVSlider = panel.querySelector("#cyl-v");
+  const cylVLabel = panel.querySelector("#cyl-v-label");
+  const cylLSlider = panel.querySelector("#cyl-l");
+  const cylLLabel = panel.querySelector("#cyl-l-label");
 
   let currentPhaseUI = 0;
   let isAnimatingUI = false;
@@ -189,6 +219,27 @@ export function buildUI(model) {
     magma2ozLabel.textContent = val.toFixed(2);
   };
 
+  sphereVSlider.oninput = () => {
+    const val = parseFloat(sphereVSlider.value);
+    model.spherePosY = val;
+    sphereVLabel.textContent = val.toFixed(2);
+  };
+  sphereLSlider.oninput = () => {
+    const val = parseFloat(sphereLSlider.value);
+    model.spherePosX = val;
+    sphereLLabel.textContent = val.toFixed(2);
+  };
+  cylVSlider.oninput = () => {
+    const val = parseFloat(cylVSlider.value);
+    model.cylinderPosY = val;
+    cylVLabel.textContent = val.toFixed(2);
+  };
+  cylLSlider.oninput = () => {
+    const val = parseFloat(cylLSlider.value);
+    model.cylinderPosX = val;
+    cylLLabel.textContent = val.toFixed(2);
+  };
+
   scrubSlider.oninput = () => {
     model.setProgress(parseFloat(scrubSlider.value));
     animTimeUI = parseFloat(scrubSlider.value) * BASE_DURATION;
@@ -211,6 +262,10 @@ export function buildUI(model) {
       bendLabel.textContent = model.bending.toFixed(2);
       magma2Label.textContent = model.magma2Flatten.toFixed(2);
       magma2ozLabel.textContent = model.magma2OffsetZ.toFixed(2);
+      sphereVLabel.textContent = model.spherePosY.toFixed(2);
+      sphereLLabel.textContent = model.spherePosX.toFixed(2);
+      cylVLabel.textContent = model.cylinderPosY.toFixed(2);
+      cylLLabel.textContent = model.cylinderPosX.toFixed(2);
     },
     btnPhase,
     btnPause,
