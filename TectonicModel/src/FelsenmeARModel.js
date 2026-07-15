@@ -128,12 +128,24 @@ export class FelsenmeARModel {
     this._quickShakeOffset = 0;
     this._quickShakeDecay = 4;
     this._quickShakeFreq = 15;
+    this._glowMeshes = new Set();
     this._modelQuickShakeAmp = 0;
     this._modelQuickShakeTime = 0;
     this._modelQuickShakeDecay = 4;
     this._modelQuickShakeFreq = 15;
     this._quickAudio = new Audio("TectonicModel/dist/audio/tectonic-passage.mp3");
     this._quickAudio.volume = 1.0;
+    this._grabLower = false;
+    this._grabUpper = false;
+    this._grabLowerApplied = 0;
+    this._grabUpperApplied = 0;
+    this._grabElevation = 0.05;
+    this._grabLowerShakeTime = 0;
+    this._grabLowerShakeAmp = 0;
+    this._grabLowerShakeOffset = 0;
+    this._grabUpperShakeTime = 0;
+    this._grabUpperShakeAmp = 0;
+    this._grabUpperShakeOffset = 0;
 
     this._onPhaseChange = null;
     this._onComplete = null;
@@ -357,7 +369,8 @@ export class FelsenmeARModel {
       this._cylinderMesh.position.x = this._cylinderAnimStart.x;
       this._cylinderMesh.position.y = this._cylinderAnimStart.y;
     }
-    this._triggerModelShake();
+    this.triggerShakeLower();
+    setTimeout(() => this.triggerShakeUpper(), 250);
   }
 
   showFinal() {
@@ -374,33 +387,95 @@ export class FelsenmeARModel {
     this._lastAnimCylPos.set(NaN, NaN, NaN);
     this._shakeAmplitude = 0;
     this._applyDeformation(BASE_DURATION);
-    this._triggerModelShake();
+    this.triggerShakeLower();
+    setTimeout(() => this.triggerShakeUpper(), 250);
+  }
+
+  _clearAllGlow() {
+    for (const child of this._glowMeshes) {
+      if (!child || !child.material) continue;
+      const mat = child.material;
+      if (child.__origEmissive && mat.emissive) mat.emissive.copy(child.__origEmissive);
+      if (child.__origEmissiveIntensity !== undefined) mat.emissiveIntensity = child.__origEmissiveIntensity;
+      delete child.__origEmissive;
+      delete child.__origEmissiveIntensity;
+    }
+    this._glowMeshes.clear();
+  }
+
+  _applyGlow(meshes) {
+    this._clearAllGlow();
+    for (const child of meshes) {
+      if (!child || !child.material) continue;
+      if (!child.__glowOwnMat) {
+        child.material = child.material.clone();
+        child.__glowOwnMat = true;
+      }
+      const mat = child.material;
+      child.__origEmissive = mat.emissive ? mat.emissive.clone() : null;
+      child.__origEmissiveIntensity = mat.emissiveIntensity;
+      if (mat.emissive) mat.emissive.set(0xffaa44);
+      mat.emissiveIntensity = 0.15;
+      this._glowMeshes.add(child);
+    }
+  }
+
+  _addGlow(meshes) {
+    for (const child of meshes) {
+      if (!child || !child.material) continue;
+      if (!child.__glowOwnMat) {
+        child.material = child.material.clone();
+        child.__glowOwnMat = true;
+      }
+      const mat = child.material;
+      if (!child.__origEmissive) {
+        child.__origEmissive = mat.emissive ? mat.emissive.clone() : null;
+        child.__origEmissiveIntensity = mat.emissiveIntensity;
+      }
+      if (mat.emissive) mat.emissive.set(0xffaa44);
+      mat.emissiveIntensity = 0.15;
+      this._glowMeshes.add(child);
+    }
+  }
+
+  _clearGlow(meshes) {
+    for (const child of meshes) {
+      if (!child || !child.material || !this._glowMeshes.has(child)) continue;
+      const mat = child.material;
+      if (child.__origEmissive && mat.emissive) mat.emissive.copy(child.__origEmissive);
+      if (child.__origEmissiveIntensity !== undefined) mat.emissiveIntensity = child.__origEmissiveIntensity;
+      delete child.__origEmissive;
+      delete child.__origEmissiveIntensity;
+      this._glowMeshes.delete(child);
+    }
   }
 
   triggerShakeLower() {
+    const meshes = [this._capaA, this._capaB].filter(Boolean);
+    this._applyGlow(meshes);
+    this._quickShakeMeshes = meshes;
+    this._quickShakeTime = 0;
+    this._quickShakeAmp = 0.02;
+    this._quickShakeOffset = 0;
+    this._quickShakeDecay = 3;
+    this._quickShakeFreq = 5;
     this._quickAudio.currentTime = 21.5;
     this._quickAudio.volume = 0;
     this._quickAudio.play().catch(() => {});
-    setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
-    setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
-    setTimeout(() => { this._quickAudio.volume = 1.0; }, 500);
-    setTimeout(() => {
-      this._quickShakeMeshes = [this._capaA, this._capaB].filter(Boolean);
-      this._quickShakeTime = 0;
-      this._quickShakeAmp = 0.059;
-      this._quickShakeOffset = 0;
-    }, 250);
+    setTimeout(() => { this._quickAudio.volume = 0.08; }, 50);
+    setTimeout(() => { this._quickAudio.volume = 0.18; }, 120);
+    setTimeout(() => { this._quickAudio.volume = 1.0; }, 250);
     setTimeout(() => {
       const fadeId = setInterval(() => {
-        if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.025;
+        if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.05;
       }, 100);
       setTimeout(() => {
         clearInterval(fadeId);
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
         this._quickAudio.volume = 1.0;
-      }, 2000);
-    }, 4000);
+      }, 1500);
+    }, 1500);
   }
 
   triggerShakeUpper() {
@@ -411,29 +486,30 @@ export class FelsenmeARModel {
     if (supB) meshes.push(supB);
     if (this._sphereMesh) meshes.push(this._sphereMesh);
     if (this._cylinderMesh) meshes.push(this._cylinderMesh);
+    this._applyGlow([supA, supB, this._sphereMesh, this._cylinderMesh].filter(Boolean));
+    this._quickShakeMeshes = meshes;
+    this._quickShakeTime = 0;
+    this._quickShakeAmp = 0.02;
+    this._quickShakeOffset = 0;
+    this._quickShakeDecay = 3;
+    this._quickShakeFreq = 5;
     this._quickAudio.currentTime = 21.5;
     this._quickAudio.volume = 0;
     this._quickAudio.play().catch(() => {});
-    setTimeout(() => { this._quickAudio.volume = 0.08; }, 100);
-    setTimeout(() => { this._quickAudio.volume = 0.18; }, 250);
-    setTimeout(() => { this._quickAudio.volume = 1.0; }, 500);
-    setTimeout(() => {
-      this._quickShakeMeshes = meshes;
-      this._quickShakeTime = 0;
-      this._quickShakeAmp = 0.059;
-      this._quickShakeOffset = 0;
-    }, 250);
+    setTimeout(() => { this._quickAudio.volume = 0.08; }, 50);
+    setTimeout(() => { this._quickAudio.volume = 0.18; }, 120);
+    setTimeout(() => { this._quickAudio.volume = 1.0; }, 250);
     setTimeout(() => {
       const fadeId = setInterval(() => {
-        if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.025;
+        if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.05;
       }, 100);
       setTimeout(() => {
         clearInterval(fadeId);
         this._quickAudio.pause();
         this._quickAudio.currentTime = 0;
         this._quickAudio.volume = 1.0;
-      }, 2000);
-    }, 4000);
+      }, 1500);
+    }, 1500);
   }
 
   _triggerModelShake() {
@@ -457,6 +533,71 @@ export class FelsenmeARModel {
         this._quickAudio.volume = 1.0;
       }, 2000);
     }, 4000);
+  }
+
+  grabLower(active) {
+    this._grabLower = active;
+    if (active) {
+      this._grabLowerShakeTime = 0;
+      this._grabLowerShakeAmp = 0.015;
+      this._grabLowerShakeOffset = 0;
+      this._addGlow([this._capaA, this._capaB].filter(Boolean));
+      this._quickAudio.currentTime = 21.5;
+      this._quickAudio.volume = 0;
+      this._quickAudio.play().catch(() => {});
+      setTimeout(() => { this._quickAudio.volume = 0.3; }, 30);
+      setTimeout(() => { this._quickAudio.volume = 0.6; }, 80);
+      setTimeout(() => { this._quickAudio.volume = 1.0; }, 150);
+      setTimeout(() => {
+        const fadeId = setInterval(() => {
+          if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.1;
+        }, 50);
+        setTimeout(() => {
+          clearInterval(fadeId);
+          this._quickAudio.pause();
+          this._quickAudio.currentTime = 0;
+          this._quickAudio.volume = 1.0;
+        }, 500);
+      }, 350);
+    }
+    if (!active) {
+      this._clearGlow([this._capaA, this._capaB].filter(Boolean));
+      this._grabLowerShakeAmp = 0;
+    }
+  }
+
+  grabUpper(active) {
+    this._grabUpper = active;
+    const meshes = [
+      this.meshes.get("CapaSuperiorA"), this.meshes.get("CapaSuperiorB")
+    ].filter(Boolean);
+    if (active) {
+      this._grabUpperShakeTime = 0;
+      this._grabUpperShakeAmp = 0.015;
+      this._grabUpperShakeOffset = 0;
+      this._addGlow(meshes);
+      this._quickAudio.currentTime = 21.5;
+      this._quickAudio.volume = 0;
+      this._quickAudio.play().catch(() => {});
+      setTimeout(() => { this._quickAudio.volume = 0.3; }, 30);
+      setTimeout(() => { this._quickAudio.volume = 0.6; }, 80);
+      setTimeout(() => { this._quickAudio.volume = 1.0; }, 150);
+      setTimeout(() => {
+        const fadeId = setInterval(() => {
+          if (this._quickAudio.volume > 0.02) this._quickAudio.volume -= 0.1;
+        }, 50);
+        setTimeout(() => {
+          clearInterval(fadeId);
+          this._quickAudio.pause();
+          this._quickAudio.currentTime = 0;
+          this._quickAudio.volume = 1.0;
+        }, 500);
+      }, 350);
+    }
+    if (!active) {
+      this._clearGlow(meshes);
+      this._grabUpperShakeAmp = 0;
+    }
   }
 
   // ── Main update (call each frame from host loop) ──
@@ -653,6 +794,7 @@ export class FelsenmeARModel {
     this._animTime = phaseIndex * PHASE_DURATION;
     this._lastUpdateTime = null;
     this._isAnimating = true;
+    this._clearAllGlow();
     this._triggerShake(0.045 + phaseIndex * 0.01, 2.5, 12);
     return true;
   }
@@ -705,6 +847,7 @@ export class FelsenmeARModel {
       this._modelQuickShakeTime += 0.016;
       if (Math.abs(qs) < 0.0005) {
         this._modelQuickShakeAmp = 0;
+        this._clearAllGlow();
       }
     }
 
@@ -836,9 +979,76 @@ export class FelsenmeARModel {
           child.position.y += finalDelta * 0.5;
         }
         this._quickShakeAmp = 0;
+        this._clearAllGlow();
         this._quickShakeMeshes = [];
         this._quickShakeOffset = 0;
       }
+    }
+    const lowerMeshes = [this._capaA, this._capaB].filter(Boolean);
+    const targetLowerY = this._grabLower ? this._grabElevation : 0;
+    const grabLowerDY = targetLowerY - this._grabLowerApplied;
+    const grabLowerShake = this._grabLowerShakeAmp > 0;
+    if (grabLowerShake) {
+      const qs = this._grabLowerShakeAmp * Math.exp(-4 * this._grabLowerShakeTime) * Math.cos(12 * this._grabLowerShakeTime);
+      const delta = qs - this._grabLowerShakeOffset;
+      this._grabLowerShakeOffset = qs;
+      for (const child of lowerMeshes) {
+        child.position.x += delta;
+        child.position.y += delta * 0.5;
+      }
+      this._grabLowerShakeTime += 0.016;
+      if (Math.abs(qs) < 0.0005) {
+        const finalDelta = -this._grabLowerShakeOffset;
+        for (const child of lowerMeshes) {
+          child.position.x += finalDelta;
+          child.position.y += finalDelta * 0.5;
+        }
+        this._grabLowerShakeAmp = 0;
+        this._grabLowerShakeOffset = 0;
+        for (const child of lowerMeshes) {
+          if (child && child.material && this._glowMeshes.has(child)) {
+            child.material.emissiveIntensity = 0.04;
+          }
+        }
+      }
+    }
+    if (Math.abs(grabLowerDY) > 0.0001) {
+      for (const child of lowerMeshes) child.position.y += grabLowerDY;
+      this._grabLowerApplied = targetLowerY;
+    }
+    const upperMeshes = [
+      this.meshes.get("CapaSuperiorA"), this.meshes.get("CapaSuperiorB")
+    ].filter(Boolean);
+    const targetUpperY = this._grabUpper ? this._grabElevation : 0;
+    const grabUpperDY = targetUpperY - this._grabUpperApplied;
+    const grabUpperShake = this._grabUpperShakeAmp > 0;
+    if (grabUpperShake) {
+      const qs = this._grabUpperShakeAmp * Math.exp(-4 * this._grabUpperShakeTime) * Math.cos(12 * this._grabUpperShakeTime);
+      const delta = qs - this._grabUpperShakeOffset;
+      this._grabUpperShakeOffset = qs;
+      for (const child of upperMeshes) {
+        child.position.x += delta;
+        child.position.y += delta * 0.5;
+      }
+      this._grabUpperShakeTime += 0.016;
+      if (Math.abs(qs) < 0.0005) {
+        const finalDelta = -this._grabUpperShakeOffset;
+        for (const child of upperMeshes) {
+          child.position.x += finalDelta;
+          child.position.y += finalDelta * 0.5;
+        }
+        this._grabUpperShakeAmp = 0;
+        this._grabUpperShakeOffset = 0;
+        for (const child of upperMeshes) {
+          if (child && child.material && this._glowMeshes.has(child)) {
+            child.material.emissiveIntensity = 0.04;
+          }
+        }
+      }
+    }
+    if (Math.abs(grabUpperDY) > 0.0001) {
+      for (const child of upperMeshes) child.position.y += grabUpperDY;
+      this._grabUpperApplied = targetUpperY;
     }
   }
 

@@ -235,11 +235,24 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
     onPinchChange: (active) => {
       if (active) {
+        if (getCurrentStage() === 1) {
+          const plates = Array.from(activeGrabs.values());
+          const hasLower = plates.some(n => n.includes("CapaInferior"));
+          const hasUpper = plates.some(n => n.includes("CapaSuperior"));
+          if (!hasLower || !hasUpper) {
+            for (const [pid, mn] of activeGrabs) {
+              EventBus.raise("grab_end", { meshName: mn });
+            }
+            activeGrabs.clear();
+            setPinchActive(false);
+            EventBus.raise("pinch_progress", { active: false });
+            return;
+          }
+        }
         for (const [pid, meshName] of activeGrabs) {
           EventBus.raise("grab_end", { meshName });
         }
         activeGrabs.clear();
-        // Delegate pinch processing to the gate logic below
       }
       if (active && getCurrentStage() === 1 && !audioManager.canAdvancePinch()) {
         setPinchActive(false);

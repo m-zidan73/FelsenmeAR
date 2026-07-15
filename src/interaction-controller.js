@@ -67,7 +67,7 @@ export function createCanvasInteractionController({
     lastPointerX = event.clientX;
     lastPointerY = event.clientY;
     touchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    if (touchPointers.size === 1 && onTouchStart) {
+    if (onTouchStart) {
       onTouchStart(event.clientX, event.clientY, event.pointerId);
     }
     reportPinchDebug("touch-down");

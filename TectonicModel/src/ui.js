@@ -23,6 +23,10 @@ export function buildUI(model) {
       <button id="btn-shake-lower" style="flex:1;background:#553;color:#fa8;">Temblor Inferior</button>
       <button id="btn-shake-upper" style="flex:1;background:#535;color:#f8a;">Temblor Superior</button>
     </div>
+    <div style="display:flex;gap:6px;margin-top:2px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:4px;flex:1;"><input id="chk-grab-lower" type="checkbox"> Agarrar Inf</label>
+      <label style="font-size:11px;display:flex;align-items:center;gap:4px;flex:1;"><input id="chk-grab-upper" type="checkbox"> Agarrar Sup</label>
+    </div>
     <div id="phase-label" style="text-align:center;font-size:11px;color:#ff8;">Phase 0 / 3</div>
     <div style="display:flex;align-items:center;gap:8px;">
       <label style="font-size:11px;">Speed</label>
@@ -185,6 +189,11 @@ export function buildUI(model) {
   const btnShakeUpper = panel.querySelector("#btn-shake-upper");
   btnShakeLower.onclick = () => { model.triggerShakeLower(); };
   btnShakeUpper.onclick = () => { model.triggerShakeUpper(); };
+
+  const chkGrabLower = panel.querySelector("#chk-grab-lower");
+  const chkGrabUpper = panel.querySelector("#chk-grab-upper");
+  chkGrabLower.onchange = () => { model.grabLower(chkGrabLower.checked); };
+  chkGrabUpper.onchange = () => { model.grabUpper(chkGrabUpper.checked); };
 
   speedSlider.oninput = () => {
     const val = parseFloat(speedSlider.value);
