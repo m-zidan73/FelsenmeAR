@@ -388,7 +388,7 @@ export class FelsenmeARModel {
     this._shakeAmplitude = 0;
     this._applyDeformation(BASE_DURATION);
     this.triggerShakeLower();
-    setTimeout(() => this.triggerShakeUpper(), 250);
+    this.triggerShakeUpper();
   }
 
   _clearAllGlow() {
