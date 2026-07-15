@@ -282,17 +282,17 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
     returnToMainMenuPlacement();
   }
 
-  const tutorialToggleEl = document.getElementById("tutorialToggle");
-  const tutorialIconBtn = document.getElementById("tutorialIconBtn");
-  const tutorialPanelEl = document.getElementById("tutorialPanel");
-  const tutorialTextEl = document.getElementById("tutorialText");
-  const tutorialPrevBtn = document.getElementById("tutorialPrev");
-  const tutorialNextBtn = document.getElementById("tutorialNext");
-  const tutorialIndicator = document.getElementById("tutorialPageIndicator");
-  const sliderTimeLabel = document.getElementById("sliderTimeLabel");
-  const rockBadge = document.getElementById("rockInfoBadge");
-  const rockBadgeMaterial = document.getElementById("rockBadgeMaterial");
-  const rockBadgeEra = document.getElementById("rockBadgeEra");
+  const tutorialToggleEl = ui.tutorialToggle;
+  const tutorialIconBtn = ui.tutorialIconButton;
+  const tutorialPanelEl = ui.tutorialPanel;
+  const tutorialTextEl = ui.tutorialText;
+  const tutorialPrevBtn = ui.tutorialPreviousButton;
+  const tutorialNextBtn = ui.tutorialNextButton;
+  const tutorialIndicator = ui.tutorialPageIndicator;
+  const sliderTimeLabel = ui.sliderTimeLabel;
+  const rockBadge = ui.rockInfoBadge;
+  const rockBadgeMaterial = ui.rockBadgeMaterial;
+  const rockBadgeEra = ui.rockBadgeEra;
 
   const tutorialController = createTutorialController({
     toggleElement: tutorialToggleEl,
@@ -310,12 +310,12 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
 
   const dataOverlayController = createDataOverlayController({
     stageDataUrl: "config/stage-data.json",
-    nameElement: document.getElementById("stageName"),
-    eraElement: document.getElementById("stageEra"),
-    epochElement: document.getElementById("stageEpoch"),
-    rockTypeElement: document.getElementById("stageRockType"),
-    plateElement: document.getElementById("stagePlate"),
-    descriptionElement: document.getElementById("stageDescription")
+    nameElement: ui.stageName,
+    eraElement: ui.stageEra,
+    epochElement: ui.stageEpoch,
+    rockTypeElement: ui.stageRockType,
+    plateElement: ui.stagePlate,
+    descriptionElement: ui.stageDescription
   });
 
   function updateSliderTimeLabel(rawSliderValue) {
@@ -359,7 +359,7 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
     audioManager.load();
     dataOverlayController.load();
 
-    const subtitleEl = document.getElementById("subtitleDisplay");
+    const subtitleEl = ui.subtitleDisplay;
     let subtitlesMap = {};
     let tutorialsMap = {};
     fetch("config/subtitles.json")
