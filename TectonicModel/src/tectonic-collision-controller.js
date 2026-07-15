@@ -11,8 +11,8 @@ const PROGRESS_THRESHOLDS = [0, 0.3, 0.5, 0.8, 1];
 
 const DEFAULT_TRANSFORM = {
   position: [0, 0, 0],
-  rotationDegrees: [0, 0, 0],
-  scaleMultiplier: 1 / 3,
+  rotationDegrees: [0, 180, 0],
+  scaleMultiplier: 1 / 2,
 };
 
 export function createTectonicCollisionController({
@@ -22,7 +22,6 @@ export function createTectonicCollisionController({
   setXRDebug = () => {},
 }) {
   let formationRoot = null;
-  let modelParent = null;
   let model = null;
   let legacyStageOneNodes = [];
   let stageOneActive = false;
@@ -36,19 +35,15 @@ export function createTectonicCollisionController({
     reset();
 
     formationRoot = nextFormationRoot || null;
-    modelParent = findModelParent(formationRoot);
-    legacyStageOneNodes = findLegacyStageOneNodes(modelParent);
+    if (!formationRoot) return false;
 
-    if (!modelParent || legacyStageOneNodes.length !== LEGACY_STAGE_ONE_NODE_NAMES.length) {
-      handleModelError(new Error("Could not find the legacy Stage 1 model hierarchy"));
-      return false;
-    }
+    legacyStageOneNodes = findLegacyStageOneNodes(formationRoot);
 
-    const nextModel = new FelsenmeARModel(modelParent, {
+    const nextModel = new FelsenmeARModel(formationRoot, {
       modelUrl,
       onLoad(loadedModel) {
         if (model !== loadedModel) return;
-        alignToLegacyStageOne();
+        alignToRoot();
         ready = true;
         failed = false;
         EventBus.raise("tectonic_model_ready", {});
@@ -79,6 +74,7 @@ export function createTectonicCollisionController({
       activateReplacement();
     } else {
       model.root.visible = false;
+      showLegacyNodes();
     }
   }
 
@@ -114,14 +110,11 @@ export function createTectonicCollisionController({
 
   function reset() {
     if (model && stageOneActive) {
-      legacyStageOneNodes.forEach((node) => {
-        node.visible = true;
-      });
+      showLegacyNodes();
     }
     if (model) model.dispose();
 
     formationRoot = null;
-    modelParent = null;
     model = null;
     legacyStageOneNodes = [];
     stageOneActive = false;
@@ -142,9 +135,7 @@ export function createTectonicCollisionController({
   function activateReplacement() {
     if (!model || !ready || failed) return;
 
-    legacyStageOneNodes.forEach((node) => {
-      node.visible = false;
-    });
+    legacyStageOneNodes.forEach((node) => { node.visible = false; });
     model.showInitial();
     model.root.visible = true;
     emitProgressMilestones(0);
@@ -215,8 +206,8 @@ export function createTectonicCollisionController({
     EventBus.raise("tectonic_shake_upper_triggered", {});
   });
 
-  function alignToLegacyStageOne() {
-    if (!model || !modelParent) return;
+  function alignToRoot() {
+    if (!model || !formationRoot) return;
 
     const resolvedTransform = {
       ...DEFAULT_TRANSFORM,
@@ -226,48 +217,32 @@ export function createTectonicCollisionController({
     const correctionPosition = resolvedTransform.position || DEFAULT_TRANSFORM.position;
     const scaleMultiplier = Number(resolvedTransform.scaleMultiplier) || 1;
 
-    model.root.position.set(0, 0, 0);
+    model.root.position.set(
+      correctionPosition[0] || 0,
+      correctionPosition[1] || 0,
+      correctionPosition[2] || 0
+    );
     model.root.rotation.set(
       THREE.MathUtils.degToRad(rotation[0] || 0),
       THREE.MathUtils.degToRad(rotation[1] || 0),
       THREE.MathUtils.degToRad(rotation[2] || 0)
     );
-    model.root.scale.setScalar(1);
-    modelParent.updateMatrixWorld(true);
-
-    const targetBounds = getCombinedBounds(legacyStageOneNodes);
-    const sourceBounds = new THREE.Box3().setFromObject(model.root);
-    if (targetBounds.isEmpty() || sourceBounds.isEmpty()) {
-      throw new Error("Could not measure Stage 1 model bounds");
-    }
-
-    const targetSize = targetBounds.getSize(new THREE.Vector3());
-    const sourceSize = sourceBounds.getSize(new THREE.Vector3());
-    const targetSpan = Math.max(targetSize.x, targetSize.z);
-    const sourceSpan = Math.max(sourceSize.x, sourceSize.z);
-    if (targetSpan <= 0 || sourceSpan <= 0) {
-      throw new Error("Stage 1 model bounds have an invalid size");
-    }
-
-    model.root.scale.setScalar((targetSpan / sourceSpan) * scaleMultiplier);
-    modelParent.updateMatrixWorld(true);
-
-    const scaledSourceBounds = new THREE.Box3().setFromObject(model.root);
-    const targetCenter = targetBounds.getCenter(new THREE.Vector3());
-    const sourceCenter = scaledSourceBounds.getCenter(new THREE.Vector3());
-    const targetBottom = new THREE.Vector3(targetCenter.x, targetBounds.min.y, targetCenter.z);
-    const sourceBottom = new THREE.Vector3(sourceCenter.x, scaledSourceBounds.min.y, sourceCenter.z);
-    const targetLocal = modelParent.worldToLocal(targetBottom.clone());
-    const sourceLocal = modelParent.worldToLocal(sourceBottom.clone());
-
-    model.root.position.add(targetLocal.sub(sourceLocal));
-    model.root.position.add(new THREE.Vector3().fromArray(correctionPosition));
-    modelParent.updateMatrixWorld(true);
+    model.root.scale.setScalar(scaleMultiplier);
+    formationRoot.updateMatrixWorld(true);
   }
 
-  function findModelParent(root) {
-    if (!root) return null;
-    return root.getObjectByName("Gelifluction") || root.children[0] || root;
+  function handleModelError(error) {
+    failed = true;
+    ready = false;
+    if (model) model.root.visible = false;
+    if (stageOneActive) showLegacyNodes();
+
+    const message = error instanceof Error ? error.message : String(error);
+    setXRDebug("tectonic model failed");
+    if (window.__runtimeErrors) {
+      window.__runtimeErrors.push("Tectonic model failed: " + message);
+    }
+    EventBus.raise("tectonic_model_error", { message });
   }
 
   function findLegacyStageOneNodes(root) {
@@ -277,28 +252,8 @@ export function createTectonicCollisionController({
       .filter(Boolean);
   }
 
-  function getCombinedBounds(objects) {
-    return objects.reduce((bounds, object) => {
-      return bounds.union(new THREE.Box3().setFromObject(object));
-    }, new THREE.Box3());
-  }
-
-  function handleModelError(error) {
-    failed = true;
-    ready = false;
-    if (model) model.root.visible = false;
-    if (stageOneActive) {
-      legacyStageOneNodes.forEach((node) => {
-        node.visible = true;
-      });
-    }
-
-    const message = error instanceof Error ? error.message : String(error);
-    setXRDebug("tectonic model failed");
-    if (window.__runtimeErrors) {
-      window.__runtimeErrors.push("Tectonic model failed: " + message);
-    }
-    EventBus.raise("tectonic_model_error", { message });
+  function showLegacyNodes() {
+    legacyStageOneNodes.forEach((node) => { node.visible = true; });
   }
 
   return {
