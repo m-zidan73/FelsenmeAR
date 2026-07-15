@@ -53,73 +53,65 @@ const REQUIRED_MESH_NAMES = [
   "Cylinder",
 ];
 
-function makeCanvas(stripes, c1, c2) {
-  const size = 512;
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-  const ctx = c.getContext("2d");
-  for (let y = 0; y < size; y++) {
-    const t = y / size;
-    const phase = Math.sin(t * stripes * Math.PI * 2) * 0.5 + 0.5;
-    const r = c1.r + (c2.r - c1.r) * phase;
-    const g = c1.g + (c2.g - c1.g) * phase;
-    const b = c1.b + (c2.b - c1.b) * phase;
-    ctx.fillStyle = `rgb(${(r*255)|0},${(g*255)|0},${(b*255)|0})`;
-    ctx.fillRect(0, y, size, 1);
-  }
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 32; i++) {
-    const p = (i / 32) * size;
-    ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
-  }
-  return c;
-}
-
-function toTex(canvas) {
-  const tex = new THREE.CanvasTexture(canvas);
+function wrapTex(tex) {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(4, 4);
   tex.anisotropy = 4;
   return tex;
 }
 
-const _texA = toTex(makeCanvas(14, new THREE.Color(0xdd9944), new THREE.Color(0xffcc88)));
-const _texB = toTex(makeCanvas(10, new THREE.Color(0x2a3a5a), new THREE.Color(0x5a7a9a)));
-
 const _texLoader = new THREE.TextureLoader();
-const _lavaColor = _texLoader.load("textures/Lava_002_COLOR.png");
-const _lavaNormal = _texLoader.load("textures/Lava_002_NRM.png");
-const _lavaSpec = _texLoader.load("textures/Lava_002_SPEC.png");
-_lavaNormal.wrapS = _lavaNormal.wrapT = THREE.RepeatWrapping;
-_lavaSpec.wrapS = _lavaSpec.wrapT = THREE.RepeatWrapping;
-_lavaColor.anisotropy = _lavaNormal.anisotropy = _lavaSpec.anisotropy = 4;
 
-function defaultMatA() {
-  return new THREE.MeshStandardMaterial({
-    map: _texA, color: 0xffffff, flatShading: true, roughness: 0.8, metalness: 0.1,
-  });
-}
+// Mountain set (CapaInferiorA, CapaSuperiorA)
+const _mtColor = wrapTex(_texLoader.load("textures/mountain/Base Color.png"));
+const _mtNormal = wrapTex(_texLoader.load("textures/mountain/Normal Map.png"));
+const _mtRough = wrapTex(_texLoader.load("textures/mountain/Roughness Map.png"));
+const _mtMetal = wrapTex(_texLoader.load("textures/mountain/Metallic Map.png"));
+const _mtAO = wrapTex(_texLoader.load("textures/mountain/Ambient Occlusion.png"));
 
-function defaultMatB() {
-  return new THREE.MeshStandardMaterial({
-    map: _texB, color: 0xffffff, flatShading: true, roughness: 0.8, metalness: 0.1,
-  });
-}
+// Earth set (CapaInferiorB, CapaSuperiorB)
+const _eaColor = wrapTex(_texLoader.load("textures/earth/Base Color.png"));
+const _eaNormal = wrapTex(_texLoader.load("textures/earth/Normal Map.png"));
+const _eaRough = wrapTex(_texLoader.load("textures/earth/Roughness Map.png"));
+const _eaMetal = wrapTex(_texLoader.load("textures/earth/Metallic Map.png"));
+const _eaAO = wrapTex(_texLoader.load("textures/earth/Ambient Occlusion Map.png"));
 
-function defaultMatMagma() {
+// Lava set (Sphere, Cylinder, Magma1, Magma2)
+const _laColor = wrapTex(_texLoader.load("textures/lava/Lava_002_COLOR.png"));
+const _laNormal = wrapTex(_texLoader.load("textures/lava/Lava_002_NRM.png"));
+const _laSpec = wrapTex(_texLoader.load("textures/lava/Lava_002_SPEC.png"));
+
+function defaultMatMountain() {
   return new THREE.MeshStandardMaterial({
-    map: _lavaColor,
-    normalMap: _lavaNormal,
+    map: _mtColor,
+    normalMap: _mtNormal,
+    roughnessMap: _mtRough,
+    metalnessMap: _mtMetal,
+    aoMap: _mtAO,
     color: 0xffffff,
-    roughness: 0.5, metalness: 0,
+    roughness: 0.8, metalness: 0.1,
+    flatShading: true,
+  });
+}
+
+function defaultMatEarth() {
+  return new THREE.MeshStandardMaterial({
+    map: _eaColor,
+    normalMap: _eaNormal,
+    roughnessMap: _eaRough,
+    metalnessMap: _eaMetal,
+    aoMap: _eaAO,
+    color: 0xffffff,
+    roughness: 0.8, metalness: 0.1,
+    flatShading: true,
   });
 }
 
 function defaultMatSphere() {
   return new THREE.MeshStandardMaterial({
-    color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.6, flatShading: true,
+    map: _laColor,
+    normalMap: _laNormal,
+    color: 0xffffff,
+    roughness: 0.5, metalness: 0,
   });
 }
 
@@ -496,14 +488,14 @@ export class FelsenmeARModel {
                 this._selectedVertsYMax = maxY;
                 this._selectedVertsYMin = minY;
               }
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatMountain);
             } else if (child.name === "CapaInferiorB") {
               this._capaB = child;
               const data = precomputeMesh(child);
               this._origB = data.orig;
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatB);
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatEarth);
             } else if (child.name === "CapaSuperiorA" || child.name === "CapaSuperior.copia" || child.name === "Cube.001") {
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatA);
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatMountain);
               if (child.name === "CapaSuperiorA" && !this._sphereStartPos) {
                 child.geometry.computeBoundingBox();
                 const bb = child.geometry.boundingBox;
@@ -511,7 +503,7 @@ export class FelsenmeARModel {
                 this._sphereStartPos.y = child.position.y + (bb ? bb.min.y : 0);
               }
             } else if (child.name === "CapaSuperiorB") {
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatB);
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatEarth);
               child.geometry.computeBoundingBox();
               const bb = child.geometry.boundingBox;
               if (bb && this._magma2AnchorZ === null) {
@@ -527,7 +519,7 @@ export class FelsenmeARModel {
               this._sphereEndPos = child.position.clone();
               this._spherePosX = 1.26;
               this._spherePosY = 1.96;
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere());
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere);
             } else if (child.name === "Cylinder") {
               this._cylinderMesh = child;
               this._cylinderOrigScale = child.scale.clone();
@@ -545,7 +537,7 @@ export class FelsenmeARModel {
               this._cylinderBasePos = child.position.clone();
               this._cylinderPosX = 1.19;
               this._cylinderPosY = 1.63;
-              child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere());
+              child.material = resolveMaterial(child.name, mats[child.name], defaultMatSphere);
             }
           });
 
