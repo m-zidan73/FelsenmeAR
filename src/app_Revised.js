@@ -23,6 +23,7 @@ import { createTutorialController } from "./tutorial-controller.js";
 import { createAudioManager } from "./audio-manager.js";
 import { createDataOverlayController } from "./data-overlay-controller.js";
 import { createTectonicCollisionController } from "../TectonicModel/src/tectonic-collision-controller.js";
+import { createTapRaycaster } from "./tap-raycaster.js";
 
 (function () {
   installRuntimeErrorCapture();
@@ -166,6 +167,10 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
     setXRDebug
   });
 
+  const tapRaycaster = createTapRaycaster({
+    getCamera: () => state.camera
+  });
+
   function reportPinchDebug(debug) {
     tectonicCollisionController.handlePinchDebug(debug);
     const distance = Number.isFinite(debug.distance) ? " distance=" + debug.distance.toFixed(1) : "";
@@ -244,7 +249,8 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
       }
     },
     onPinchDebug: reportPinchDebug,
-    onPlacementTap: placeAtDetectedPlane
+    onPlacementTap: placeAtDetectedPlane,
+    onTap: (x, y) => tapRaycaster.handleTap(x, y, window.innerWidth, window.innerHeight)
   });
 
   placementController = createPlacementController({
@@ -413,6 +419,12 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
       ExperienceStateManager.setState(ExperienceState.SliderActive);
       if (state.formationLabels) {
         setLabelVisibilityByStage(state.formationLabels, 1);
+      }
+    });
+    EventBus.on("tectonic_model_ready", () => {
+      const plateMeshes = tectonicCollisionController.getPlateMeshes();
+      if (plateMeshes.length > 0) {
+        tapRaycaster.addTarget("tectonic_plates", plateMeshes);
       }
     });
     EventBus.on("alignment_quality", (data) => {

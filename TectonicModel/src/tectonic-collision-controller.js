@@ -206,6 +206,15 @@ export function createTectonicCollisionController({
     EventBus.raise("tectonic_shake_upper_triggered", {});
   });
 
+  EventBus.on("raycast_hit", ({ target, meshName }) => {
+    if (target !== "tectonic_plates" || !isReplacementActive()) return;
+    if (meshName.includes("CapaInferior")) {
+      EventBus.raise("tectonic_shake_lower", {});
+    } else if (meshName.includes("CapaSuperior")) {
+      EventBus.raise("tectonic_shake_upper", {});
+    }
+  });
+
   function alignToRoot() {
     if (!model || !formationRoot) return;
 
@@ -256,9 +265,16 @@ export function createTectonicCollisionController({
     legacyStageOneNodes.forEach((node) => { node.visible = true; });
   }
 
+  function getPlateMeshes() {
+    if (!model || !model.meshes) return [];
+    const names = ["CapaInferiorA", "CapaInferiorB", "CapaSuperiorA", "CapaSuperiorB"];
+    return names.map(n => model.meshes.get(n)).filter(Boolean);
+  }
+
   return {
     attach,
     dispose,
+    getPlateMeshes,
     handlePinchChange,
     handlePinchDebug,
     handleStageChange,

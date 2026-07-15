@@ -3,7 +3,8 @@ export function createCanvasInteractionController({
   pinchDistanceThresholdPixels,
   onPinchChange,
   onPinchDebug = () => {},
-  onPlacementTap
+  onPlacementTap,
+  onTap
 }) {
   const touchPointers = new Map();
   let canvas = null;
@@ -12,6 +13,8 @@ export function createCanvasInteractionController({
   let pinchActive = false;
   let lastInwardMovementTime = 0;
   let debugEventCount = 0;
+  let lastPointerX = 0;
+  let lastPointerY = 0;
 
   function attach(nextCanvas) {
     canvas = nextCanvas;
@@ -35,7 +38,10 @@ export function createCanvasInteractionController({
     }
   }
 
-  function handlePlacementInput() {
+  function handlePlacementInput(event) {
+    const x = event && typeof event.clientX === 'number' ? event.clientX : lastPointerX;
+    const y = event && typeof event.clientY === 'number' ? event.clientY : lastPointerY;
+    if (onTap) onTap(x, y);
     onPlacementTap();
   }
 
@@ -44,6 +50,8 @@ export function createCanvasInteractionController({
       return;
     }
 
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
     touchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     reportPinchDebug("touch-down");
     if (touchPointers.size === 2) {
