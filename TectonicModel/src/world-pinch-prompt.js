@@ -5,6 +5,8 @@ const DEFAULT_TEXTURE_URLS = {
   right: "Assets/Swipe%20Left%20White.png",
 };
 
+const CYCLE_SECONDS = 1.6;
+
 export function createWorldPinchPrompt({
   parent,
   bounds,
@@ -22,23 +24,24 @@ export function createWorldPinchPrompt({
   const size = bounds.getSize(new THREE.Vector3());
   const center = bounds.getCenter(new THREE.Vector3());
   const span = Math.max(size.x, size.z, 0.001);
-  const iconSize = span * 0.22;
-  const separation = span * 0.22;
-  const travel = span * 0.12;
+  const iconSize = span * 0.11;
+  const startSeparation = span * 0.34;
+  const travel = span * 0.18;
+  const frontOffset = span * 0.34;
+  const basePosition = new THREE.Vector3(center.x, center.y + size.y * 0.08, center.z);
 
   const left = createPromptSprite(textureLoader, textureUrls.left, "Tectonic Pinch Left");
   const right = createPromptSprite(textureLoader, textureUrls.right, "Tectonic Pinch Right");
-  left.scale.set(iconSize, iconSize, 1);
-  right.scale.set(iconSize, iconSize, 1);
+  left.baseScale = iconSize;
+  right.baseScale = iconSize;
   group.add(left, right);
 
-  group.position.set(
-    center.x,
-    bounds.max.y + iconSize * 0.65,
-    bounds.min.z - span * 0.08
-  );
   parent.add(group);
 
+  const cameraWorldPosition = new THREE.Vector3();
+  const promptWorldPosition = new THREE.Vector3();
+  const cameraLocalPosition = new THREE.Vector3();
+  const forwardLocal = new THREE.Vector3();
   let elapsedSeconds = 0;
   let disposed = false;
 
@@ -47,25 +50,50 @@ export function createWorldPinchPrompt({
     group.visible = Boolean(visible);
     if (!group.visible) {
       elapsedSeconds = 0;
+      positionGroup(null);
       positionSprites(0);
     }
   }
 
-  function update(deltaSeconds) {
+  function update(deltaSeconds, camera = null) {
     if (disposed || !group.visible) return;
 
     const delta = Number.isFinite(deltaSeconds) ? Math.max(deltaSeconds, 0) : 0;
-    elapsedSeconds = (elapsedSeconds + delta) % 1.6;
-    const cycle = elapsedSeconds / 1.6;
-    const inwardAmount = 0.5 - Math.cos(cycle * Math.PI * 2) * 0.5;
-    positionSprites(inwardAmount);
+    elapsedSeconds = (elapsedSeconds + delta) % CYCLE_SECONDS;
+    const cycle = elapsedSeconds / CYCLE_SECONDS;
+    const inwardAmount = easeOutCubic(cycle);
+    positionGroup(camera);
+    positionSprites(inwardAmount, cycle);
   }
 
-  function positionSprites(inwardAmount) {
+  function positionGroup(camera) {
+    group.position.copy(basePosition);
+
+    if (camera && typeof camera.getWorldPosition === "function") {
+      parent.localToWorld(promptWorldPosition.copy(basePosition));
+      camera.getWorldPosition(cameraWorldPosition);
+      cameraLocalPosition.copy(cameraWorldPosition);
+      parent.worldToLocal(cameraLocalPosition);
+      forwardLocal.subVectors(cameraLocalPosition, basePosition);
+      forwardLocal.y = 0;
+      if (forwardLocal.lengthSq() > 0.000001) {
+        group.position.add(forwardLocal.normalize().multiplyScalar(frontOffset));
+        return;
+      }
+    }
+
+    group.position.z = bounds.min.z - frontOffset;
+  }
+
+  function positionSprites(inwardAmount, cycle = 0) {
     const offset = travel * inwardAmount;
-    left.position.x = -separation + offset;
-    right.position.x = separation - offset;
-    const opacity = 1 - inwardAmount * 0.7;
+    const scale = iconSize * (1 - inwardAmount * 0.15);
+    const opacity = getCycleOpacity(cycle);
+
+    left.position.set(-startSeparation + offset, 0, 0);
+    right.position.set(startSeparation - offset, 0, 0);
+    left.scale.set(scale, scale, 1);
+    right.scale.set(scale, scale, 1);
     left.material.opacity = opacity;
     right.material.opacity = opacity;
   }
@@ -81,6 +109,7 @@ export function createWorldPinchPrompt({
     group.clear();
   }
 
+  positionGroup(null);
   positionSprites(0);
 
   return {
@@ -99,6 +128,7 @@ function createPromptSprite(textureLoader, textureUrl, name) {
     map: texture,
     depthTest: false,
     depthWrite: false,
+    opacity: 0,
     transparent: true,
     toneMapped: false,
   });
@@ -109,4 +139,20 @@ function createPromptSprite(textureLoader, textureUrl, name) {
   sprite.frustumCulled = false;
   sprite.renderOrder = 1000;
   return sprite;
+}
+
+function easeOutCubic(value) {
+  const clamped = THREE.MathUtils.clamp(value, 0, 1);
+  return 1 - Math.pow(1 - clamped, 3);
+}
+
+function smoothstep(edge0, edge1, value) {
+  const clamped = THREE.MathUtils.clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+function getCycleOpacity(progress) {
+  const fadeIn = smoothstep(0, 0.18, progress);
+  const fadeOut = 1 - smoothstep(0.68, 1, progress);
+  return Math.min(fadeIn, fadeOut) * 0.92;
 }

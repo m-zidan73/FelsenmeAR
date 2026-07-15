@@ -12,7 +12,7 @@ const PROGRESS_THRESHOLDS = [0, 0.3, 0.5, 0.8, 1];
 
 const DEFAULT_TRANSFORM = {
   position: [0, 0, 0],
-  rotationDegrees: [0, 0, 0],
+  rotationDegrees: [0, 180, 0],
   scaleMultiplier: (1 / 3) * 1.3,
 };
 
@@ -27,6 +27,7 @@ export function createTectonicCollisionController({
   let placementRoot = null;
   let modelParent = null;
   let model = null;
+  let activeCamera = null;
   let gesturePrompt = null;
   let gesturePromptRequested = false;
   let legacyStageOneNodes = [];
@@ -88,6 +89,7 @@ export function createTectonicCollisionController({
     const position = options.position;
     const quaternion = options.quaternion;
     const planeHeight = Number.isFinite(options.planeHeight) ? options.planeHeight : null;
+    activeCamera = options.camera || activeCamera;
 
     if (position && typeof position.copy === "function") {
       placementRoot.position.copy(position);
@@ -152,7 +154,7 @@ export function createTectonicCollisionController({
     if (!isReplacementActive()) return;
 
     model.update(deltaSeconds);
-    if (gesturePrompt) gesturePrompt.update(deltaSeconds);
+    if (gesturePrompt) gesturePrompt.update(deltaSeconds, activeCamera);
     emitProgressMilestones(model.progress);
   }
 
@@ -173,6 +175,7 @@ export function createTectonicCollisionController({
     placementRoot = null;
     modelParent = null;
     model = null;
+    activeCamera = null;
     gesturePrompt = null;
     gesturePromptRequested = false;
     legacyStageOneNodes = [];
@@ -316,6 +319,7 @@ export function createTectonicCollisionController({
       formationRoot: options.formationRoot || null,
       position: options.position || null,
       quaternion: options.quaternion || null,
+      camera: options.camera || null,
       planeHeight: options.planeHeight,
     };
   }

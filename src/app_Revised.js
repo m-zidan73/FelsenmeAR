@@ -288,7 +288,8 @@ import { createTectonicCollisionController } from "../TectonicModel/src/tectonic
       formationRoot: state.formationRoot,
       position: state.placementCenter,
       planeHeight: state.planeHeight,
-      quaternion: state.formationRoot ? state.formationRoot.quaternion : null
+      quaternion: state.formationRoot ? state.formationRoot.quaternion : null,
+      camera: state.camera
     };
   }
 
