@@ -389,6 +389,13 @@ export class FelsenmeARModel {
     this._applyDeformation(BASE_DURATION);
     this.triggerShakeLower();
     this.triggerShakeUpper();
+    const lowerMeshes = [this._capaA, this._capaB].filter(Boolean);
+    this._addGlow(lowerMeshes);
+    for (const m of lowerMeshes) {
+      if (!this._quickShakeMeshes.includes(m)) {
+        this._quickShakeMeshes.push(m);
+      }
+    }
   }
 
   _clearAllGlow() {
