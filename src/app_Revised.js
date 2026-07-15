@@ -161,6 +161,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
   let wasReticleVisible = false;
   let hadSession = false;
   let readyEmitted = false;
+  const activeGrabs = new Map();
 
   const tectonicCollisionController = createTectonicCollisionController({
     EventBus,
@@ -233,6 +234,13 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
     pinchDistanceThresholdPixels: CONFIG.pinchDistanceThresholdPixels,
     onPinchChange: (active) => {
+      if (active) {
+        for (const [pid, meshName] of activeGrabs) {
+          EventBus.raise("grab_end", { meshName });
+        }
+        activeGrabs.clear();
+        // Delegate pinch processing to the gate logic below
+      }
       if (active && getCurrentStage() === 1 && !audioManager.canAdvancePinch()) {
         setPinchActive(false);
         EventBus.raise("pinch_progress", { active: false });
@@ -255,7 +263,20 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     },
     onPinchDebug: reportPinchDebug,
     onPlacementTap: placeAtDetectedPlane,
-    onTap: (x, y) => tapRaycaster.handleTap(x, y, window.innerWidth, window.innerHeight)
+    onTap: (x, y) => tapRaycaster.handleTap(x, y, window.innerWidth, window.innerHeight),
+    onTouchStart: (x, y, pointerId) => {
+      const hit = tapRaycaster.handleTouchStart(x, y, window.innerWidth, window.innerHeight);
+      if (hit) {
+        activeGrabs.set(pointerId, hit.meshName);
+      }
+    },
+    onTouchEnd: (pointerId) => {
+      const meshName = activeGrabs.get(pointerId);
+      if (meshName) {
+        activeGrabs.delete(pointerId);
+        EventBus.raise("grab_end", { meshName });
+      }
+    }
   });
 
   placementController = createPlacementController({

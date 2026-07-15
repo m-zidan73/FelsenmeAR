@@ -194,26 +194,28 @@ export function createTectonicCollisionController({
     EventBus.raise("tectonic_final_shown", {});
   });
 
-  EventBus.on("tectonic_shake_lower", () => {
-    if (!ready || !model || failed) return;
-    model.triggerShakeLower();
-    EventBus.raise("tectonic_shake_lower_triggered", {});
-  });
-
-  EventBus.on("tectonic_shake_upper", () => {
-    if (!ready || !model || failed) return;
-    model.triggerShakeUpper();
-    EventBus.raise("tectonic_shake_upper_triggered", {});
-  });
-
-  EventBus.on("raycast_hit", ({ target, meshName }) => {
-    if (target !== "tectonic_plates" || !isReplacementActive()) return;
+  EventBus.on("grab_start", ({ target, meshName }) => {
+    if (target !== "tectonic_plates" || !ready || !model || failed) return;
     if (meshName.includes("CapaInferior")) {
-      EventBus.raise("tectonic_shake_lower", {});
+      model.grabLower(true);
     } else if (meshName.includes("CapaSuperior")) {
-      EventBus.raise("tectonic_shake_upper", {});
+      model.grabUpper(true);
     }
   });
+
+  EventBus.on("grab_end", ({ meshName }) => {
+    if (!ready || !model || failed) return;
+    if (meshName && meshName.includes("CapaInferior")) {
+      model.grabLower(false);
+    } else if (meshName && meshName.includes("CapaSuperior")) {
+      model.grabUpper(false);
+    } else {
+      model.grabLower(false);
+      model.grabUpper(false);
+    }
+  });
+
+  // ── EventBus-triggerable actions ──
 
   function alignToRoot() {
     if (!model || !formationRoot) return;

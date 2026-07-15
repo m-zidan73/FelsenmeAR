@@ -4,7 +4,9 @@ export function createCanvasInteractionController({
   onPinchChange,
   onPinchDebug = () => {},
   onPlacementTap,
-  onTap
+  onTap,
+  onTouchStart,
+  onTouchEnd
 }) {
   const touchPointers = new Map();
   let canvas = null;
@@ -31,11 +33,23 @@ export function createCanvasInteractionController({
     }
     if (xrSession) {
       xrSession.removeEventListener("select", handlePlacementInput);
+      xrSession.removeEventListener("selectstart", handleXRSelectStart);
+      xrSession.removeEventListener("selectend", handleXRSelectEnd);
     }
     xrSession = nextSession;
     if (xrSession) {
       xrSession.addEventListener("select", handlePlacementInput);
+      xrSession.addEventListener("selectstart", handleXRSelectStart);
+      xrSession.addEventListener("selectend", handleXRSelectEnd);
     }
+  }
+
+  function handleXRSelectStart() {
+    if (onTouchStart) onTouchStart(lastPointerX, lastPointerY, "xr");
+  }
+
+  function handleXRSelectEnd() {
+    if (onTouchEnd) onTouchEnd("xr");
   }
 
   function handlePlacementInput(event) {
@@ -53,6 +67,9 @@ export function createCanvasInteractionController({
     lastPointerX = event.clientX;
     lastPointerY = event.clientY;
     touchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (touchPointers.size === 1 && onTouchStart) {
+      onTouchStart(event.clientX, event.clientY, event.pointerId);
+    }
     reportPinchDebug("touch-down");
     if (touchPointers.size === 2) {
       previousPinchDistance = getPinchDistance();
@@ -89,6 +106,7 @@ export function createCanvasInteractionController({
   }
 
   function handlePointerEnd(event) {
+    if (onTouchEnd) onTouchEnd(event.pointerId);
     touchPointers.delete(event.pointerId);
     previousPinchDistance = touchPointers.size === 2 ? getPinchDistance() : null;
     if (touchPointers.size < 2) {
@@ -119,6 +137,11 @@ export function createCanvasInteractionController({
   }
 
   function reset() {
+    if (onTouchEnd) {
+      for (const [, pointerId] of touchPointers) {
+        onTouchEnd(pointerId);
+      }
+    }
     touchPointers.clear();
     previousPinchDistance = null;
     lastInwardMovementTime = 0;
