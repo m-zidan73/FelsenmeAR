@@ -424,8 +424,11 @@ import { createTapRaycaster } from "./tap-raycaster.js";
       const tutorialText = tutorialsMap[data.clip];
       if (tutorialText) tutorialController.addMessage(tutorialText);
     });
-    EventBus.on("clip_ended", () => {
+    EventBus.on("clip_ended", (data) => {
       if (subtitleEl) subtitleEl.hidden = true;
+      if (data && data.clip === "11a. 350.mp3") {
+        EventBus.raise("tectonic_show_initial", {});
+      }
     });
 
     window.addEventListener("resize", onResize);
