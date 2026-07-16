@@ -1,7 +1,7 @@
 import { getDescendantMeshes, setMeshesOpacity } from "../three-utils.js";
 
-const STARTING_ROCK_INITIAL_SCALE = 0.35;
-const STARTING_ROCK_FINAL_SCALE = STARTING_ROCK_INITIAL_SCALE * 0.5;
+const STARTING_ROCK_SPAWN_SCALE = 0.35;
+const STARTING_ROCK_DESTINATION_SCALE = STARTING_ROCK_SPAWN_SCALE * 0.25;
 const STARTING_ROCK_MOVE_SECONDS = 6;
 
 export function createGelifluctionStageController({
@@ -23,6 +23,7 @@ export function createGelifluctionStageController({
   let stageFourDirection = 0;
   let startingRockBase = null;
   let startingRockMove = null;
+  let cachedStartingRockDestination = null;
   let subductionMixer = null;
   let subductionAction = null;
   let subductionTime = 0;
@@ -34,7 +35,7 @@ export function createGelifluctionStageController({
   const tempRockWorld = new THREE.Vector3();
   const tempTargetWorld = new THREE.Vector3();
   const tempPosition = new THREE.Vector3();
-  const tempScale = new THREE.Vector3();
+  const tempRockScale = new THREE.Vector3();
   const tempBounds = new THREE.Box3();
   const tempCenterWorld = new THREE.Vector3();
   const tempPivotWorld = new THREE.Vector3();
@@ -110,6 +111,14 @@ export function createGelifluctionStageController({
       onStageInstructionVisibleChange(false);
       resetSubductionAnimation();
       startStartingRockMove();
+      setSubductionPromptVisible(true);
+      if (previousStage === 5) {
+        startStartingRockMoveToDestination({ resetElapsed: true });
+      } else {
+        startStartingRockMove();
+      }
+    } else {
+      updateStartingRockStageTransition(previousStage, targetStage);
     }
     applyStageTransition(targetStage);
     updateStageFourPlayback(previousStage, targetStage);
@@ -219,7 +228,7 @@ export function createGelifluctionStageController({
     if (!startingRock || !startingRockBase) return;
 
     startingRock.position.copy(startingRockBase.position);
-    startingRock.scale.setScalar(startingRockBase.uniformScale * STARTING_ROCK_INITIAL_SCALE);
+    applyStartingRockSpawnScale();
     startingRockMove = null;
   }
 
@@ -230,16 +239,66 @@ export function createGelifluctionStageController({
     if (!startingRockBase) return;
 
     resetStartingRockToInitial();
-    const targetPosition = resolveStartingRockTargetPosition();
+    startStartingRockMoveToDestination({ resetElapsed: true });
+  }
+
+  function updateStartingRockStageTransition(previousStage, targetStage) {
+    if (targetStage === 5 && previousStage >= 1 && previousStage <= 4) {
+      startStartingRockMoveToSpawn();
+    } else if (previousStage === 5 && targetStage >= 1 && targetStage <= 4) {
+      startStartingRockMoveToDestination({ resetElapsed: true });
+    }
+  }
+
+  function startStartingRockMoveToSpawn() {
+    const startingRock = instance?.nodes?.Starting_Rock;
+    if (!startingRock) return;
+    if (!startingRockBase) captureStartingRockBase();
+    if (!startingRockBase) return;
+
     startingRockMove = {
       elapsedSeconds: 0,
+      waitingForTarget: false,
+      complete: false,
+      targetKind: "spawn",
+      startPosition: startingRock.position.clone(),
+      targetPosition: startingRockBase.position.clone(),
+      startRockScale: startingRock.scale.clone(),
+      targetRockScale: getStartingRockSpawnScale()
+    };
+  }
+
+  function startStartingRockMoveToDestination({ resetElapsed = true } = {}) {
+    const startingRock = instance?.nodes?.Starting_Rock;
+    if (!startingRock) return;
+    if (!startingRockBase) captureStartingRockBase();
+    if (!startingRockBase) return;
+
+    const targetPosition = resolveStartingRockTargetPosition();
+    startingRockMove = {
+      elapsedSeconds: resetElapsed ? 0 : startingRockMove?.elapsedSeconds ?? 0,
       waitingForTarget: !targetPosition,
       complete: false,
+      targetKind: "destination",
       startPosition: startingRock.position.clone(),
       targetPosition,
-      startScale: startingRock.scale.clone(),
-      targetScale: new THREE.Vector3().setScalar(startingRockBase.uniformScale * STARTING_ROCK_FINAL_SCALE)
+      startRockScale: startingRock.scale.clone(),
+      targetRockScale: getStartingRockDestinationScale()
     };
+  }
+
+  function applyStartingRockSpawnScale() {
+    const startingRock = instance?.nodes?.Starting_Rock;
+    if (!startingRock || !startingRockBase) return;
+    startingRock.scale.copy(getStartingRockSpawnScale());
+  }
+
+  function getStartingRockSpawnScale() {
+    return new THREE.Vector3().setScalar(startingRockBase.uniformScale * STARTING_ROCK_SPAWN_SCALE);
+  }
+
+  function getStartingRockDestinationScale() {
+    return new THREE.Vector3().setScalar(startingRockBase.uniformScale * STARTING_ROCK_DESTINATION_SCALE);
   }
 
   function resolveStartingRockTargetPosition() {
@@ -250,7 +309,7 @@ export function createGelifluctionStageController({
     if (!sphereWorld) return null;
 
     const originalScale = startingRock.scale.clone();
-    startingRock.scale.setScalar(startingRockBase.uniformScale * STARTING_ROCK_FINAL_SCALE);
+    startingRock.scale.copy(getStartingRockDestinationScale());
     startingRock.updateMatrixWorld(true);
     tempBounds.setFromObject(startingRock);
     tempBounds.getCenter(tempCenterWorld);
@@ -260,21 +319,27 @@ export function createGelifluctionStageController({
     startingRock.updateMatrixWorld(true);
 
     tempTargetWorld.copy(sphereWorld).sub(tempCenterOffset);
-    return startingRock.parent.worldToLocal(tempTargetWorld.clone());
+    cachedStartingRockDestination = startingRock.parent.worldToLocal(tempTargetWorld.clone());
+    return cachedStartingRockDestination.clone();
   }
 
   function startWaitingStartingRockMove() {
     const startingRock = instance?.nodes?.Starting_Rock;
     if (!startingRock || !startingRockMove) return false;
 
-    const targetPosition = resolveStartingRockTargetPosition();
+    const targetPosition = startingRockMove.targetKind === "spawn"
+      ? startingRockBase?.position.clone()
+      : resolveStartingRockTargetPosition() || cachedStartingRockDestination?.clone();
     if (!targetPosition) return false;
 
     startingRockMove.waitingForTarget = false;
     startingRockMove.elapsedSeconds = 0;
     startingRockMove.startPosition.copy(startingRock.position);
-    startingRockMove.startScale.copy(startingRock.scale);
+    startingRockMove.startRockScale.copy(startingRock.scale);
     startingRockMove.targetPosition = targetPosition;
+    startingRockMove.targetRockScale = startingRockMove.targetKind === "spawn"
+      ? getStartingRockSpawnScale()
+      : getStartingRockDestinationScale();
     return true;
   }
 
@@ -296,15 +361,15 @@ export function createGelifluctionStageController({
       startingRockMove.targetPosition,
       eased
     ));
-    startingRock.scale.copy(tempScale.lerpVectors(
-      startingRockMove.startScale,
-      startingRockMove.targetScale,
+    startingRock.scale.copy(tempRockScale.lerpVectors(
+      startingRockMove.startRockScale,
+      startingRockMove.targetRockScale,
       eased
     ));
 
     if (progress >= 1) {
       startingRock.position.copy(startingRockMove.targetPosition);
-      startingRock.scale.copy(startingRockMove.targetScale);
+      startingRock.scale.copy(startingRockMove.targetRockScale);
       startingRockMove.complete = true;
     }
   }
@@ -538,6 +603,7 @@ export function createGelifluctionStageController({
     stageFourDirection = 0;
     startingRockBase = null;
     startingRockMove = null;
+    cachedStartingRockDestination = null;
     subductionMixer = null;
     subductionAction = null;
     subductionTime = 0;
