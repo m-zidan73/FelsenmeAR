@@ -52,6 +52,8 @@ export function createGelifluctionStageController({
       object.visible = false;
     });
     instance.nodes.Starting_Rock.visible = true;
+    instance.nodes.Surrounding_Rocks.visible = true;
+    setObjectOpacity(instance.nodes.Surrounding_Rocks, 1);
     captureStartingRockBase();
     resetStartingRockToInitial();
 
