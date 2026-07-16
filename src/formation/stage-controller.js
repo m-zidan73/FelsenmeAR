@@ -23,6 +23,7 @@ export function createGelifluctionStageController({
   let stageFourDirection = 0;
   let startingRockBase = null;
   let startingRockMove = null;
+  let cachedStartingRockDestination = null;
   let subductionMixer = null;
   let subductionAction = null;
   let subductionTime = 0;
@@ -110,7 +111,13 @@ export function createGelifluctionStageController({
       onStageInstructionVisibleChange(false);
       resetSubductionAnimation();
       setSubductionPromptVisible(true);
-      startStartingRockMove();
+      if (previousStage === 5) {
+        startStartingRockMoveToDestination({ resetElapsed: true });
+      } else {
+        startStartingRockMove();
+      }
+    } else {
+      updateStartingRockStageTransition(previousStage, targetStage);
     }
     applyStageTransition(targetStage);
     updateStageFourPlayback(previousStage, targetStage);
@@ -231,12 +238,47 @@ export function createGelifluctionStageController({
     if (!startingRockBase) return;
 
     resetStartingRockToInitial();
+    startStartingRockMoveToDestination({ resetElapsed: true });
+  }
+
+  function updateStartingRockStageTransition(previousStage, targetStage) {
+    if (previousStage === 4 && targetStage === 5) {
+      startStartingRockMoveToSpawn();
+    } else if (previousStage === 5 && targetStage >= 1 && targetStage <= 4) {
+      startStartingRockMoveToDestination({ resetElapsed: true });
+    }
+  }
+
+  function startStartingRockMoveToSpawn() {
+    const startingRock = instance?.nodes?.Starting_Rock;
+    if (!startingRock) return;
+    if (!startingRockBase) captureStartingRockBase();
+    if (!startingRockBase) return;
+
+    applyStartingRockStageOneScale();
+    startingRockMove = {
+      elapsedSeconds: 0,
+      waitingForTarget: false,
+      complete: false,
+      targetKind: "spawn",
+      startPosition: startingRock.position.clone(),
+      targetPosition: startingRockBase.position.clone()
+    };
+  }
+
+  function startStartingRockMoveToDestination({ resetElapsed = true } = {}) {
+    const startingRock = instance?.nodes?.Starting_Rock;
+    if (!startingRock) return;
+    if (!startingRockBase) captureStartingRockBase();
+    if (!startingRockBase) return;
+
     applyStartingRockStageOneScale();
     const targetPosition = resolveStartingRockTargetPosition();
     startingRockMove = {
-      elapsedSeconds: 0,
+      elapsedSeconds: resetElapsed ? 0 : startingRockMove?.elapsedSeconds ?? 0,
       waitingForTarget: !targetPosition,
       complete: false,
+      targetKind: "destination",
       startPosition: startingRock.position.clone(),
       targetPosition
     };
@@ -266,14 +308,17 @@ export function createGelifluctionStageController({
     startingRock.updateMatrixWorld(true);
 
     tempTargetWorld.copy(sphereWorld).sub(tempCenterOffset);
-    return startingRock.parent.worldToLocal(tempTargetWorld.clone());
+    cachedStartingRockDestination = startingRock.parent.worldToLocal(tempTargetWorld.clone());
+    return cachedStartingRockDestination.clone();
   }
 
   function startWaitingStartingRockMove() {
     const startingRock = instance?.nodes?.Starting_Rock;
     if (!startingRock || !startingRockMove) return false;
 
-    const targetPosition = resolveStartingRockTargetPosition();
+    const targetPosition = startingRockMove.targetKind === "spawn"
+      ? startingRockBase?.position.clone()
+      : resolveStartingRockTargetPosition() || cachedStartingRockDestination?.clone();
     if (!targetPosition) return false;
 
     startingRockMove.waitingForTarget = false;
@@ -540,6 +585,7 @@ export function createGelifluctionStageController({
     stageFourDirection = 0;
     startingRockBase = null;
     startingRockMove = null;
+    cachedStartingRockDestination = null;
     subductionMixer = null;
     subductionAction = null;
     subductionTime = 0;
