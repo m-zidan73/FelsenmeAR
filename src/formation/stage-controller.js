@@ -51,10 +51,9 @@ export function createGelifluctionStageController({
       setObjectOpacity(object, 1);
       object.visible = false;
     });
-    setObjectVisible(instance.nodes.Starting_Rock, true);
-    setObjectVisible(instance.nodes.Surrounding_Rocks, true);
-    setObjectOpacity(instance.nodes.Surrounding_Rocks, 1, opacityExclusionsFor(instance.nodes.Surrounding_Rocks));
-    setObjectOpacity(instance.nodes.Starting_Rock, 1);
+    instance.nodes.Starting_Rock.visible = true;
+    instance.nodes.Surrounding_Rocks.visible = true;
+    setObjectOpacity(instance.nodes.Surrounding_Rocks, 1);
     captureStartingRockBase();
     resetStartingRockToInitial();
 
@@ -152,12 +151,11 @@ export function createGelifluctionStageController({
 
   function applyStageTransition(targetStage) {
     const targetObjects = stageObjects(targetStage);
-    const outgoingObjects = managedNodes().filter((object) => {
-      const excludeObjects = opacityExclusionsFor(object);
-      return object.visible && getObjectOpacity(object, excludeObjects) > 0 && !targetObjects.includes(object);
-    });
+    const outgoingObjects = managedNodes().filter((object) => (
+      object.visible && getObjectOpacity(object) > 0 && !targetObjects.includes(object)
+    ));
     const incomingObjects = targetObjects.filter((object) => (
-      !object.visible || hasHiddenDescendantMesh(object) || getObjectOpacity(object) < 1
+      !object.visible || getObjectOpacity(object) < 1
     ));
 
     if (outgoingObjects.length || incomingObjects.length) {
@@ -226,8 +224,6 @@ export function createGelifluctionStageController({
     const startingRock = instance?.nodes?.Starting_Rock;
     if (!startingRock || !startingRockBase) return;
 
-    setObjectVisible(startingRock, true);
-    setObjectOpacity(startingRock, 1);
     startingRock.position.copy(startingRockBase.position);
     startingRock.scale.setScalar(startingRockBase.uniformScale * STARTING_ROCK_INITIAL_SCALE);
     startingRockMove = null;
@@ -326,25 +322,20 @@ export function createGelifluctionStageController({
   function startCrossfade(outgoing, incoming) {
     const outgoingObjects = uniqueObjects(outgoing);
     const incomingObjects = uniqueObjects(incoming);
-    const outgoingEntries = outgoingObjects.map((object) => {
-      const excludeObjects = opacityExclusionsFor(object);
-      return {
-        object,
-        excludeObjects,
-        startOpacity: getObjectOpacity(object, excludeObjects)
-      };
-    });
+    const outgoingEntries = outgoingObjects.map((object) => ({
+      object,
+      startOpacity: getObjectOpacity(object)
+    }));
     const incomingEntries = incomingObjects.map((object) => ({
       object,
-      excludeObjects: [],
       startOpacity: getObjectOpacity(object)
     }));
 
-    outgoingEntries.forEach(({ object, excludeObjects }) => {
-      setObjectVisible(object, true, excludeObjects);
+    outgoingObjects.forEach((object) => {
+      object.visible = true;
     });
-    incomingEntries.forEach(({ object, excludeObjects }) => {
-      setObjectVisible(object, true, excludeObjects);
+    incomingObjects.forEach((object) => {
+      object.visible = true;
     });
 
     crossfade = {
@@ -377,25 +368,22 @@ export function createGelifluctionStageController({
       0,
       1
     );
-    crossfade.outgoing.forEach(({ object, excludeObjects, startOpacity }) => {
-      setObjectOpacity(object, startOpacity * (1 - progress), excludeObjects);
+    crossfade.outgoing.forEach(({ object, startOpacity }) => {
+      setObjectOpacity(object, startOpacity * (1 - progress));
     });
-    crossfade.incoming.forEach(({ object, excludeObjects, startOpacity }) => {
-      setObjectOpacity(object, startOpacity + (1 - startOpacity) * progress, excludeObjects);
+    crossfade.incoming.forEach(({ object, startOpacity }) => {
+      setObjectOpacity(object, startOpacity + (1 - startOpacity) * progress);
     });
 
     if (progress < 1) {
       return;
     }
 
-    crossfade.outgoing.forEach(({ object, excludeObjects }) => {
-      setObjectVisible(object, false, excludeObjects);
-      setObjectOpacity(object, 1, excludeObjects);
+    crossfade.outgoing.forEach(({ object }) => {
+      object.visible = false;
+      setObjectOpacity(object, 1);
     });
-    crossfade.incoming.forEach(({ object, excludeObjects }) => {
-      setObjectVisible(object, true, excludeObjects);
-      setObjectOpacity(object, 1, excludeObjects);
-    });
+    crossfade.incoming.forEach(({ object }) => setObjectOpacity(object, 1));
     crossfade = null;
   }
 
@@ -491,16 +479,16 @@ export function createGelifluctionStageController({
     onSubductionPromptVisibleChange(Boolean(isVisible));
   }
 
-  function setObjectOpacity(object, opacity, excludeObjects = []) {
-    setMeshesOpacity(getDescendantMeshesExcept(object, excludeObjects), opacity);
+  function setObjectOpacity(object, opacity) {
+    setMeshesOpacity(getDescendantMeshes(object), opacity);
   }
 
-  function getObjectOpacity(object, excludeObjects = []) {
+  function getObjectOpacity(object) {
     if (!object || !object.visible) {
       return 0;
     }
 
-    const materials = getDescendantMeshesExcept(object, excludeObjects).flatMap((mesh) => (
+    const materials = getDescendantMeshes(object).flatMap((mesh) => (
       Array.isArray(mesh.material) ? mesh.material : [mesh.material]
     )).filter(Boolean);
 
@@ -513,56 +501,6 @@ export function createGelifluctionStageController({
       return total + material.opacity / opacityScale;
     }, 0);
     return THREE.MathUtils.clamp(opacityTotal / materials.length, 0, 1);
-  }
-
-  function setObjectVisible(object, visible, excludeObjects = []) {
-    if (!object) return;
-
-    if (visible) {
-      object.visible = true;
-      getDescendantMeshes(object).forEach((mesh) => {
-        mesh.visible = true;
-      });
-      return;
-    }
-
-    if (!excludeObjects.length) {
-      object.visible = false;
-      return;
-    }
-
-    object.visible = true;
-    getDescendantMeshesExcept(object, excludeObjects).forEach((mesh) => {
-      mesh.visible = false;
-    });
-  }
-
-  function getDescendantMeshesExcept(object, excludeObjects = []) {
-    const exclusions = excludeObjects.filter(Boolean);
-    const meshes = getDescendantMeshes(object);
-    if (!exclusions.length) return meshes;
-    return meshes.filter((mesh) => !exclusions.some((excluded) => isObjectOrDescendantOf(mesh, excluded)));
-  }
-
-  function opacityExclusionsFor(object) {
-    const startingRock = instance?.nodes?.Starting_Rock;
-    if (!startingRock || object === startingRock || !isObjectOrDescendantOf(startingRock, object)) {
-      return [];
-    }
-    return [startingRock];
-  }
-
-  function hasHiddenDescendantMesh(object) {
-    return getDescendantMeshes(object).some((mesh) => !mesh.visible);
-  }
-
-  function isObjectOrDescendantOf(object, ancestor) {
-    let current = object;
-    while (current) {
-      if (current === ancestor) return true;
-      current = current.parent;
-    }
-    return false;
   }
 
   function managedNodes() {
