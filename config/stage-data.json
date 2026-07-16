@@ -4,7 +4,7 @@
       "index": 5,
       "name": "Gelifluction Sorting",
       "era": "",
-      "epoch": "~2.6 Ma – Present",
+      "epoch": "~2.6 mya – Present",
       "rockType": "",
       "plateName": "",
       "description": "Freeze-thaw cycles separate blocks by size"
@@ -13,7 +13,7 @@
       "index": 4,
       "name": "Woolsack Weathering",
       "era": "",
-      "epoch": "~50 Ma",
+      "epoch": "~50 mya",
       "rockType": "",
       "plateName": "",
       "description": "Acidic water dissolves sharp edges into grus"
@@ -22,7 +22,7 @@
       "index": 3,
       "name": "Thermal Fractures",
       "era": "",
-      "epoch": "~300 Ma",
+      "epoch": "~300 mya",
       "rockType": "",
       "plateName": "",
       "description": "Contraction cracks rock in three directions"
@@ -31,7 +31,7 @@
       "index": 2,
       "name": "Pluton Formation",
       "era": "",
-      "epoch": "~340–330 Ma",
+      "epoch": "~340–330 mya",
       "rockType": "",
       "plateName": "",
       "description": "Slow cooling crystallises the magma body"
@@ -40,7 +40,7 @@
       "index": 1,
       "name": "Subduction Magma",
       "era": "",
-      "epoch": "~340 Ma",
+      "epoch": "~340 mya",
       "rockType": "",
       "plateName": "",
       "description": "Tectonic plates converge, melt mantle and crust"
