@@ -9,9 +9,7 @@ const STARTING_ROCK_OUTLINE_THICKNESS = 0.035;
 const STARTING_ROCK_OUTLINE_HUE = 0x39ff14;
 const STARTING_ROCK_OUTLINE_BRIGHTNESS = 1.6;
 const STARTING_ROCK_OUTLINE_OPACITY = 0.7;
-const STARTING_ROCK_OUTLINE_RENDER_ORDER = 9998;
-const STARTING_ROCK_OUTLINE_MASK_RENDER_ORDER = 9999;
-const STARTING_ROCK_OUTLINE_MASK_OPACITY_SCALE = 0.999;
+const STARTING_ROCK_OUTLINE_RENDER_ORDER = 1;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -116,7 +114,7 @@ export function createGelifluctionModelFactory({ THREE }) {
         side: THREE.BackSide,
         transparent: true,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
         toneMapped: false
       });
       outlineMaterial.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
@@ -128,31 +126,7 @@ export function createGelifluctionModelFactory({ THREE }) {
       outline.receiveShadow = false;
       outline.renderOrder = STARTING_ROCK_OUTLINE_RENDER_ORDER;
       mesh.add(outline);
-
-      const mask = new THREE.Mesh(mesh.geometry.clone(), cloneStartingRockMaskMaterial(mesh.material));
-      mask.name = mesh.name + " Silhouette Mask";
-      mask.castShadow = false;
-      mask.receiveShadow = false;
-      mask.renderOrder = STARTING_ROCK_OUTLINE_MASK_RENDER_ORDER;
-      mesh.add(mask);
     });
-  }
-
-  function cloneStartingRockMaskMaterial(material) {
-    if (Array.isArray(material)) {
-      return material.map((entry) => cloneStartingRockMaskMaterial(entry));
-    }
-
-    const clone = material.clone();
-    clone.transparent = true;
-    clone.opacity = STARTING_ROCK_OUTLINE_MASK_OPACITY_SCALE;
-    clone.depthWrite = false;
-    clone.depthTest = true;
-    clone.userData = {
-      ...clone.userData,
-      opacityScale: STARTING_ROCK_OUTLINE_MASK_OPACITY_SCALE
-    };
-    return clone;
   }
 
   function addFormationLabels(root, nodes) {
