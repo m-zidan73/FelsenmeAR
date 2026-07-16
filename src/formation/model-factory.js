@@ -5,10 +5,13 @@ import {
   getImportedObjectByName
 } from "../three-utils.js";
 
-const STARTING_ROCK_OUTLINE_SCALE = 1.035;
-const STARTING_ROCK_OUTLINE_OPACITY = 0.3;
-const STARTING_ROCK_OUTLINE_COLOR = 0x39ff14;
-const STARTING_ROCK_THROUGH_EDGE_OPACITY = 0.72;
+const STARTING_ROCK_OUTLINE_THICKNESS = 0.035;
+const STARTING_ROCK_OUTLINE_HUE = 0x39ff14;
+const STARTING_ROCK_OUTLINE_BRIGHTNESS = 1.6;
+const STARTING_ROCK_OUTLINE_OPACITY = 0.7;
+const STARTING_ROCK_OUTLINE_RENDER_ORDER = 9998;
+const STARTING_ROCK_OUTLINE_MASK_RENDER_ORDER = 9999;
+const STARTING_ROCK_OUTLINE_MASK_OPACITY_SCALE = 0.999;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -102,44 +105,54 @@ export function createGelifluctionModelFactory({ THREE }) {
   }
 
   function addStartingRockOutline(startingRock) {
+    const outlineColor = new THREE.Color(STARTING_ROCK_OUTLINE_HUE)
+      .multiplyScalar(STARTING_ROCK_OUTLINE_BRIGHTNESS);
+    const outlineScale = 1 + STARTING_ROCK_OUTLINE_THICKNESS;
+
     getDescendantMeshes(startingRock).forEach((mesh) => {
-      const material = new THREE.MeshBasicMaterial({
-        color: STARTING_ROCK_OUTLINE_COLOR,
+      const outlineMaterial = new THREE.MeshBasicMaterial({
+        color: outlineColor,
         opacity: STARTING_ROCK_OUTLINE_OPACITY,
         side: THREE.BackSide,
-        transparent: true,
-        depthWrite: false,
-        depthTest: true,
-        toneMapped: false
-      });
-      material.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
-
-      const outline = new THREE.Mesh(mesh.geometry.clone(), material);
-      outline.name = mesh.name + " Silhouette";
-      outline.scale.setScalar(STARTING_ROCK_OUTLINE_SCALE);
-      outline.castShadow = false;
-      outline.receiveShadow = false;
-      outline.renderOrder = 1;
-      mesh.add(outline);
-      const edgeGeometry = new THREE.EdgesGeometry(mesh.geometry);
-      const edgeMaterial = new THREE.LineBasicMaterial({
-        color: STARTING_ROCK_OUTLINE_COLOR,
-        opacity: STARTING_ROCK_THROUGH_EDGE_OPACITY,
         transparent: true,
         depthWrite: false,
         depthTest: false,
         toneMapped: false
       });
-      edgeMaterial.userData.opacityScale = STARTING_ROCK_THROUGH_EDGE_OPACITY;
+      outlineMaterial.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
 
-      const throughEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-      throughEdges.name = mesh.name + " Through Edges";
-      throughEdges.castShadow = false;
-      throughEdges.receiveShadow = false;
-      throughEdges.renderOrder = 10000;
-      mesh.add(throughEdges);
+      const outline = new THREE.Mesh(mesh.geometry.clone(), outlineMaterial);
+      outline.name = mesh.name + " Silhouette";
+      outline.scale.setScalar(outlineScale);
+      outline.castShadow = false;
+      outline.receiveShadow = false;
+      outline.renderOrder = STARTING_ROCK_OUTLINE_RENDER_ORDER;
+      mesh.add(outline);
 
+      const mask = new THREE.Mesh(mesh.geometry.clone(), cloneStartingRockMaskMaterial(mesh.material));
+      mask.name = mesh.name + " Silhouette Mask";
+      mask.castShadow = false;
+      mask.receiveShadow = false;
+      mask.renderOrder = STARTING_ROCK_OUTLINE_MASK_RENDER_ORDER;
+      mesh.add(mask);
     });
+  }
+
+  function cloneStartingRockMaskMaterial(material) {
+    if (Array.isArray(material)) {
+      return material.map((entry) => cloneStartingRockMaskMaterial(entry));
+    }
+
+    const clone = material.clone();
+    clone.transparent = true;
+    clone.opacity = STARTING_ROCK_OUTLINE_MASK_OPACITY_SCALE;
+    clone.depthWrite = false;
+    clone.depthTest = true;
+    clone.userData = {
+      ...clone.userData,
+      opacityScale: STARTING_ROCK_OUTLINE_MASK_OPACITY_SCALE
+    };
+    return clone;
   }
 
   function addFormationLabels(root, nodes) {
