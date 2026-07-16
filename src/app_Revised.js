@@ -16,6 +16,7 @@ import { disposeObject } from "./three-utils.js";
 import { createFormationSlider } from "./ui/formation-slider.js";
 import { createHudUi } from "./ui/hud.js";
 import { createMenuUi } from "./ui/menu.js";
+import { createOrientationController } from "./ui/orientation-controller.js";
 
 import { EventBus } from "./event-bus.js";
 import { ExperienceState, ExperienceStateManager } from "./state-manager.js";
@@ -115,6 +116,14 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     onResize,
     setPlacementReticleModel: setPlacementReticleModelOriginal
   } = sceneController;
+
+  const orientationController = createOrientationController({
+    targetElement: document.body,
+    windowObject: window,
+    documentObject: document,
+    onResize,
+    setXRDebug
+  });
 
   function setPlacementReticleModel(source) {
     setPlacementReticleModelOriginal(source);
@@ -446,7 +455,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
       }
     });
 
-    window.addEventListener("resize", onResize);
+    orientationController.init();
     ui.startArButton.addEventListener("click", startARSession);
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
@@ -471,6 +480,9 @@ import { createTapRaycaster } from "./tap-raycaster.js";
         }
       }
     });
+    EventBus.on("session_started", () => orientationController.scheduleRefresh());
+    EventBus.on("session_ended", () => orientationController.scheduleRefresh());
+
     EventBus.on("formation_placed", () => {
       tectonicCollisionController.attach(getTectonicPlacementOptions());
       updateSliderTimeLabel(0);
