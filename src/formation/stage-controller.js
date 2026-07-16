@@ -177,11 +177,7 @@ export function createGelifluctionStageController({
     }
 
     if (stage === 1) {
-      return [
-        instance.nodes.Earth_Crust_Right,
-        instance.nodes.Earth_Crust_Left,
-        instance.nodes["1st Stage Rock"]
-      ];
+      return [];
     }
 
     return [];
