@@ -121,6 +121,9 @@ export function createAudioManager({ audioMapUrl }) {
     sequenceIndex = 0;
     sequenceTrigger = trigger;
     sequenceGap = gap;
+    if (trigger) {
+      EventBus.raise("sequence_started", { trigger });
+    }
     advanceSequence();
     return true;
   }

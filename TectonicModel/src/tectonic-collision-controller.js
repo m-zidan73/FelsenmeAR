@@ -30,6 +30,7 @@ export function createTectonicCollisionController({
   let activeCamera = null;
   let gesturePrompt = null;
   let gesturePromptRequested = false;
+  let gesturePromptAudioSuppressed = false;
   let legacyStageOneNodes = [];
   let stageOneActive = false;
   let ready = false;
@@ -107,7 +108,10 @@ export function createTectonicCollisionController({
 
   function handleStageChange(stage) {
     stageOneActive = stage === 1;
-    if (!stageOneActive) gesturePromptRequested = false;
+    if (!stageOneActive) {
+      gesturePromptRequested = false;
+      gesturePromptAudioSuppressed = false;
+    }
     resetGestureState();
     resetProgressEvents();
 
@@ -124,6 +128,11 @@ export function createTectonicCollisionController({
 
   function setGesturePromptVisible(visible) {
     gesturePromptRequested = Boolean(visible);
+    syncGesturePromptVisibility();
+  }
+
+  function setGesturePromptAudioSuppressed(suppressed) {
+    gesturePromptAudioSuppressed = Boolean(suppressed);
     syncGesturePromptVisibility();
   }
 
@@ -178,6 +187,7 @@ export function createTectonicCollisionController({
     activeCamera = null;
     gesturePrompt = null;
     gesturePromptRequested = false;
+    gesturePromptAudioSuppressed = false;
     legacyStageOneNodes = [];
     stageOneActive = false;
     ready = false;
@@ -220,6 +230,7 @@ export function createTectonicCollisionController({
 
   function handleAnimationComplete() {
     gesturePromptRequested = false;
+    gesturePromptAudioSuppressed = false;
     syncGesturePromptVisibility();
     emitProgressMilestones(1);
     EventBus.raise("tectonic_phase_completed", { phase: 3 });
@@ -239,7 +250,12 @@ export function createTectonicCollisionController({
 
   function syncGesturePromptVisibility() {
     if (gesturePrompt) {
-      gesturePrompt.setVisible(gesturePromptRequested && isReplacementActive());
+      gesturePrompt.setVisible(
+        gesturePromptRequested
+        && !gesturePromptAudioSuppressed
+        && isReplacementActive()
+        && !model.complete
+      );
     }
   }
 
@@ -412,6 +428,7 @@ export function createTectonicCollisionController({
     isReplacementActive,
     reset,
     setGesturePromptVisible,
+    setGesturePromptAudioSuppressed,
     updatePlacement,
     update,
   };

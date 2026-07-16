@@ -174,6 +174,10 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     getCamera: () => state.camera
   });
 
+  function isPinchPhaseSequence(trigger) {
+    return /^event:pinch_phase:[1-3]$/.test(trigger || "");
+  }
+
   function reportPinchDebug(debug) {
     tectonicCollisionController.handlePinchDebug(debug);
     const distance = Number.isFinite(debug.distance) ? " distance=" + debug.distance.toFixed(1) : "";
@@ -461,6 +465,20 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     setFormationSliderVisible(false);
     setMenuLoading(0, "Checking", "Checking AR capability.");
     checkARSupport();
+
+    EventBus.on("sequence_started", (data) => {
+      if (data && isPinchPhaseSequence(data.trigger)) {
+        tectonicCollisionController.setGesturePromptAudioSuppressed(true);
+      }
+    });
+    EventBus.on("sequence_completed", (data) => {
+      if (data && isPinchPhaseSequence(data.trigger)) {
+        tectonicCollisionController.setGesturePromptAudioSuppressed(false);
+      }
+    });
+    EventBus.on("tectonic_animation_complete", () => {
+      tectonicCollisionController.setGesturePromptAudioSuppressed(false);
+    });
 
     EventBus.on("stage_changed", (data) => {
       if (data && typeof data.stage === "number") {
