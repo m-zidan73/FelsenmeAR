@@ -276,6 +276,20 @@ export class FelsenmeARModel {
   onLoad(fn) { this._onLoadCallback = fn; }
   onError(fn) { this._onErrorCallback = fn; }
 
+  getSphereWorldPosition(target = new THREE.Vector3()) {
+    if (!this._loaded || this._disposed || !this._sphereMesh) {
+      return null;
+    }
+
+    this._sphereMesh.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(this._sphereMesh);
+    if (bounds.isEmpty()) {
+      return null;
+    }
+
+    return bounds.getCenter(target);
+  }
+
   // ── Control ──
 
   playPhase1() {
