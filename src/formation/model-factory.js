@@ -6,8 +6,8 @@ import {
 } from "../three-utils.js";
 
 const STARTING_ROCK_OUTLINE_SCALE = 1.035;
-const STARTING_ROCK_OUTLINE_OPACITY = 0.75;
-const STARTING_ROCK_OUTLINE_COLOR = 0x66ff00;
+const STARTING_ROCK_OUTLINE_OPACITY = 0.3;
+const STARTING_ROCK_OUTLINE_COLOR = 0x39ff14;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -108,7 +108,7 @@ export function createGelifluctionModelFactory({ THREE }) {
         side: THREE.BackSide,
         transparent: true,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
         toneMapped: false
       });
       material.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
@@ -118,7 +118,7 @@ export function createGelifluctionModelFactory({ THREE }) {
       outline.scale.setScalar(STARTING_ROCK_OUTLINE_SCALE);
       outline.castShadow = false;
       outline.receiveShadow = false;
-      outline.renderOrder = 10000;
+      outline.renderOrder = 1;
       mesh.add(outline);
     });
   }
