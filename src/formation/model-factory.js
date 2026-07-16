@@ -8,8 +8,10 @@ import {
 const STARTING_ROCK_OUTLINE_THICKNESS = 0.035;
 const STARTING_ROCK_OUTLINE_HUE = 0x39ff14;
 const STARTING_ROCK_OUTLINE_BRIGHTNESS = 1.6;
-const STARTING_ROCK_OUTLINE_OPACITY = 0.7;
-const STARTING_ROCK_OUTLINE_RENDER_ORDER = 1;
+const STARTING_ROCK_OUTLINE_OPACITY = 0.85;
+const STARTING_ROCK_OUTLINE_RIM_WIDTH = 0.18;
+const STARTING_ROCK_OUTLINE_RIM_SOFTNESS = 0.12;
+const STARTING_ROCK_OUTLINE_RENDER_ORDER = 10000;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -103,23 +105,10 @@ export function createGelifluctionModelFactory({ THREE }) {
   }
 
   function addStartingRockOutline(startingRock) {
-    const outlineColor = new THREE.Color(STARTING_ROCK_OUTLINE_HUE)
-      .multiplyScalar(STARTING_ROCK_OUTLINE_BRIGHTNESS);
     const outlineScale = 1 + STARTING_ROCK_OUTLINE_THICKNESS;
 
     getDescendantMeshes(startingRock).forEach((mesh) => {
-      const outlineMaterial = new THREE.MeshBasicMaterial({
-        color: outlineColor,
-        opacity: STARTING_ROCK_OUTLINE_OPACITY,
-        side: THREE.BackSide,
-        transparent: true,
-        depthWrite: false,
-        depthTest: true,
-        toneMapped: false
-      });
-      outlineMaterial.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
-
-      const outline = new THREE.Mesh(mesh.geometry.clone(), outlineMaterial);
+      const outline = new THREE.Mesh(mesh.geometry.clone(), createStartingRockOutlineMaterial());
       outline.name = mesh.name + " Silhouette";
       outline.scale.setScalar(outlineScale);
       outline.castShadow = false;
@@ -127,6 +116,54 @@ export function createGelifluctionModelFactory({ THREE }) {
       outline.renderOrder = STARTING_ROCK_OUTLINE_RENDER_ORDER;
       mesh.add(outline);
     });
+  }
+
+  function createStartingRockOutlineMaterial() {
+    const outlineColor = new THREE.Color(STARTING_ROCK_OUTLINE_HUE)
+      .multiplyScalar(STARTING_ROCK_OUTLINE_BRIGHTNESS);
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        outlineColor: { value: outlineColor },
+        outlineOpacity: { value: STARTING_ROCK_OUTLINE_OPACITY },
+        rimWidth: { value: STARTING_ROCK_OUTLINE_RIM_WIDTH },
+        rimSoftness: { value: STARTING_ROCK_OUTLINE_RIM_SOFTNESS }
+      },
+      vertexShader: `
+        varying vec3 vWorldNormal;
+        varying vec3 vWorldPosition;
+
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          vWorldNormal = normalize(mat3(modelMatrix) * normal);
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 outlineColor;
+        uniform float outlineOpacity;
+        uniform float rimWidth;
+        uniform float rimSoftness;
+        varying vec3 vWorldNormal;
+        varying vec3 vWorldPosition;
+
+        void main() {
+          vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+          float facing = abs(dot(normalize(vWorldNormal), viewDirection));
+          float rim = 1.0 - smoothstep(rimWidth, rimWidth + rimSoftness, facing);
+          if (rim <= 0.01) discard;
+          gl_FragColor = vec4(outlineColor, rim * outlineOpacity);
+        }
+      `,
+      side: THREE.DoubleSide,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      toneMapped: false
+    });
+    material.userData.opacityScale = STARTING_ROCK_OUTLINE_OPACITY;
+    return material;
   }
 
   function addFormationLabels(root, nodes) {
