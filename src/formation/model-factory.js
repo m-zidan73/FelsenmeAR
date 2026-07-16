@@ -8,7 +8,6 @@ import {
 const STARTING_ROCK_OUTLINE_SCALE = 1.035;
 const STARTING_ROCK_OUTLINE_OPACITY = 0.3;
 const STARTING_ROCK_OUTLINE_COLOR = 0x39ff14;
-const STARTING_ROCK_THROUGH_EDGE_OPACITY = 0.72;
 
 const REQUIRED_NODE_NAMES = [
   "Starting_Rock",
@@ -122,23 +121,6 @@ export function createGelifluctionModelFactory({ THREE }) {
       outline.renderOrder = 1;
       mesh.add(outline);
 
-      const edgeGeometry = new THREE.EdgesGeometry(mesh.geometry);
-      const edgeMaterial = new THREE.LineBasicMaterial({
-        color: STARTING_ROCK_OUTLINE_COLOR,
-        opacity: STARTING_ROCK_THROUGH_EDGE_OPACITY,
-        transparent: true,
-        depthWrite: false,
-        depthTest: false,
-        toneMapped: false
-      });
-      edgeMaterial.userData.opacityScale = STARTING_ROCK_THROUGH_EDGE_OPACITY;
-
-      const throughEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-      throughEdges.name = mesh.name + " Through Edges";
-      throughEdges.castShadow = false;
-      throughEdges.receiveShadow = false;
-      throughEdges.renderOrder = 10000;
-      mesh.add(throughEdges);
     });
   }
 
