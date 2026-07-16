@@ -3,45 +3,17 @@ import { ExperienceStateManager } from "./state-manager.js";
 
 export function createDataOverlayController({
   stageDataUrl,
-  nameElement,
-  eraElement,
-  epochElement,
-  rockTypeElement,
-  plateElement,
-  descriptionElement
+  nameElement
 }) {
   let stageData = [];
   let pinchData = null;
   let loaded = false;
 
-  const elements = { nameElement, eraElement, epochElement, rockTypeElement, plateElement, descriptionElement };
-
-  function setField(el, value) {
+  function setName(el, value) {
     if (!el) return;
-    const hasValue = value && value.trim() !== "";
-    el.textContent = hasValue ? value.trim() : "";
-    el.hidden = !hasValue;
-  }
-
-  function showData(data) {
-    if (!data) { hideAll(); return; }
-    setField(nameElement, data.name);
-    setField(eraElement, data.era);
-    setField(epochElement, data.epoch);
-    setField(rockTypeElement, data.rockType);
-    setField(plateElement, data.plateName);
-    setField(descriptionElement, data.description);
-  }
-
-  function showFormattedStats(formattedStr) {
-    if (!formattedStr) { hideAll(); return; }
-    const parts = formattedStr.split(" / ").map(s => s.trim());
-    setField(nameElement, parts[0] || "");
-    setField(eraElement, parts[1] || "");
-    setField(epochElement, parts[2] || "");
-    setField(rockTypeElement, parts[3] || "");
-    setField(plateElement, parts[4] || "");
-    setField(descriptionElement, parts[5] || "");
+    const has = value && value.trim() !== "";
+    el.textContent = has ? value.trim() : "";
+    el.hidden = !has;
   }
 
   async function load() {
@@ -58,11 +30,11 @@ export function createDataOverlayController({
 
   function showStageData(stageIndex) {
     const data = stageData.find(s => s.index === stageIndex);
-    if (data) showData(data);
+    if (data) setName(nameElement, data.name);
   }
 
   function hideAll() {
-    Object.values(elements).forEach(el => { if (el) el.hidden = true; });
+    if (nameElement) nameElement.hidden = true;
   }
 
   const unsubStage = EventBus.on("stage_changed", (data) => {
@@ -77,7 +49,7 @@ export function createDataOverlayController({
 
   const unsubState = ExperienceStateManager.onStateChanged((newState) => {
     if (newState === "PinchReady" && pinchData) {
-      showData(pinchData);
+      setName(nameElement, pinchData.name || "");
     } else if (newState === "SliderActive") {
       showStageData(5);
     } else if (newState === "PinchActive") {
@@ -87,25 +59,10 @@ export function createDataOverlayController({
     }
   });
 
-  const unsubPlateTouched = EventBus.on("plate_touched", (data) => {
-    if (!data || !plateElement) return;
-    const originalText = plateElement.textContent;
-    const originalHidden = plateElement.hidden;
-    setField(plateElement, data.plateName || data);
-    setTimeout(() => {
-      if (originalHidden) {
-        plateElement.hidden = true;
-      } else {
-        setField(plateElement, originalText);
-      }
-    }, 3000);
-  });
-
   function dispose() {
     unsubStage();
     unsubFormation();
     unsubState();
-    unsubPlateTouched();
   }
 
   return { load, showStageData, hideAll, dispose, getStageData: () => stageData, getPinchData: () => pinchData };

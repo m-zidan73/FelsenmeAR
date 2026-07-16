@@ -60,6 +60,7 @@
           </div>
         </div>
         <div id="subtitleDisplay" class="subtitle-display" hidden></div>
+        <button id="subtitleToggle" class="subtitle-toggle" type="button" aria-label="Toggle subtitles">CC</button>
         <div class="bottom-ui" hidden>
           <section id="formationSlider" class="formation-slider" aria-label="Rock formation timeline">
             <div id="sliderTimeLabel" class="slider-time-label" hidden>Present Day</div>
@@ -94,16 +95,10 @@
           </section>
         </div>
 <div id="dataOverlay" class="data-overlay" hidden>
-          <div class="data-row"><span id="stageName" class="data-value stage-name"></span></div>
-          <div class="data-row"><span class="data-label">Era:</span><span id="stageEra" class="data-value"></span></div>
-          <div class="data-row"><span class="data-label">Period:</span><span id="stageEpoch" class="data-value"></span></div>
-          <div class="data-row"><span class="data-label">Rock:</span><span id="stageRockType" class="data-value"></span></div>
-          <div class="data-row"><span class="data-label">Plate:</span><span id="stagePlate" class="data-value"></span></div>
-          <div class="data-row"><span id="stageDescription" class="data-value stage-desc"></span></div>
+          <span id="stageName" class="data-value stage-name"></span>
         </div>
         <div id="rockInfoBadge" class="rock-info-badge" hidden>
-          <span class="rock-badge-material" id="rockBadgeMaterial">Quartz Diorite</span>
-          <span class="rock-badge-era" id="rockBadgeEra">Cretaceous</span>
+          <span id="rockBadgeText"></span>
         </div>
         <div class="telemetry" hidden>
           <span id="xrDebugText">XR: checking support</span>

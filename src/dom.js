@@ -31,8 +31,6 @@ export function getUiElements() {
     tutorialPageIndicator: document.getElementById("tutorialPageIndicator"),
     sliderTimeLabel: document.getElementById("sliderTimeLabel"),
     rockInfoBadge: document.getElementById("rockInfoBadge"),
-    rockBadgeMaterial: document.getElementById("rockBadgeMaterial"),
-    rockBadgeEra: document.getElementById("rockBadgeEra"),
     dataOverlay: document.getElementById("dataOverlay"),
     stageName: document.getElementById("stageName"),
     stageEra: document.getElementById("stageEra"),
@@ -40,6 +38,7 @@ export function getUiElements() {
     stageRockType: document.getElementById("stageRockType"),
     stagePlate: document.getElementById("stagePlate"),
     stageDescription: document.getElementById("stageDescription"),
-    subtitleDisplay: document.getElementById("subtitleDisplay")
+    subtitleDisplay: document.getElementById("subtitleDisplay"),
+    subtitleToggle: document.getElementById("subtitleToggle")
   };
 }

@@ -352,8 +352,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
   const tutorialIndicator = ui.tutorialPageIndicator;
   const sliderTimeLabel = ui.sliderTimeLabel;
   const rockBadge = ui.rockInfoBadge;
-  const rockBadgeMaterial = ui.rockBadgeMaterial;
-  const rockBadgeEra = ui.rockBadgeEra;
+  const rockBadgeText = document.getElementById("rockBadgeText");
 
   const tutorialController = createTutorialController({
     toggleElement: tutorialToggleEl,
@@ -371,12 +370,7 @@ import { createTapRaycaster } from "./tap-raycaster.js";
 
   const dataOverlayController = createDataOverlayController({
     stageDataUrl: "config/stage-data.json",
-    nameElement: ui.stageName,
-    eraElement: ui.stageEra,
-    epochElement: ui.stageEpoch,
-    rockTypeElement: ui.stageRockType,
-    plateElement: ui.stagePlate,
-    descriptionElement: ui.stageDescription
+    nameElement: ui.stageName
   });
 
   function updateSliderTimeLabel(rawSliderValue) {
@@ -390,24 +384,22 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     const percent = 10 + (numericValue / 4) * 80;
     sliderTimeLabel.style.left = percent + "%";
     if (rockBadge && data) {
-      if (rockBadgeMaterial) rockBadgeMaterial.textContent = data.name;
-      if (rockBadgeEra) rockBadgeEra.textContent = data.description;
+      if (rockBadgeText) rockBadgeText.textContent = data.name;
       rockBadge.hidden = false;
       rockBadge.style.animation = "none";
       void rockBadge.offsetHeight;
-      rockBadge.style.animation = "badgeIn 350ms ease";
+      rockBadge.style.animation = "badgeSlideIn 350ms ease";
     }
   }
 
   function updateRockBadge(stageIndex) {
     const data = dataOverlayController.getStageData().find(s => s.index === stageIndex);
     if (!data || !rockBadge) return;
-    if (rockBadgeMaterial) rockBadgeMaterial.textContent = data.name;
-    if (rockBadgeEra) rockBadgeEra.textContent = data.description;
+    if (rockBadgeText) rockBadgeText.textContent = data.name;
     rockBadge.hidden = false;
     rockBadge.style.animation = "none";
     void rockBadge.offsetHeight;
-    rockBadge.style.animation = "badgeIn 350ms ease";
+    rockBadge.style.animation = "badgeSlideIn 350ms ease";
   }
 
   init();
@@ -421,6 +413,9 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     dataOverlayController.load();
 
     const subtitleEl = ui.subtitleDisplay;
+    const subtitleToggle = ui.subtitleToggle;
+    let subtitlesEnabled = true;
+    let lastSubtitleText = "";
     let subtitlesMap = {};
     let tutorialsMap = {};
     fetch("config/subtitles.json")
@@ -431,20 +426,46 @@ import { createTapRaycaster } from "./tap-raycaster.js";
       })
       .catch(() => {});
 
+    const PINCH_PHASE_CLIPS = new Set(["11a__.mp3", "11b__.mp3", "11c__.mp3"]);
+
     EventBus.on("clip_started", (data) => {
-      if (!subtitleEl || !data || !data.clip) return;
+      if (!data || !data.clip) return;
+      if (PINCH_PHASE_CLIPS.has(data.clip)) {
+        tectonicCollisionController.setGesturePromptVisible(false);
+      }
+      if (!subtitleEl) return;
       const text = subtitlesMap[data.clip];
-      subtitleEl.textContent = text || "";
-      subtitleEl.hidden = !text;
+      lastSubtitleText = text || "";
+      subtitleEl.textContent = lastSubtitleText;
+      subtitleEl.hidden = !lastSubtitleText || !subtitlesEnabled;
       const tutorialText = tutorialsMap[data.clip];
       if (tutorialText) tutorialController.addMessage(tutorialText);
     });
     EventBus.on("clip_ended", (data) => {
-      if (subtitleEl) subtitleEl.hidden = true;
+      if (subtitleEl) { subtitleEl.hidden = true; lastSubtitleText = ""; }
       if (data && data.clip === "11a. 350.mp3") {
         EventBus.raise("tectonic_show_initial", {});
       }
+      if (data && PINCH_PHASE_CLIPS.has(data.clip)) {
+        tectonicCollisionController.setGesturePromptVisible(true);
+      }
     });
+
+    if (subtitleToggle) {
+      subtitleToggle.addEventListener("click", () => {
+        subtitlesEnabled = !subtitlesEnabled;
+        subtitleToggle.classList.toggle("is-active", subtitlesEnabled);
+        if (subtitleEl) {
+          if (subtitlesEnabled && lastSubtitleText) {
+            subtitleEl.textContent = lastSubtitleText;
+            subtitleEl.hidden = false;
+          } else {
+            subtitleEl.hidden = true;
+          }
+        }
+      });
+      subtitleToggle.classList.add("is-active");
+    }
 
     window.addEventListener("resize", onResize);
     ui.startArButton.addEventListener("click", startARSession);
@@ -492,15 +513,21 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     });
 
     EventBus.on("next_chapter", () => {
+      tectonicCollisionController.setGesturePromptVisible(true);
       ExperienceStateManager.setState(ExperienceState.PinchReady);
       const p = dataOverlayController.getPinchData();
       if (p && rockBadge) {
-        rockBadgeMaterial.textContent = p.name;
-        rockBadgeEra.textContent = p.description;
+        if (rockBadgeText) rockBadgeText.textContent = p.name;
         rockBadge.hidden = false;
         rockBadge.style.animation = "none";
         void rockBadge.offsetHeight;
-        rockBadge.style.animation = "badgeIn 350ms ease";
+        rockBadge.style.animation = "badgeSlideIn 350ms ease";
+      }
+    });
+
+    EventBus.on("sequence_completed", (ev) => {
+      if (ev && ev.trigger === "state:Stage1") {
+        EventBus.raise("next_chapter", {});
       }
     });
     EventBus.on("subduction_progress", (data) => {

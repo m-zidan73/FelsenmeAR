@@ -3,45 +3,45 @@
     {
       "index": 5,
       "name": "Gelifluction Sorting",
-      "era": "",
+      "era": "Quaternary",
       "epoch": "~2.6 mya – Present",
-      "rockType": "",
+      "rockType": "Regolith",
       "plateName": "",
       "description": "Freeze-thaw cycles separate blocks by size"
     },
     {
       "index": 4,
       "name": "Woolsack Weathering",
-      "era": "",
+      "era": "Paleogene",
       "epoch": "~50 mya",
-      "rockType": "",
+      "rockType": "Granite",
       "plateName": "",
       "description": "Acidic water dissolves sharp edges into grus"
     },
     {
       "index": 3,
       "name": "Thermal Fractures",
-      "era": "",
+      "era": "Carboniferous",
       "epoch": "~300 mya",
-      "rockType": "",
+      "rockType": "Quartz Diorite",
       "plateName": "",
       "description": "Contraction cracks rock in three directions"
     },
     {
       "index": 2,
       "name": "Pluton Formation",
-      "era": "",
+      "era": "Carboniferous",
       "epoch": "~340–330 mya",
-      "rockType": "",
+      "rockType": "Diorite",
       "plateName": "",
       "description": "Slow cooling crystallises the magma body"
     },
     {
       "index": 1,
       "name": "Subduction Magma",
-      "era": "",
+      "era": "Carboniferous",
       "epoch": "~340 mya",
-      "rockType": "",
+      "rockType": "Magma",
       "plateName": "",
       "description": "Tectonic plates converge, melt mantle and crust"
     }

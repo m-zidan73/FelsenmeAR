@@ -93,7 +93,6 @@ export function createGelifluctionStageController({
       crossfade = null;
       onStageInstructionVisibleChange(false);
       resetSubductionAnimation();
-      setSubductionPromptVisible(true);
       applyStageTransition(targetStage);
       startStartingRockMove();
       updateHud("Stage 1 ready.");
@@ -110,7 +109,6 @@ export function createGelifluctionStageController({
     if (targetStage === 1) {
       onStageInstructionVisibleChange(false);
       resetSubductionAnimation();
-      setSubductionPromptVisible(true);
       startStartingRockMove();
     }
     applyStageTransition(targetStage);
