@@ -3,7 +3,6 @@ export function createArController({
   ui,
   THREE,
   bounceScanPrompt,
-  captureCompassHeading,
   getPlacementGateStatus,
   placeFormation,
   refreshReadyState,
@@ -121,7 +120,6 @@ export function createArController({
     document.body.classList.add("in-camera-ar");
     setMenuButtonVisible(true);
     setGeoStatusVisible(true);
-    captureCompassHeading();
     startLocationTracking();
     updateSunLightFromDeviceLocation();
     updateGeoStatus();

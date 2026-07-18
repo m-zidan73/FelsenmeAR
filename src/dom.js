@@ -20,7 +20,6 @@ export function getUiElements() {
     formationDots: Array.from(document.querySelectorAll(".formation-dot")),
     geoStatus: document.getElementById("geoStatus"),
     geoDistanceValue: document.getElementById("geoDistanceValue"),
-    geoHeadingValue: document.getElementById("geoHeadingValue"),
     geoGateValue: document.getElementById("geoGateValue"),
     tutorialToggle: document.getElementById("tutorialToggle"),
     tutorialIconButton: document.getElementById("tutorialIconBtn"),

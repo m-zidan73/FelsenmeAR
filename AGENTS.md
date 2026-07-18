@@ -22,7 +22,7 @@ src/
   ui-prompt-controller.js ← NUEVO: textos instruccionales (tutorial bar)
   data-overlay-controller.js ← NUEVO: datos geológicos en pantalla
   interaction-controller.js ← pinch + tap detection
-  location-controller.js    ← GPS, compass, sun
+  location-controller.js    ← GPS + sun
   scene.js            ← Three.js scene, renderer, reticle
   state.js            ← estado mutable compartido
   three-utils.js

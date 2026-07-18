@@ -1,4 +1,4 @@
-﻿import * as THREE from "three";
+import * as THREE from "three";
 
 export function getDistanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) {
   const earthRadiusMeters = 6371000;
@@ -11,9 +11,6 @@ export function getDistanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) 
   return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function normalizeDegrees(degrees) {
-  return ((degrees % 360) + 360) % 360;
-}
 
 export function getSunPosition(date, latitudeDegrees, longitudeDegrees) {
   const rad = Math.PI / 180;

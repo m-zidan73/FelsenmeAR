@@ -1,14 +1,10 @@
-﻿import { getDistanceMeters, getSunPosition, normalizeDegrees } from "./geo.js";
+import { getDistanceMeters, getSunPosition } from "./geo.js";
 
 export function createLocationController({ state, ui, config, THREE, setXRDebug }) {
   function updateGeoStatus() {
     const nearestLocation = state.userPosition ? getNearestAllowedLocation() : null;
     const distanceMeters = nearestLocation ? nearestLocation.distanceMeters : null;
-    const heading = typeof state.compassHeadingDegrees === "number"
-      ? normalizeDegrees(state.compassHeadingDegrees)
-      : null;
     const isDistanceOk = typeof distanceMeters === "number" && distanceMeters <= config.allowedLocationRadiusMeters;
-    const isHeadingOk = true;
 
     if (typeof distanceMeters === "number") {
       const accuracy = state.userPosition && typeof state.userPosition.accuracy === "number"
@@ -21,16 +17,11 @@ export function createLocationController({ state, ui, config, THREE, setXRDebug 
       ui.geoDistanceValue.textContent = "waiting";
     }
 
-    ui.geoHeadingValue.textContent = typeof heading === "number"
-      ? heading.toFixed(0) + " deg"
-      : "waiting";
-    ui.geoGateValue.textContent = isDistanceOk && isHeadingOk ? "unlocked" : "locked";
+    ui.geoGateValue.textContent = isDistanceOk ? "unlocked" : "locked";
     ui.geoDistanceValue.classList.toggle("is-ok", isDistanceOk);
     ui.geoDistanceValue.classList.toggle("is-locked", !isDistanceOk);
-    ui.geoHeadingValue.classList.toggle("is-ok", isHeadingOk);
-    ui.geoHeadingValue.classList.toggle("is-locked", !isHeadingOk);
-    ui.geoGateValue.classList.toggle("is-ok", isDistanceOk && isHeadingOk);
-    ui.geoGateValue.classList.toggle("is-locked", !(isDistanceOk && isHeadingOk));
+    ui.geoGateValue.classList.toggle("is-ok", isDistanceOk);
+    ui.geoGateValue.classList.toggle("is-locked", !isDistanceOk);
   }
 
   function getPlacementGateStatus() {
@@ -62,33 +53,6 @@ export function createLocationController({ state, ui, config, THREE, setXRDebug 
     });
 
     return nearest;
-  }
-
-  function captureCompassHeading() {
-    if (typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission) {
-      DeviceOrientationEvent.requestPermission()
-        .then((permission) => {
-          if (permission === "granted") {
-            window.addEventListener("deviceorientation", updateCompassHeading, true);
-          }
-        })
-        .catch(() => {});
-    } else {
-      window.addEventListener("deviceorientation", updateCompassHeading, true);
-    }
-  }
-
-  function updateCompassHeading(event) {
-    if (typeof event.webkitCompassHeading === "number") {
-      state.compassHeadingDegrees = event.webkitCompassHeading;
-    } else if (typeof event.alpha === "number") {
-      state.compassHeadingDegrees = 360 - event.alpha;
-    }
-
-    if (state.lastSunPosition) {
-      applySunPosition(state.lastSunPosition, true);
-    }
-    updateGeoStatus();
   }
 
   function startLocationTracking() {
@@ -143,24 +107,20 @@ export function createLocationController({ state, ui, config, THREE, setXRDebug 
     );
   }
 
-  function applySunPosition(sun, isCompassRefresh) {
+  function applySunPosition(sun) {
     state.lastSunPosition = sun;
     const elevation = Math.max(sun.elevation, THREE.MathUtils.degToRad(5));
-    const worldAzimuth = sun.azimuth;
-    const heading = THREE.MathUtils.degToRad(state.compassHeadingDegrees || 0);
-    const localAzimuth = worldAzimuth - heading;
+    const azimuth = sun.azimuth;
     const radius = 4;
 
-    const x = Math.sin(localAzimuth) * Math.cos(elevation) * radius;
+    const x = Math.sin(azimuth) * Math.cos(elevation) * radius;
     const y = Math.sin(elevation) * radius;
-    const z = Math.cos(localAzimuth) * Math.cos(elevation) * radius;
+    const z = Math.cos(azimuth) * Math.cos(elevation) * radius;
 
     state.sunDirection.set(x, y, z).normalize();
     positionSunLightAt(state.formationPlaced ? state.placementCenter : new THREE.Vector3());
     state.sunReady = true;
-    if (!isCompassRefresh) {
-      setXRDebug("sun shadows: elevation " + THREE.MathUtils.radToDeg(sun.elevation).toFixed(1) + " deg");
-    }
+    setXRDebug("sun shadows: elevation " + THREE.MathUtils.radToDeg(sun.elevation).toFixed(1) + " deg");
   }
 
   function positionSunLightAt(target) {
@@ -175,7 +135,6 @@ export function createLocationController({ state, ui, config, THREE, setXRDebug 
   }
 
   return {
-    captureCompassHeading,
     getPlacementGateStatus,
     positionSunLightAt,
     startLocationTracking,

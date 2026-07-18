@@ -30,7 +30,6 @@ export function createAppState() {
     hitFrames: 0,
     noHitFrames: 0,
     lastScanDebugTime: 0,
-    compassHeadingDegrees: null,
     userPosition: null,
     userPositionError: null,
     geolocationWatchId: null,

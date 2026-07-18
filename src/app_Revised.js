@@ -156,7 +156,6 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     setXRDebug
   });
   const {
-    captureCompassHeading,
     getPlacementGateStatus,
     positionSunLightAt,
     startLocationTracking,
@@ -205,7 +204,6 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     ui,
     THREE,
     bounceScanPrompt,
-    captureCompassHeading,
     getPlacementGateStatus,
     placeFormation: placeFormationWrapped,
     refreshReadyState: () => {
