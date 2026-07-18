@@ -1,4 +1,4 @@
-﻿export function createSceneController({ state, ui, THREE, disposeObject }) {
+export function createSceneController({ state, ui, THREE, disposeObject }) {
   function initializeScene() {
     state.scene = new THREE.Scene();
     state.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 30);
@@ -17,17 +17,18 @@
   }
 
   function addLights() {
-    state.scene.add(new THREE.HemisphereLight(0xf8fbff, 0x293241, 1.15));
-    state.sunLight = new THREE.DirectionalLight(0xffffff, 2.1);
+    state.scene.add(new THREE.HemisphereLight(0xf8fbff, 0x334052, 1.35));
+    state.sunLight = new THREE.DirectionalLight(0xffffff, 1.35);
     state.sunLight.position.set(-1.4, 4, 2.4);
     state.sunLight.castShadow = true;
-    state.sunLight.shadow.mapSize.set(1024, 1024);
+    state.sunLight.shadow.mapSize.set(2048, 2048);
     state.sunLight.shadow.camera.near = 0.01;
     state.sunLight.shadow.camera.far = 12;
     state.sunLight.shadow.camera.left = -4;
     state.sunLight.shadow.camera.right = 4;
     state.sunLight.shadow.camera.top = 4;
     state.sunLight.shadow.camera.bottom = -4;
+    state.sunLight.shadow.radius = 4;
     state.scene.add(state.sunLight);
     state.scene.add(state.sunLight.target);
     state.renderer.shadowMap.enabled = true;
@@ -92,7 +93,7 @@
       new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI * 0.5),
       new THREE.ShadowMaterial({
         color: 0x000000,
-        opacity: 0.38,
+        opacity: 0.26,
         transparent: true,
         depthWrite: false
       })

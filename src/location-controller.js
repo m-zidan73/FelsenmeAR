@@ -91,7 +91,7 @@ export function createLocationController({ state, ui, config, THREE, setXRDebug 
 
   function updateSunLightFromDeviceLocation() {
     if (!navigator.geolocation) {
-      setXRDebug("sun uses fallback light: no geolocation");
+      useFallbackSunLight("sun uses fallback light: no geolocation");
       return;
     }
 
@@ -101,10 +101,17 @@ export function createLocationController({ state, ui, config, THREE, setXRDebug 
         applySunPosition(sun);
       },
       () => {
-        setXRDebug("sun uses fallback light: location denied");
+        useFallbackSunLight("sun uses fallback light: location denied");
       },
       { enableHighAccuracy: false, maximumAge: 600000, timeout: 8000 }
     );
+  }
+
+
+  function useFallbackSunLight(message) {
+    state.sunReady = true;
+    positionSunLightAt(state.formationPlaced ? state.placementCenter : new THREE.Vector3());
+    setXRDebug(message);
   }
 
   function applySunPosition(sun) {
