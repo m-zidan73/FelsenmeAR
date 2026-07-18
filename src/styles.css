@@ -912,6 +912,10 @@ body:not(.in-camera-ar) .telemetry {
     align-items: center;
   }
 
+  .subtitle-toggle {
+    right: calc(22px + env(safe-area-inset-right) + clamp(82px, 12svw, 108px));
+  }
+
   .formation-slider {
     display: grid;
     grid-template-columns: minmax(38px, 1fr) 30px;
@@ -1052,6 +1056,10 @@ body:not(.in-camera-ar) .telemetry {
     top: calc(88px + env(safe-area-inset-top));
     bottom: calc(8px + env(safe-area-inset-bottom));
     width: clamp(76px, 11svw, 96px);
+  }
+
+  .subtitle-toggle {
+    right: calc(18px + env(safe-area-inset-right) + clamp(76px, 11svw, 96px));
   }
 
   .formation-slider {
