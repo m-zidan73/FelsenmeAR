@@ -110,8 +110,6 @@ export function createGelifluctionStageController({
     if (targetStage === 1) {
       onStageInstructionVisibleChange(false);
       resetSubductionAnimation();
-      startStartingRockMove();
-      setSubductionPromptVisible(true);
       if (previousStage === 5) {
         startStartingRockMoveToDestination({ resetElapsed: true });
       } else {
