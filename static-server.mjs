@@ -17,11 +17,17 @@ const mimeTypes = new Map([
 
 const immutableModelPaths = new Set([
   "/Assets/Models/Gelifluction.glb",
-  "/Assets/Models/PolyCam Rock Sample.glb"
+  "/Assets/Models/PolyCam Rock Sample.glb",
+  "/TectonicModel/public/FelsenmeAR.glb"
 ]);
 
+function isImmutableAsset(requestPath) {
+  return immutableModelPaths.has(requestPath)
+    || (requestPath.startsWith("/Audios/") && extname(requestPath).toLowerCase() === ".mp3");
+}
+
 function sendFile(response, filePath, requestPath) {
-  const cacheControl = immutableModelPaths.has(requestPath)
+  const cacheControl = isImmutableAsset(requestPath)
     ? "public, max-age=31536000, immutable"
     : "no-store";
   response.writeHead(200, {

@@ -24,6 +24,8 @@ import { createAudioManager } from "./audio-manager.js";
 import { createDataOverlayController } from "./data-overlay-controller.js";
 import { createTectonicCollisionController } from "../TectonicModel/src/tectonic-collision-controller.js";
 import { createTapRaycaster } from "./tap-raycaster.js";
+import { startAssetPreload } from "./asset-preloader.js";
+import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
 
 (function () {
   installRuntimeErrorCapture();
@@ -406,11 +408,40 @@ import { createTapRaycaster } from "./tap-raycaster.js";
     rockBadge.style.animation = "badgeSlideIn 350ms ease";
   }
 
+  function startLandingAssetPreload() {
+    let warningCount = 0;
+    startAssetPreload({
+      urls: PRELOAD_ASSET_URLS,
+      cacheName: PRELOAD_CACHE_NAME,
+      onError(error, context = {}) {
+        warningCount += 1;
+        if (warningCount <= 3) {
+          const url = context.url ? ` ${context.url}` : "";
+          console.warn("Asset preload warning:" + url, error);
+          if (window.__runtimeErrors) {
+            window.__runtimeErrors.push("Asset preload warning:" + url + " " + error.message);
+          }
+        }
+      },
+      onComplete({ total, completed, failed }) {
+        const loaded = completed - failed;
+        setXRDebug(failed > 0
+          ? `preloaded ${loaded}/${total} optional assets`
+          : `preloaded ${total} optional assets`);
+      }
+    }).catch((error) => {
+      console.warn("Asset preload failed:", error);
+      if (window.__runtimeErrors) {
+        window.__runtimeErrors.push("Asset preload failed: " + error.message);
+      }
+    });
+  }
   init();
 
   function init() {
     initializeScene();
     interactionController.attach(state.renderer.domElement);
+    startLandingAssetPreload();
     loadModels();
 
     audioManager.load();
