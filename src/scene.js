@@ -1,10 +1,15 @@
 export function createSceneController({ state, ui, THREE, disposeObject }) {
   const transparentClearColor = 0x000000;
   const transparentClearAlpha = 0;
+  let greenscreenBackdrop = null;
+  const greenscreenCameraPosition = new THREE.Vector3();
+  const greenscreenCameraDirection = new THREE.Vector3();
+  const greenscreenCameraQuaternion = new THREE.Quaternion();
 
   function initializeScene() {
     state.scene = new THREE.Scene();
     state.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 30);
+    createGreenscreenBackdrop();
 
     state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     setGreenscreenWorldActive(false);
@@ -36,6 +41,40 @@ export function createSceneController({ state, ui, THREE, disposeObject }) {
     state.scene.add(state.sunLight.target);
     state.renderer.shadowMap.enabled = true;
     state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  }
+
+  function createGreenscreenBackdrop() {
+    greenscreenBackdrop = new THREE.Mesh(
+      new THREE.PlaneGeometry(100, 100),
+      new THREE.MeshBasicMaterial({
+        color: 0x00fe5c,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false
+      })
+    );
+    greenscreenBackdrop.name = "Greenscreen World Backdrop";
+    greenscreenBackdrop.position.set(0, 0, -10);
+    greenscreenBackdrop.renderOrder = -10000;
+    greenscreenBackdrop.frustumCulled = false;
+    greenscreenBackdrop.visible = false;
+    greenscreenBackdrop.onBeforeRender = (_renderer, _scene, camera) => {
+      syncGreenscreenBackdropToCamera(camera);
+    };
+    state.scene.add(greenscreenBackdrop);
+  }
+
+  function syncGreenscreenBackdropToCamera(camera) {
+    if (!camera || !greenscreenBackdrop) {
+      return;
+    }
+
+    camera.getWorldPosition(greenscreenCameraPosition);
+    camera.getWorldDirection(greenscreenCameraDirection);
+    camera.getWorldQuaternion(greenscreenCameraQuaternion);
+    greenscreenBackdrop.position.copy(greenscreenCameraPosition).addScaledVector(greenscreenCameraDirection, 10);
+    greenscreenBackdrop.quaternion.copy(greenscreenCameraQuaternion);
+    greenscreenBackdrop.updateMatrixWorld(true);
   }
 
   function createPlacementReticle() {
@@ -117,11 +156,18 @@ export function createSceneController({ state, ui, THREE, disposeObject }) {
     }
 
     if (isActive) {
+      if (greenscreenBackdrop) {
+        greenscreenBackdrop.material.color.setHex(color);
+        greenscreenBackdrop.visible = true;
+      }
       state.scene.background = new THREE.Color(color);
       state.renderer.setClearColor(color, 1);
       return;
     }
 
+    if (greenscreenBackdrop) {
+      greenscreenBackdrop.visible = false;
+    }
     state.scene.background = null;
     state.renderer.setClearColor(transparentClearColor, transparentClearAlpha);
   }
