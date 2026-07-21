@@ -16,6 +16,7 @@ import { disposeObject } from "./three-utils.js";
 import { createFormationSlider } from "./ui/formation-slider.js";
 import { createHudUi } from "./ui/hud.js";
 import { createMenuUi } from "./ui/menu.js";
+import { createStartButtonController } from "./ui/start-button-controller.js";
 
 (function () {
   installRuntimeErrorCapture();
@@ -70,7 +71,13 @@ import { createMenuUi } from "./ui/menu.js";
     THREE,
     disposeObject
   });
-  const { createShadowReceiver, initializeScene, onResize, setPlacementReticleModel } = sceneController;
+  const {
+    createShadowReceiver,
+    initializeScene,
+    onResize,
+    setGreenscreenWorldActive,
+    setPlacementReticleModel
+  } = sceneController;
 
   const modelFactory = createGelifluctionModelFactory({ THREE });
   const { createGelifluctionInstance, validateGelifluctionAsset } = modelFactory;
@@ -124,6 +131,7 @@ import { createMenuUi } from "./ui/menu.js";
     setMenuLoading,
     setScanPromptVisible,
     setXRDebug,
+    setGreenscreenWorldActive: (isActive) => setGreenscreenWorldActive(isActive, CONFIG.greenscreenWorldColor),
     startLocationTracking,
     stopLocationTracking,
     updateFormationPlacement: () => placementController.updateFormationPlacement(),
@@ -138,6 +146,13 @@ import { createMenuUi } from "./ui/menu.js";
     startARSession,
     updateFrame: updateArFrame
   } = arController;
+
+  const startButtonController = createStartButtonController({
+    button: ui.startArButton,
+    holdDurationMs: CONFIG.greenscreenStartHoldMs,
+    onStart: () => startARSession(),
+    onGreenscreenStart: () => startARSession({ greenscreenWorld: true })
+  });
 
   interactionController = createCanvasInteractionController({
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
@@ -189,7 +204,7 @@ import { createMenuUi } from "./ui/menu.js";
     loadModels();
 
     window.addEventListener("resize", onResize);
-    ui.startArButton.addEventListener("click", startARSession);
+    startButtonController.initStartButtonController();
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
     initFormationSlider();

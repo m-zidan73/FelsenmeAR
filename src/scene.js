@@ -1,10 +1,13 @@
 export function createSceneController({ state, ui, THREE, disposeObject }) {
+  const transparentClearColor = 0x000000;
+  const transparentClearAlpha = 0;
+
   function initializeScene() {
     state.scene = new THREE.Scene();
     state.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 30);
 
     state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    state.renderer.setClearColor(0x000000, 0);
+    setGreenscreenWorldActive(false);
     state.renderer.setPixelRatio(window.devicePixelRatio);
     state.renderer.setSize(window.innerWidth, window.innerHeight);
     state.renderer.xr.enabled = true;
@@ -108,10 +111,26 @@ export function createSceneController({ state, ui, THREE, disposeObject }) {
     state.scene.add(state.shadowReceiver);
   }
 
+  function setGreenscreenWorldActive(isActive, color = 0x00fe5c) {
+    if (!state.renderer || !state.scene) {
+      return;
+    }
+
+    if (isActive) {
+      state.scene.background = new THREE.Color(color);
+      state.renderer.setClearColor(color, 1);
+      return;
+    }
+
+    state.scene.background = null;
+    state.renderer.setClearColor(transparentClearColor, transparentClearAlpha);
+  }
+
   return {
     createShadowReceiver,
     initializeScene,
     onResize,
+    setGreenscreenWorldActive,
     setPlacementReticleModel
   };
 }

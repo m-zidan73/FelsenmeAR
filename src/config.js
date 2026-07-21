@@ -1,5 +1,7 @@
 export const CONFIG = {
   formationFadeDurationSeconds: 1,
+  greenscreenStartHoldMs: 650,
+  greenscreenWorldColor: 0x00fe5c,
   pinchDistanceThresholdPixels: 1,
   pinchActivityTimeoutMs: 100,
   modelAssetVersions: {

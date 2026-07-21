@@ -14,6 +14,7 @@ export function createArController({
   setMenuLoading,
   setScanPromptVisible,
   setXRDebug,
+  setGreenscreenWorldActive = () => {},
   startLocationTracking,
   stopLocationTracking,
   updateFormationPlacement,
@@ -47,7 +48,7 @@ export function createArController({
       });
   }
 
-  async function startARSession() {
+  async function startARSession({ greenscreenWorld = false } = {}) {
     if (state.modelLoadError) {
       setMenuLoading(100, "Error", "The 3D models failed to load. Refresh after checking the Assets folder.");
       return;
@@ -61,7 +62,8 @@ export function createArController({
       return;
     }
 
-    setXRDebug("requesting raw immersive-ar");
+    setGreenscreenWorldActive(greenscreenWorld);
+    setXRDebug(greenscreenWorld ? "requesting greenscreen immersive-ar" : "requesting raw immersive-ar");
     updateHud("Requesting Camera AR. Grant camera permission.");
     document.body.classList.add("in-camera-ar");
 
@@ -87,6 +89,7 @@ export function createArController({
       if (waitingMessageTimer) {
         window.clearTimeout(waitingMessageTimer);
       }
+      setGreenscreenWorldActive(false);
       document.body.classList.remove("in-camera-ar");
       const failureMessage = error.name === "NotSupportedError"
         ? "This XR viewer does not support the required on-screen controls."
@@ -145,6 +148,7 @@ export function createArController({
     state.latestHit = null;
     state.latestHitResult = null;
     state.placementReticle.visible = false;
+    setGreenscreenWorldActive(false);
     document.body.classList.remove("in-camera-ar");
     setMenuButtonVisible(false);
     setGeoStatusVisible(false);
