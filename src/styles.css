@@ -831,6 +831,7 @@ body:not(.in-camera-ar) .telemetry {
 @media (orientation: landscape) {
   .ar-overlay {
     --landscape-slider-width: clamp(72px, 10svw, 96px);
+    --landscape-slider-edge-gap: max(16px, env(safe-area-inset-top), env(safe-area-inset-bottom));
     grid-template-rows: auto minmax(72px, 1fr) auto;
     padding: calc(10px + env(safe-area-inset-top))
       calc(12px + env(safe-area-inset-right))
@@ -901,17 +902,19 @@ body:not(.in-camera-ar) .telemetry {
 
   .bottom-ui {
     position: fixed;
-    top: 50%;
+    top: var(--ar-visual-viewport-top, 0px);
     right: calc(10px + env(safe-area-inset-right));
     bottom: auto;
     left: auto;
-    transform: translateY(-50%);
+    transform: none;
     width: var(--landscape-slider-width);
     max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    height: min(70svh, 480px);
-    max-height: calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: var(--ar-visual-viewport-height, 100dvh);
+    max-height: none;
     margin-bottom: 0;
-    align-items: center;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
   }
 
   .subtitle-toggle {
@@ -925,7 +928,8 @@ body:not(.in-camera-ar) .telemetry {
     align-items: stretch;
     gap: clamp(3px, 0.7svw, 6px);
     width: 100%;
-    height: 100%;
+    height: min(70%, 480px);
+    max-height: calc(100% - var(--landscape-slider-edge-gap) - var(--landscape-slider-edge-gap));
     padding: 8px 6px;
     border-radius: 18px;
   }
@@ -1052,15 +1056,8 @@ body:not(.in-camera-ar) .telemetry {
 @media (max-height: 560px) and (orientation: landscape) {
   .ar-overlay {
     --landscape-slider-width: clamp(66px, 9.5svw, 86px);
+    --landscape-slider-edge-gap: max(12px, env(safe-area-inset-top), env(safe-area-inset-bottom));
     grid-template-rows: auto minmax(52px, 1fr) auto;
-  }
-
-  .bottom-ui {
-    top: 50%;
-    bottom: auto;
-    width: var(--landscape-slider-width);
-    height: min(72svh, 340px);
-    max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 
   .subtitle-toggle {
@@ -1068,6 +1065,7 @@ body:not(.in-camera-ar) .telemetry {
   }
 
   .formation-slider {
+    height: min(72%, 340px);
     padding: 6px 5px;
   }
 

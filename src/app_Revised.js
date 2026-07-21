@@ -17,6 +17,7 @@ import { createFormationSlider } from "./ui/formation-slider.js";
 import { createHudUi } from "./ui/hud.js";
 import { createMenuUi } from "./ui/menu.js";
 import { createStartButtonController } from "./ui/start-button-controller.js";
+import { createViewportLayoutController } from "./ui/viewport-layout-controller.js";
 
 import { EventBus } from "./event-bus.js";
 import { ExperienceState, ExperienceStateManager } from "./state-manager.js";
@@ -119,6 +120,13 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     setGreenscreenWorldActive,
     setPlacementReticleModel: setPlacementReticleModelOriginal
   } = sceneController;
+
+  const viewportLayoutController = createViewportLayoutController({
+    windowRef: window,
+    documentRef: document,
+    targetElement: ui.bottomUi,
+    onViewportChanged: onResize
+  });
 
   function setPlacementReticleModel(source) {
     setPlacementReticleModelOriginal(source);
@@ -511,7 +519,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       subtitleToggle.classList.add("is-active");
     }
 
-    window.addEventListener("resize", onResize);
+    viewportLayoutController.start();
     startButtonController.initStartButtonController();
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
@@ -616,9 +624,11 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
 
     const hasSession = !!state.xrSession;
     if (hasSession && !hadSession) {
+      viewportLayoutController.refreshAfterTransition();
       ExperienceStateManager.setState(ExperienceState.Scanning);
       EventBus.raise("session_started", {});
     } else if (!hasSession && hadSession) {
+      viewportLayoutController.refreshAfterTransition();
       setStageInstructionVisible(false);
       tectonicCollisionController.reset();
       EventBus.raise("session_ended", {});
