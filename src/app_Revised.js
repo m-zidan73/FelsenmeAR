@@ -355,6 +355,13 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     returnToMainMenuPlacement();
   }
 
+  function getActiveTectonicCamera() {
+    if (state.renderer?.xr?.isPresenting && typeof state.renderer.xr.getCamera === "function") {
+      return state.renderer.xr.getCamera(state.camera);
+    }
+    return state.camera;
+  }
+
   function getTectonicPlacementOptions() {
     return {
       scene: state.scene,
@@ -362,7 +369,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       position: state.placementCenter,
       planeHeight: state.planeHeight,
       quaternion: state.formationRoot ? state.formationRoot.quaternion : null,
-      camera: state.camera
+      camera: getActiveTectonicCamera()
     };
   }
 

@@ -39,9 +39,15 @@ export function createWorldPinchPrompt({
   parent.add(group);
 
   const cameraWorldPosition = new THREE.Vector3();
+  const cameraWorldQuaternion = new THREE.Quaternion();
   const promptWorldPosition = new THREE.Vector3();
   const cameraLocalPosition = new THREE.Vector3();
   const forwardLocal = new THREE.Vector3();
+  const parentWorldQuaternionInverse = new THREE.Quaternion();
+  const cameraRightLocal = new THREE.Vector3();
+  const cameraUpLocal = new THREE.Vector3();
+  const cameraBackLocal = new THREE.Vector3();
+  const cameraBasis = new THREE.Matrix4();
   let elapsedSeconds = 0;
   let disposed = false;
 
@@ -68,6 +74,7 @@ export function createWorldPinchPrompt({
 
   function positionGroup(camera) {
     group.position.copy(basePosition);
+    alignGroupToCamera(camera);
 
     if (camera && typeof camera.getWorldPosition === "function") {
       parent.localToWorld(promptWorldPosition.copy(basePosition));
@@ -83,6 +90,29 @@ export function createWorldPinchPrompt({
     }
 
     group.position.z = bounds.min.z - frontOffset;
+  }
+
+  function alignGroupToCamera(camera) {
+    group.quaternion.identity();
+    if (!camera || typeof camera.getWorldQuaternion !== "function") return;
+
+    camera.getWorldQuaternion(cameraWorldQuaternion);
+    parent.getWorldQuaternion(parentWorldQuaternionInverse).invert();
+
+    cameraRightLocal
+      .set(1, 0, 0)
+      .applyQuaternion(cameraWorldQuaternion)
+      .applyQuaternion(parentWorldQuaternionInverse)
+      .normalize();
+    cameraUpLocal
+      .set(0, 1, 0)
+      .applyQuaternion(cameraWorldQuaternion)
+      .applyQuaternion(parentWorldQuaternionInverse)
+      .normalize();
+    cameraBackLocal.crossVectors(cameraRightLocal, cameraUpLocal).normalize();
+    cameraUpLocal.crossVectors(cameraBackLocal, cameraRightLocal).normalize();
+    cameraBasis.makeBasis(cameraRightLocal, cameraUpLocal, cameraBackLocal);
+    group.quaternion.setFromRotationMatrix(cameraBasis);
   }
 
   function positionSprites(inwardAmount, cycle = 0) {
