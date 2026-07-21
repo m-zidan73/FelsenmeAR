@@ -16,6 +16,7 @@ import { disposeObject } from "./three-utils.js";
 import { createFormationSlider } from "./ui/formation-slider.js";
 import { createHudUi } from "./ui/hud.js";
 import { createMenuUi } from "./ui/menu.js";
+import { createStartButtonController } from "./ui/start-button-controller.js";
 
 import { EventBus } from "./event-bus.js";
 import { ExperienceState, ExperienceStateManager } from "./state-manager.js";
@@ -115,6 +116,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     createShadowReceiver,
     initializeScene,
     onResize,
+    setGreenscreenWorldActive,
     setPlacementReticleModel: setPlacementReticleModelOriginal
   } = sceneController;
 
@@ -221,6 +223,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     setMenuLoading,
     setScanPromptVisible,
     setXRDebug,
+    setGreenscreenWorldActive: (isActive) => setGreenscreenWorldActive(isActive, CONFIG.greenscreenWorldColor),
     startLocationTracking,
     stopLocationTracking,
     updateFormationPlacement: () => placementController.updateFormationPlacement(),
@@ -235,6 +238,14 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     startARSession,
     updateFrame: updateArFrame
   } = arController;
+
+
+  const startButtonController = createStartButtonController({
+    button: ui.startArButton,
+    holdDurationMs: CONFIG.greenscreenStartHoldMs,
+    onStart: () => startARSession(),
+    onGreenscreenStart: () => startARSession({ greenscreenWorld: true })
+  });
 
   interactionController = createCanvasInteractionController({
     pinchActivityTimeoutMs: CONFIG.pinchActivityTimeoutMs,
@@ -501,7 +512,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     }
 
     window.addEventListener("resize", onResize);
-    ui.startArButton.addEventListener("click", startARSession);
+    startButtonController.initStartButtonController();
     ui.resetButton.addEventListener("click", reset);
     ui.menuButton.addEventListener("click", returnToMainMenu);
     initFormationSlider();
