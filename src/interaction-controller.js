@@ -53,8 +53,9 @@ export function createCanvasInteractionController({
   }
 
   function handlePlacementInput(event) {
-    const x = event && typeof event.clientX === 'number' ? event.clientX : lastPointerX;
-    const y = event && typeof event.clientY === 'number' ? event.clientY : lastPointerY;
+    const hasCoords = event && typeof event.clientX === 'number';
+    const x = hasCoords ? event.clientX : lastPointerX;
+    const y = hasCoords ? event.clientY : lastPointerY;
     if (onTap) onTap(x, y);
     onPlacementTap();
   }

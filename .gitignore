@@ -3,3 +3,11 @@ public/
 cloudflared.exe
 edge-*.png
 bounding-box*.png
+
+# Node
+node_modules/
+package.json
+package-lock.json
+
+# Vite cache (inside tracked TectonicModel/node_modules)
+TectonicModel/node_modules/.vite/

@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import { EventBus } from "./event-bus.js";
 
-export function createTapRaycaster({ getCamera }) {
+export function createTapRaycaster({ getCamera, shouldBlockTarget }) {
   const targets = new Map();
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
 
-  function addTarget(name, meshes) {
-    targets.set(name, meshes);
+  function addTarget(name, objs) {
+    targets.set(name, objs);
   }
 
   function removeTarget(name) {
@@ -33,13 +33,12 @@ export function createTapRaycaster({ getCamera }) {
         meshName: hit.meshName,
         point: hit.point.clone()
       });
-      return { meshName: hit.meshName };
+      return { target: hit.target, meshName: hit.meshName };
     }
     return null;
   }
 
   function handleTouchEnd() {
-    // grab_end is emitted by app_Revised with specific meshName
   }
 
   function doRaycast(screenX, screenY, width, height) {
@@ -50,17 +49,22 @@ export function createTapRaycaster({ getCamera }) {
     ndc.y = -(screenY / height) * 2 + 1;
     raycaster.setFromCamera(ndc, camera);
 
-    for (const [name, meshes] of targets) {
-      const hits = raycaster.intersectObjects(meshes, false);
+    let bestHit = null;
+
+    for (const [name, objs] of targets) {
+      if (shouldBlockTarget && shouldBlockTarget(name)) continue;
+      const visible = objs.filter(o => o.visible);
+      if (visible.length === 0) continue;
+      const hits = raycaster.intersectObjects(visible, false);
       if (hits.length > 0) {
-        return {
-          target: name,
-          meshName: hits[0].object.name,
-          point: hits[0].point
-        };
+        const pz = hits[0].point.clone().project(camera).z;
+        if (!bestHit || pz < bestHit.z) {
+          bestHit = { target: name, meshName: hits[0].object.name, point: hits[0].point, z: pz };
+        }
       }
     }
-    return null;
+
+    return bestHit ? { target: bestHit.target, meshName: bestHit.meshName, point: bestHit.point } : null;
   }
 
   return { addTarget, removeTarget, handleTap, handleTouchStart, handleTouchEnd };

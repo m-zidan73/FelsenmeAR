@@ -4,7 +4,7 @@ import { CONFIG } from "./config.js";
 import { installDebugHooks } from "./debug-hooks.js";
 import { getUiElements } from "./dom.js";
 import { createFormationModelLoader } from "./formation/model-loader.js";
-import { createGelifluctionModelFactory, setLabelVisibilityByStage } from "./formation/model-factory.js";
+import { createGelifluctionModelFactory, setLabelVisibilityByStage, toggleLabelSprite, createStandaloneLabel } from "./formation/model-factory.js";
 import { createPlacementController } from "./formation/placement-controller.js";
 import { createGelifluctionStageController } from "./formation/stage-controller.js";
 import { createCanvasInteractionController } from "./interaction-controller.js";
@@ -180,10 +180,47 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
   let hadSession = false;
   let readyEmitted = false;
   const activeGrabs = new Map();
+  let tectonicLabelSprite = null;
+  let tectonicLabelCollider = null;
+  const _allMovingColliders = [];
 
   const tapRaycaster = createTapRaycaster({
-    getCamera: () => state.camera
+    getCamera: () => state.camera,
+    shouldBlockTarget: (name) =>
+      name === "tectonic_plates" && getCurrentStage() === 1 && !audioManager.canAdvancePinch()
   });
+
+  function pickLabelAtScreen(screenX, screenY, width, height) {
+    const camera = state.camera;
+    if (!camera) return null;
+    const _pos = new THREE.Vector3();
+    const thresholdPx = 50;
+    let best = null;
+    let bestDist = thresholdPx;
+    const labels = state.formationLabels;
+    if (labels) {
+      for (const key in labels) {
+        if (key === "__colliders") continue;
+        const sprite = labels[key];
+        if (!sprite || !sprite.visible) continue;
+        sprite.getWorldPosition(_pos);
+        _pos.project(camera);
+        const sx = (_pos.x * 0.5 + 0.5) * width;
+        const sy = (-_pos.y * 0.5 + 0.5) * height;
+        const dist = Math.hypot(sx - screenX, sy - screenY);
+        if (dist < bestDist) { bestDist = dist; best = sprite; }
+      }
+    }
+    if (tectonicLabelSprite && tectonicLabelSprite.visible) {
+      tectonicLabelSprite.getWorldPosition(_pos);
+      _pos.project(camera);
+      const sx = (_pos.x * 0.5 + 0.5) * width;
+      const sy = (-_pos.y * 0.5 + 0.5) * height;
+      const dist = Math.hypot(sx - screenX, sy - screenY);
+      if (dist < bestDist) { bestDist = dist; best = tectonicLabelSprite; }
+    }
+    return best;
+  }
 
   function isPinchPhaseSequence(trigger) {
     return /^event:pinch_phase:[1-3]$/.test(trigger || "");
@@ -301,11 +338,16 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     },
     onPinchDebug: reportPinchDebug,
     onPlacementTap: placeAtDetectedPlane,
-    onTap: (x, y) => tapRaycaster.handleTap(x, y, window.innerWidth, window.innerHeight),
+    onTap: (x, y) => {
+      const label = pickLabelAtScreen(x, y, window.innerWidth, window.innerHeight);
+      if (label) { toggleLabelSprite(label); return; }
+      tapRaycaster.handleTap(x, y, window.innerWidth, window.innerHeight);
+    },
     onTouchStart: (x, y, pointerId) => {
-      if (getCurrentStage() !== 1 || !audioManager.canAdvancePinch()) return;
       const hit = tapRaycaster.handleTouchStart(x, y, window.innerWidth, window.innerHeight);
-      if (hit) {
+      if (!hit) return;
+      if (hit.target === "tectonic_plates") {
+        if (getCurrentStage() !== 1) return;
         activeGrabs.set(pointerId, hit.meshName);
       }
     },
@@ -564,6 +606,22 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       ExperienceStateManager.setState(ExperienceState.SliderActive);
       if (state.formationLabels) {
         setLabelVisibilityByStage(state.formationLabels, 1);
+        const colliders = state.formationLabels.__colliders || [];
+        if (colliders.length > 0) {
+          tapRaycaster.addTarget("formation_labels", colliders);
+          _allMovingColliders.push(...colliders);
+        }
+      }
+    });
+    EventBus.on("raycast_hit", (data) => {
+      if (!data) return;
+      if (data.target === "formation_labels" && state.formationLabels) {
+        const labelKey = data.meshName.replace("LabelCollider:", "");
+        const sprite = state.formationLabels[labelKey];
+        if (sprite) toggleLabelSprite(sprite);
+      }
+      if (data.target === "tectonic_labels" && tectonicLabelSprite) {
+        toggleLabelSprite(tectonicLabelSprite);
       }
     });
     EventBus.on("tectonic_model_ready", () => {
@@ -571,6 +629,15 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       if (plateMeshes.length > 0) {
         tapRaycaster.addTarget("tectonic_plates", plateMeshes);
       }
+      if (!state.formationRoot) return;
+      const basePos = new THREE.Vector3(0, 1.5, 0);
+      const { sprite, collider } = createStandaloneLabel("Tectonic plate: Avalonia", basePos, 0.3);
+      tectonicLabelSprite = sprite;
+      tectonicLabelCollider = collider;
+      state.formationRoot.add(sprite);
+      state.formationRoot.add(collider);
+      sprite.visible = true;
+      tapRaycaster.addTarget("tectonic_labels", [collider]);
     });
     EventBus.on("alignment_quality", (data) => {
       if (data && data.quality > 0.95) {
@@ -648,6 +715,38 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       updateFormationAnimation(deltaSeconds);
       tectonicCollisionController.updatePlacement(getTectonicPlacementOptions());
       tectonicCollisionController.update(deltaSeconds);
+    }
+
+    state.camera.projectionMatrixInverse.copy(state.camera.projectionMatrix).invert();
+
+    const root = state.formationRoot;
+    if (_allMovingColliders.length > 0 && root) {
+      const _camWorld = new THREE.Vector3();
+      const _camLocal = new THREE.Vector3();
+      const _dir = new THREE.Vector3();
+      state.camera.getWorldPosition(_camWorld);
+      root.worldToLocal(_camLocal.copy(_camWorld));
+      _allMovingColliders.forEach(c => {
+        if (!c.visible || !c.userData.originalPosition) return;
+        _dir.copy(_camLocal).sub(c.userData.originalPosition).normalize();
+        c.position.copy(c.userData.originalPosition).addScaledVector(_dir, 0.25);
+        c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), _dir);
+        const dist = _camLocal.distanceTo(c.userData.originalPosition);
+        const rScale = THREE.MathUtils.clamp(dist * 0.08, 0.08, 0.35);
+        c.scale.set(rScale / 0.12, rScale / 0.12, 1);
+      });
+    }
+    if (tectonicLabelSprite && tectonicLabelCollider && root) {
+      const _camWorld = new THREE.Vector3();
+      const _camLocal = new THREE.Vector3();
+      const _dir = new THREE.Vector3();
+      state.camera.getWorldPosition(_camWorld);
+      root.worldToLocal(_camLocal.copy(_camWorld));
+      const base = tectonicLabelCollider.userData.originalPosition;
+      _dir.copy(_camLocal).sub(base).normalize();
+      tectonicLabelCollider.position.copy(base).addScaledVector(_dir, 0.25);
+      tectonicLabelCollider.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), _dir);
+      tectonicLabelSprite.position.copy(base).addScaledVector(_dir, 0.25);
     }
 
     state.renderer.render(state.scene, state.camera);

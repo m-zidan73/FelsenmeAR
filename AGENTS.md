@@ -100,16 +100,22 @@ Slider 4 → Stage 5 (Final Boulder, Present Day)
 - **Audio clips con espacios** — los nombres tipo `"7. stage 2.mp3"` pueden fallar en URL; sanitizar
 
 ### Problemas conocidos
-- WebXR solo funciona en dispositivos móviles con HTTPS. Usar `cloudflared tunnel --url http://localhost:5173` para pruebas desde celular.
+- WebXR solo funciona en dispositivos móviles con HTTPS. Usar `cloudflared tunnel --url http://127.0.0.1:5173` para pruebas desde celular.
 - El modo `?debug` + `window.__arFormationDebug.placeAtOrigin()` permite test sin WebXR en PC
 - `ui-concept-demo.html` existe en raíz como demo visual descartable (no forma parte de la app real)
+
+### Troubleshooting: tunnel cloudflared
+- **Error 1033/530** → cloudflared resuelve `localhost` a IPv6 (`::1`) pero el static-server solo escucha en IPv4 (`0.0.0.0`).
+  **Fix:** usar `http://127.0.0.1:5173` en vez de `http://localhost:5173`.
+- El tunnel falla si se lanza desde la terminal integrada de opencode. Abrir una terminal PowerShell externa.
+- Alternativa si cloudflared no funciona: `npx localtunnel --port 5173` (lento, requiere escribir "click locally" al abrirlo).
 
 ### Para nueva sesión
 1. Leer este AGENTS.md
 2. Revisar `src/app_Revised.js` (entry point real)
 3. `node static-server.mjs` para servidor local
 4. Los archivos originales (`app.js`, `ar-controller.js`, etc.) NO deben modificarse directamente
-5. Para probar desde celular: `cloudflared tunnel --url http://localhost:5173`
+5. Para probar desde celular: `cloudflared tunnel --url http://127.0.0.1:5173`
 
 ### ⚠️ Regla crítica: Sincronización con Refactor-Decoupled
 Cada vez que aparezca un **nuevo commit en `origin/Refactor-Decoupled`**, debes **pedir autorización antes de actuar**. NO hacer merge ni rebase automáticamente. El flujo correcto es:
@@ -132,6 +138,7 @@ Cada vez que aparezca un **nuevo commit en `origin/Refactor-Decoupled`**, debes 
 node static-server.mjs
 # Abrir http://localhost:5173/
 
-$env:TEMP\cloudflared.exe tunnel --url http://localhost:5173
+$env:TEMP\cloudflared.exe tunnel --url http://127.0.0.1:5173
 # Da URL HTTPS para probar en celular
+# NOTA: Usar 127.0.0.1 en vez de localhost (evita error 1033 por IPv6)
 ```
