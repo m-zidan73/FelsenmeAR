@@ -649,7 +649,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     EventBus.on("tectonic_animation_complete", () => {
       tectonicCollisionController.setGesturePromptAudioSuppressed(false);
     });
-      setRestartAvailable(getCurrentStage() === 1);
+    setRestartAvailable(false);
 
     EventBus.on("stage_changed", (data) => {
       if (data && typeof data.stage === "number") {

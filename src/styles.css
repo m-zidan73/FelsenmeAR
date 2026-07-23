@@ -379,32 +379,67 @@ body.in-camera-ar .main-menu {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
-
 .subtitle-toggle {
   position: fixed;
-  bottom: clamp(158px, 25vh, 230px);
-  right: max(10px, env(safe-area-inset-right));
+  top: calc(124px + env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
   z-index: 24;
-  padding: 4px 12px;
-  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 12px;
   background: rgba(8, 10, 12, 0.7);
   border: 1px solid rgba(246, 239, 230, 0.15);
   color: rgba(246, 239, 230, 0.7);
-  font-size: clamp(0.65rem, 1.6vw, 0.78rem);
-  font-weight: 600;
-  letter-spacing: 1px;
+  font-size: 1.2rem;
+  font-weight: 800;
   cursor: pointer;
   pointer-events: auto;
   transition: color 200ms, border-color 200ms;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
+
 .subtitle-toggle:hover,
 .subtitle-toggle:focus-visible {
   color: #f6efe6;
   border-color: rgba(246, 239, 230, 0.35);
 }
+
 .subtitle-toggle.is-active {
   color: #f6efe6;
   border-color: #f6efe6;
+}
+.popup-toggle {
+  position: fixed;
+  top: calc(180px + env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 27;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 2px solid rgba(246, 239, 230, 0.36);
+  border-radius: 12px;
+  background: rgba(8, 10, 12, 0.56);
+  color: rgba(246, 239, 230, 0.68);
+  font-size: 1.2rem;
+  font-weight: 800;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.popup-toggle.is-active {
+  color: #f6efe6;
+  border-color: rgba(246, 239, 230, 0.8);
+  background: rgba(8, 10, 12, 0.78);
 }
 
 .slider-time-label {
@@ -778,6 +813,19 @@ body:not(.in-camera-ar) .telemetry {
     left: max(10px, env(safe-area-inset-left));
   }
 
+  .subtitle-toggle {
+    top: calc(max(8px, env(safe-area-inset-top)) + clamp(108px, 20svh, 136px));
+    left: max(10px, env(safe-area-inset-left));
+    padding: 0;
+    border-radius: 12px;
+    font-size: 1.2rem;
+  }
+
+  .popup-toggle {
+    top: calc(max(8px, env(safe-area-inset-top)) + clamp(162px, 30svh, 202px));
+    left: max(10px, env(safe-area-inset-left));
+  }
+
   .tutorial-panel {
     width: min(30vw, 360px);
     max-width: min(30vw, 360px);
@@ -927,64 +975,6 @@ body:not(.in-camera-ar) .telemetry {
   .rock-info-badge {
     padding: clamp(5px, 1svh, 8px) clamp(8px, 2svw, 16px);
   }
-}
-
-/* AR control positions intentionally use the existing viewport layout. */
-.menu-button,
-.tutorial-icon-btn,
-.subtitle-toggle,
-.popup-toggle {
-  width: 48px;
-  height: 48px;
-}
-
-.menu-button {
-  position: fixed;
-  top: calc(12px + env(safe-area-inset-top));
-  left: max(12px, env(safe-area-inset-left));
-}
-
-.tutorial-toggle {
-  top: calc(68px + env(safe-area-inset-top));
-  left: max(12px, env(safe-area-inset-left));
-}
-
-.subtitle-toggle {
-  top: calc(124px + env(safe-area-inset-top));
-  right: auto;
-  bottom: auto;
-  left: max(12px, env(safe-area-inset-left));
-  padding: 0;
-  border-radius: 12px;
-}
-
-.popup-toggle {
-  position: fixed;
-  top: calc(180px + env(safe-area-inset-top));
-  left: max(12px, env(safe-area-inset-left));
-  z-index: 27;
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 2px solid rgba(246, 239, 230, 0.36);
-  border-radius: 12px;
-  background: rgba(8, 10, 12, 0.56);
-  color: rgba(246, 239, 230, 0.68);
-  font-size: 1rem;
-  font-weight: 800;
-  pointer-events: auto;
-  cursor: pointer;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.popup-toggle.is-active {
-  color: #f6efe6;
-  border-color: rgba(246, 239, 230, 0.8);
-  background: rgba(8, 10, 12, 0.78);
 }
 
 .restart-stage-one-button {

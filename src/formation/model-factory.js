@@ -198,7 +198,7 @@ export function createGelifluctionModelFactory({ THREE }) {
       sprite.visible = false;
       labels[name] = sprite;
 
-      const geo = new THREE.CylinderGeometry(0.12, 0.12, 1.5, 8);
+      const geo = new THREE.CylinderGeometry(0.04, 0.04, 1.5, 8);
       geo.rotateX(Math.PI / 2);
       const mat = new THREE.MeshBasicMaterial({ visible: false });
       const mesh = new THREE.Mesh(geo, mat);
@@ -441,7 +441,7 @@ export function createStandaloneLabel(text, worldPos, height) {
   sprite.userData.expandedScale = new THREE.Vector3(height * (expandedCanvas.width / expandedCanvas.height), height, 1);
 
   const isDebug = typeof window !== 'undefined' && window.location.search.includes('debug');
-  const geo = new THREE.CylinderGeometry(0.12, 0.12, 1.5, 8);
+  const geo = new THREE.CylinderGeometry(0.04, 0.04, 1.5, 8);
   geo.rotateX(Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial({
     visible: isDebug,
