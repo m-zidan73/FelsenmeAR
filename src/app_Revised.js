@@ -180,8 +180,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
   let hadSession = false;
   let readyEmitted = false;
   const activeGrabs = new Map();
-  let tectonicLabelSprite = null;
-  let tectonicLabelCollider = null;
+  const tectonicLabels = [];
   const _allMovingColliders = [];
 
   const tapRaycaster = createTapRaycaster({
@@ -211,13 +210,14 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         if (dist < bestDist) { bestDist = dist; best = sprite; }
       }
     }
-    if (tectonicLabelSprite && tectonicLabelSprite.visible) {
-      tectonicLabelSprite.getWorldPosition(_pos);
+    for (const entry of tectonicLabels) {
+      if (!entry.sprite.visible) continue;
+      entry.sprite.getWorldPosition(_pos);
       _pos.project(camera);
       const sx = (_pos.x * 0.5 + 0.5) * width;
       const sy = (-_pos.y * 0.5 + 0.5) * height;
       const dist = Math.hypot(sx - screenX, sy - screenY);
-      if (dist < bestDist) { bestDist = dist; best = tectonicLabelSprite; }
+      if (dist < bestDist) { bestDist = dist; best = entry.sprite; }
     }
     return best;
   }
@@ -620,8 +620,10 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         const sprite = state.formationLabels[labelKey];
         if (sprite) toggleLabelSprite(sprite);
       }
-      if (data.target === "tectonic_labels" && tectonicLabelSprite) {
-        toggleLabelSprite(tectonicLabelSprite);
+      if (data.target === "tectonic_labels") {
+        const labelKey = data.meshName.replace("LabelCollider:", "");
+        const entry = tectonicLabels.find(e => e.collider.name === "LabelCollider:" + labelKey);
+        if (entry) toggleLabelSprite(entry.sprite);
       }
     });
     EventBus.on("tectonic_model_ready", () => {
@@ -630,14 +632,27 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         tapRaycaster.addTarget("tectonic_plates", plateMeshes);
       }
       if (!state.formationRoot) return;
-      const basePos = new THREE.Vector3(0, 1.5, 0);
-      const { sprite, collider } = createStandaloneLabel("Tectonic plate: Avalonia", basePos, 0.3);
-      tectonicLabelSprite = sprite;
-      tectonicLabelCollider = collider;
-      state.formationRoot.add(sprite);
-      state.formationRoot.add(collider);
-      sprite.visible = true;
-      tapRaycaster.addTarget("tectonic_labels", [collider]);
+      const plateDefs = [
+        { name: "CapaInferiorA", text: "Avalonia" },
+        { name: "CapaSuperiorA", text: "Armorika" }
+      ];
+      const _box = new THREE.Box3();
+      const _center = new THREE.Vector3();
+      const _size = new THREE.Vector3();
+      plateDefs.forEach(({ name, text }) => {
+          const mesh = plateMeshes.find(m => m.name === name);
+        if (!mesh) return;
+        _box.setFromObject(mesh);
+        _box.getCenter(_center);
+        _box.getSize(_size);
+        const pos = new THREE.Vector3(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
+        const { sprite, collider } = createStandaloneLabel(text, pos, 0.3);
+        state.formationRoot.add(sprite);
+        state.formationRoot.add(collider);
+        sprite.visible = true;
+        tapRaycaster.addTarget("tectonic_labels", [collider]);
+        tectonicLabels.push({ sprite, collider });
+      });
     });
     EventBus.on("alignment_quality", (data) => {
       if (data && data.quality > 0.95) {
@@ -720,7 +735,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     state.camera.projectionMatrixInverse.copy(state.camera.projectionMatrix).invert();
 
     const root = state.formationRoot;
-    if (_allMovingColliders.length > 0 && root) {
+    if (root) {
       const _camWorld = new THREE.Vector3();
       const _camLocal = new THREE.Vector3();
       const _dir = new THREE.Vector3();
@@ -735,18 +750,14 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         const rScale = THREE.MathUtils.clamp(dist * 0.08, 0.08, 0.35);
         c.scale.set(rScale / 0.12, rScale / 0.12, 1);
       });
-    }
-    if (tectonicLabelSprite && tectonicLabelCollider && root) {
-      const _camWorld = new THREE.Vector3();
-      const _camLocal = new THREE.Vector3();
-      const _dir = new THREE.Vector3();
-      state.camera.getWorldPosition(_camWorld);
-      root.worldToLocal(_camLocal.copy(_camWorld));
-      const base = tectonicLabelCollider.userData.originalPosition;
-      _dir.copy(_camLocal).sub(base).normalize();
-      tectonicLabelCollider.position.copy(base).addScaledVector(_dir, 0.25);
-      tectonicLabelCollider.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), _dir);
-      tectonicLabelSprite.position.copy(base).addScaledVector(_dir, 0.25);
+      tectonicLabels.forEach(({ sprite, collider }) => {
+        if (!collider.userData.originalPosition) return;
+        const base = collider.userData.originalPosition;
+        _dir.copy(_camLocal).sub(base).normalize();
+        collider.position.copy(base).addScaledVector(_dir, 0.25);
+        collider.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), _dir);
+        sprite.position.copy(base).addScaledVector(_dir, 0.25);
+      });
     }
 
     state.renderer.render(state.scene, state.camera);

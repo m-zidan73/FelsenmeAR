@@ -26,19 +26,24 @@ const REQUIRED_NODE_NAMES = [
 ];
 
 const LABEL_MATERIALS = {
-  "1st Stage Rock": "Rock Composition: Mantle + Crustal Melts\nDepth: ~12 km below surface",
-  "2nd Stage Rock": "Rock Composition: Quartz Diorite\nDepth: ~10–15 km",
-  "3rd Stage Rock": "Rock Composition: Quartz Diorite\nDepth: ~10 km",
-  "__rock_comp": "Rock Composition: Granodiorite\nSurface Level"
+  "1st Stage Rock#comp": "Composition: Mantle + Crustal Melts",
+  "1st Stage Rock#depth": "Depth: ~12 km below surface",
+  "2nd Stage Rock#comp": "Composition: Quartz Diorite",
+  "2nd Stage Rock#depth": "Depth: ~10–15 km",
+  "3rd Stage Rock#comp": "Composition: Quartz Diorite",
+  "3rd Stage Rock#depth": "Depth: ~10 km",
+  "__rock_comp#comp": "Composition: Granodiorite",
+  "__rock_comp#depth": "Depth: Surface Level"
 };
 const LABEL_ROCK_COMP_KEY = "__rock_comp";
+const LABEL_LABEL_OFFSET_Y = -0.15;
 
 const LABEL_VISIBILITY = {
-  5: [LABEL_ROCK_COMP_KEY],
-  4: [LABEL_ROCK_COMP_KEY],
-  3: ["3rd Stage Rock"],
-  2: ["2nd Stage Rock"],
-  1: ["1st Stage Rock"]
+  5: ["__rock_comp#comp", "__rock_comp#depth"],
+  4: ["__rock_comp#comp", "__rock_comp#depth"],
+  3: ["3rd Stage Rock#comp", "3rd Stage Rock#depth"],
+  2: ["2nd Stage Rock#comp", "2nd Stage Rock#depth"],
+  1: ["1st Stage Rock#comp", "1st Stage Rock#depth"]
 };
 
 export function setLabelVisibilityByStage(labels, stage) {
@@ -193,16 +198,9 @@ export function createGelifluctionModelFactory({ THREE }) {
       sprite.visible = false;
       labels[name] = sprite;
 
-      const isDebug = typeof window !== 'undefined' && window.location.search.includes('debug');
       const geo = new THREE.CylinderGeometry(0.12, 0.12, 1.5, 8);
       geo.rotateX(Math.PI / 2);
-      const mat = new THREE.MeshBasicMaterial({
-        visible: isDebug,
-        color: 0x00ff88,
-        transparent: true,
-        opacity: 0.35,
-        depthWrite: false
-      });
+      const mat = new THREE.MeshBasicMaterial({ visible: false });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.copy(pos);
       mesh.name = "LabelCollider:" + name;
@@ -212,37 +210,48 @@ export function createGelifluctionModelFactory({ THREE }) {
       colliders.push(mesh);
     }
 
-    for (const name in LABEL_MATERIALS) {
-      if (!Object.prototype.hasOwnProperty.call(LABEL_MATERIALS, name)) continue;
-      if (name === LABEL_ROCK_COMP_KEY) {
+    function getBaseNodePos(baseName) {
+      if (baseName === LABEL_ROCK_COMP_KEY) {
         const startNode = nodes.Starting_Rock;
         const surroundNode = nodes.Surrounding_Rocks;
-        let pos;
         if (startNode && surroundNode) {
           const b1 = new THREE.Box3().setFromObject(startNode);
           const b2 = new THREE.Box3().setFromObject(surroundNode);
           const union = b1.union(b2);
           const center = union.getCenter(new THREE.Vector3());
           const size = union.getSize(new THREE.Vector3());
-          pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
-        } else {
-          const fallback = startNode || surroundNode;
-          if (!fallback) continue;
-          const bounds = new THREE.Box3().setFromObject(fallback);
-          const center = bounds.getCenter(new THREE.Vector3());
-          const size = bounds.getSize(new THREE.Vector3());
-          pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
+          return new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
         }
-        addLabelWithCollider(name, pos);
-        continue;
+        const fallback = startNode || surroundNode;
+        if (!fallback) return null;
+        const bounds = new THREE.Box3().setFromObject(fallback);
+        const center = bounds.getCenter(new THREE.Vector3());
+        const size = bounds.getSize(new THREE.Vector3());
+        return new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
       }
-      const target = nodes[name];
-      if (!target) continue;
+      const target = nodes[baseName];
+      if (!target) return null;
       const bounds = new THREE.Box3().setFromObject(target);
       const center = bounds.getCenter(new THREE.Vector3());
       const size = bounds.getSize(new THREE.Vector3());
-      const pos = new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
-      addLabelWithCollider(name, pos);
+      return new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
+    }
+
+    const groups = {};
+    for (const key in LABEL_MATERIALS) {
+      if (!Object.prototype.hasOwnProperty.call(LABEL_MATERIALS, key)) continue;
+      const base = key.includes("#") ? key.split("#")[0] : key;
+      if (!groups[base]) groups[base] = [];
+      groups[base].push(key);
+    }
+
+    for (const base in groups) {
+      const basePos = getBaseNodePos(base);
+      if (!basePos) continue;
+      groups[base].forEach((key, idx) => {
+        const pos = basePos.clone().add(new THREE.Vector3(0, idx * LABEL_LABEL_OFFSET_Y, 0));
+        addLabelWithCollider(key, pos);
+      });
     }
 
     labels.__colliders = colliders;
