@@ -887,26 +887,49 @@ body:not(.in-camera-ar) .telemetry {
   }
 
   .formation-slider {
-    padding: 7px 12px 8px;
+    padding: 5px 12px;
     border-radius: 16px;
+    background: rgba(238, 241, 242, 0.7);
   }
 
   .formation-stages {
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .formation-stage img {
-    width: min(80%, 74px);
-    height: clamp(38px, 9svh, 58px);
+    width: min(80%, 52px);
+    height: clamp(27px, 6.3svh, 41px);
   }
 
-  .formation-track-wrap,
+  .formation-track-wrap {
+    height: 20px;
+  }
+
   .formation-range {
     height: 28px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+
+  .formation-track {
+    height: 6px;
+  }
+
+  .formation-dot {
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 0 0 2px rgba(95, 167, 189, 0.16);
+  }
+
+  .formation-dot.is-active {
+    width: 16px;
+    height: 16px;
+    box-shadow: 0 0 0 3px rgba(95, 167, 189, 0.42), 0 0 14px rgba(95, 167, 189, 0.62);
   }
 
   .slider-time-label {
-    top: -24px;
+    top: -20px;
     padding: 3px 9px;
   }
 }
@@ -939,7 +962,7 @@ body:not(.in-camera-ar) .telemetry {
   }
 
   .formation-slider {
-    padding: 5px 10px 6px;
+    padding: 4px 10px;
   }
 
   .formation-stages {
@@ -947,7 +970,8 @@ body:not(.in-camera-ar) .telemetry {
   }
 
   .formation-stage img {
-    height: clamp(30px, 8svh, 44px);
+    width: min(80%, 36px);
+    height: clamp(21px, 5.6svh, 31px);
   }
 
   .data-overlay {
