@@ -327,5 +327,17 @@ export function createAudioManager({ audioMapUrl }) {
     return _pinchGate > 0;
   }
 
-  return { load, playClip, playSequence, dispose, hasPlayed, canAdvancePinch };
+  function setPinchGate(gate) {
+    _pinchGate = Math.max(0, Math.min(3, Number(gate) || 0));
+  }
+
+  function setPinchGateForRestart() {
+    // Set gate to 2 so next pinch plays phase 2 (11b__)
+    _pinchGate = 2;
+    // Clear playedOnce for phases 2 and 3 so they can play again
+    playedOnce.delete("pinch_phase:2");
+    playedOnce.delete("pinch_phase:3");
+  }
+
+  return { load, playClip, playSequence, dispose, hasPlayed, canAdvancePinch, setPinchGate, setPinchGateForRestart };
 }

@@ -438,6 +438,8 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
   const sliderTimeLabel = ui.sliderTimeLabel;
   const rockBadge = ui.rockInfoBadge;
   const rockBadgeText = document.getElementById("rockBadgeText");
+  const restartButton = document.getElementById("restartButton");
+  let restartAvailable = false;
 
   const tutorialController = createTutorialController({
     toggleElement: tutorialToggleEl,
@@ -622,9 +624,6 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         tectonicCollisionController.setGesturePromptAudioSuppressed(false);
       }
     });
-    EventBus.on("tectonic_animation_complete", () => {
-      tectonicCollisionController.setGesturePromptAudioSuppressed(false);
-    });
 
     EventBus.on("stage_changed", (data) => {
       if (data && typeof data.stage === "number") {
@@ -760,6 +759,55 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     EventBus.on("subduction_progress", (data) => {
       if (data && data.progress >= 1) {
         ExperienceStateManager.setState(ExperienceState.PinchActive);
+      }
+    });
+
+    // Restart logic for tectonic phase 3 completion
+    EventBus.on("tectonic_animation_complete", () => {
+      restartAvailable = true;
+      if (restartButton) {
+        restartButton.hidden = false;
+        restartButton.style.animation = "none";
+        void restartButton.offsetHeight;
+        restartButton.style.animation = "restartPulse 1.5s ease-in-out infinite";
+      }
+      // Hide gesture prompt permanently until restart
+      tectonicCollisionController.setGesturePromptVisible(false);
+    });
+
+    function doRestart() {
+      if (!restartAvailable) return;
+      restartAvailable = false;
+      if (restartButton) {
+        restartButton.hidden = true;
+        restartButton.style.animation = "";
+      }
+      // Trigger Stage 1 start - identical to user moving slider to Stage 1
+      // This replicates the exact flow of requestStage(1) from stage1 interaction
+      if (!stageController.requestStage(1)) {
+        // If stage already active, re-activate
+        resetFormationState();
+        stageController.requestStage(1);
+      }
+    }
+
+    // Restart button click
+    if (restartButton) {
+      restartButton.addEventListener("click", doRestart);
+    }
+
+    // Tap on model to restart when available
+    EventBus.on("raycast_hit", (data) => {
+      if (!data) return;
+      if (data.target === "formation_labels" && state.formationLabels) {
+        const labelKey = data.meshName.replace("LabelCollider:", "");
+        const sprite = state.formationLabels[labelKey];
+        if (sprite) toggleLabelSprite(sprite);
+      }
+      if (data.target === "tectonic_labels") {
+        const labelKey = data.meshName.replace("LabelCollider:", "");
+        const entry = tectonicLabels.find(e => e.collider.name === "LabelCollider:" + labelKey);
+        if (entry) toggleLabelSprite(entry.sprite);
       }
     });
 

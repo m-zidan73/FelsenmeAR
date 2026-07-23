@@ -470,6 +470,51 @@ body.in-camera-ar .main-menu {
   top: calc(12px + env(safe-area-inset-top) + 168px);
 }
 
+.restart-button {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(72px, 12vw, 96px);
+  height: clamp(72px, 12vw, 96px);
+  padding: 0;
+  border-radius: 50%;
+  background: #111;
+  border: 3px solid rgba(246, 239, 230, 0.95);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 28;
+  display: grid;
+  place-items: center;
+  color: #f6efe6;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
+  animation: restartPulse 2s ease-in-out infinite;
+}
+
+.restart-button:active {
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.restart-button:hover {
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.restart-icon {
+  width: 55%;
+  height: 55%;
+  stroke: #f6efe6;
+}
+
+@keyframes restartPulse {
+  0%, 100% {
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 0 rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 12px rgba(0, 0, 0, 0);
+  }
+}
+
 @keyframes badgeSlideIn {
   from { opacity: 0; transform: translateY(-100%); }
   to { opacity: 1; transform: translateY(0); }
@@ -1062,4 +1107,16 @@ body.is-landscape.is-short .subtitle-display {
 
 body.is-landscape.is-short .rock-info-badge {
   padding: clamp(5px, 1svh, 8px) clamp(8px, 2svw, 16px);
+}
+
+body.is-landscape .restart-button {
+  right: calc(12px + env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  width: clamp(48px, 7svw, 64px);
+  height: clamp(48px, 7svw, 64px);
+}
+
+body.is-portrait .restart-button {
+  right: calc(12px + env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
 }

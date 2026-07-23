@@ -379,6 +379,20 @@ export function createTectonicCollisionController({
     return names.map(n => model.meshes.get(n)).filter(Boolean);
   }
 
+  function resetToPhase1Initial() {
+    if (!model || !ready || failed) return;
+    legacyStageOneNodes.forEach((node) => {
+      node.visible = false;
+    });
+    model.showInitial();
+    model.root.visible = true;
+    resetGestureState();
+    resetProgressEvents();
+    emitProgressMilestones(0);
+    syncGesturePromptVisibility();
+    EventBus.raise("tectonic_reset_to_phase1", {});
+  }
+
   EventBus.on("tectonic_show_initial", () => {
     if (!ready || !model || failed) return;
     model.showInitial();
@@ -417,7 +431,7 @@ export function createTectonicCollisionController({
     }
   });
 
-  return {
+return {
     attach,
     dispose,
     getPlateMeshes,
@@ -431,5 +445,6 @@ export function createTectonicCollisionController({
     setGesturePromptAudioSuppressed,
     updatePlacement,
     update,
+    resetToPhase1Initial
   };
 }
