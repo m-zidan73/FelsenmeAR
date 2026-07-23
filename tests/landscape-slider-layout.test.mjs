@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const styles = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
-const app = await readFile(new URL("../src/app_Revised.js", import.meta.url), "utf8");
+const sliderScript = await readFile(new URL("../src/ui/formation-slider.js", import.meta.url), "utf8");
 
 const landscapeStart = styles.indexOf("@media (orientation: landscape) {");
 const portraitStart = styles.indexOf("@media (orientation: portrait) {");
@@ -16,23 +16,22 @@ function getRule(source, selector) {
   return source.slice(start, end + 1);
 }
 
-const railRule = getRule(landscapeCss, ".bottom-ui");
-assert.match(railRule, /position:\s*absolute;/);
-assert.match(railRule, /top:\s*0;/);
-assert.match(railRule, /bottom:\s*0;/);
-assert.match(railRule, /height:\s*auto;/);
-assert.match(railRule, /place-items:\s*center;/);
-assert.doesNotMatch(railRule, /visual-viewport|translateY\(-50%\)|position:\s*fixed/);
+const bottomUiRule = getRule(landscapeCss, ".bottom-ui");
+assert.match(bottomUiRule, /position:\s*fixed;/);
+assert.match(bottomUiRule, /left:\s*50%;/);
+assert.match(bottomUiRule, /bottom:\s*calc\(/);
+assert.match(bottomUiRule, /transform:\s*translateX\(-50%\);/);
+assert.match(bottomUiRule, /width:\s*min\(58vw,\s*760px\);/);
+assert.doesNotMatch(bottomUiRule, /right:|top:\s*0|place-items|translateY/);
 
 const sliderRule = getRule(landscapeCss, ".formation-slider");
-assert.match(sliderRule, /height:\s*min\(70%,\s*480px\);/);
-assert.match(sliderRule, /max-height:\s*calc\(100%/);
+assert.match(sliderRule, /padding:\s*7px 12px 8px;/);
+assert.doesNotMatch(sliderRule, /grid-template-columns|height:\s*min\(/);
 
-assert.match(landscapeCss, /flex-direction:\s*column-reverse;/);
-assert.match(landscapeCss, /sliderActivationBounceVertical/);
-assert.match(landscapeCss, /sliderPromptUp/);
-assert.doesNotMatch(styles, /--ar-visual-viewport/);
-assert.doesNotMatch(app, /viewportLayoutController|viewport-layout-controller/);
-assert.match(app, /window\.addEventListener\("resize",\s*onResize\);/);
+assert.doesNotMatch(landscapeCss, /flex-direction:\s*column-reverse;/);
+assert.doesNotMatch(landscapeCss, /writing-mode:\s*vertical/);
+assert.doesNotMatch(styles, /sliderActivationBounceVertical|sliderPromptUp/);
+assert.doesNotMatch(styles, /--landscape-slider-width|--landscape-slider-edge-gap|--slider-progress/);
+assert.match(sliderScript, /formationFill\.style\.width\s*=\s*progressPercent \+ "%";/);
 
-console.log("landscape slider HUD layout checks passed");
+console.log("bottom-centered landscape slider layout checks passed");

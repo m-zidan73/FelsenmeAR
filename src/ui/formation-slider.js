@@ -79,8 +79,8 @@ export function createFormationSlider({ ui, clamp, onStepSelected }) {
     const progressPercent = (displayedValue / 4) * 100;
 
     ui.formationRange.value = displayedValue.toFixed(3);
-    if (ui.formationSlider) {
-      ui.formationSlider.style.setProperty("--slider-progress", progressPercent + "%");
+    if (ui.formationFill) {
+      ui.formationFill.style.width = progressPercent + "%";
     }
     ui.formationStages.forEach((stage, index) => {
       stage.classList.toggle("is-active", index === displayStep);
