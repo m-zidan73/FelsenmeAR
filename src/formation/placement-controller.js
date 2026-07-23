@@ -13,7 +13,6 @@ export function createPlacementController({
   resetInput,
   setFormationSliderVisible,
   setMenuButtonVisible,
-  setScanPromptVisible,
   setXRDebug,
   updateHud
 }) {
@@ -32,7 +31,6 @@ export function createPlacementController({
     createShadowReceiver(center, state.latestHit ? state.latestHit.quaternion : null);
 
     state.placementReticle.visible = false;
-    setScanPromptVisible(false);
     resetFormationSlider();
     setFormationSliderVisible(true);
     positionSunLightAt(center);
@@ -75,7 +73,6 @@ export function createPlacementController({
       document.body.classList.remove("in-camera-ar");
       setMenuButtonVisible(false);
       setFormationSliderVisible(false);
-      setScanPromptVisible(false);
       refreshReadyState();
     }
   }
@@ -100,7 +97,6 @@ export function createPlacementController({
     state.placementCenter.set(0, 0, 0);
     state.planeHeight = 0;
     state.formationPlaced = false;
-    setScanPromptVisible(false);
     setFormationSliderVisible(false);
     resetFormationSlider();
     updateHud("Move the iPad to detect a plane, then tap the screen to place the model.");

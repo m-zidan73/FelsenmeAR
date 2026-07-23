@@ -54,28 +54,11 @@ export function createMenuUi({ state, ui, clamp, updateHud }) {
     }
   }
 
-  function setScanPromptVisible(isVisible) {
-    if (ui.scanPrompt) {
-      ui.scanPrompt.hidden = !isVisible;
-    }
-  }
-
-  function bounceScanPrompt() {
-    if (!ui.scanPrompt) {
-      return;
-    }
-    ui.scanPrompt.classList.remove("is-bouncing");
-    void ui.scanPrompt.offsetWidth;
-    ui.scanPrompt.classList.add("is-bouncing");
-  }
-
   return {
-    bounceScanPrompt,
     refreshReadyState,
     setFormationSliderVisible,
     setGeoStatusVisible,
     setMenuButtonVisible,
-    setMenuLoading,
-    setScanPromptVisible
+    setMenuLoading
   };
 }

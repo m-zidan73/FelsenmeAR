@@ -6,7 +6,6 @@ export function getUiElements() {
     statusText: document.getElementById("statusText"),
     loadingFill: document.getElementById("loadingFill"),
     loadingStateLabel: document.getElementById("loadingStateLabel"),
-    scanPrompt: document.getElementById("scanPrompt"),
     stageInstruction: document.getElementById("stageInstruction"),
     xrDebugText: document.getElementById("xrDebugText"),
     startArButton: document.getElementById("startArButton"),

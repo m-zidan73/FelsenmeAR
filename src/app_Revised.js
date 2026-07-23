@@ -48,13 +48,11 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     updateHud
   });
   const {
-    bounceScanPrompt,
     refreshReadyState,
     setFormationSliderVisible,
     setGeoStatusVisible,
     setMenuButtonVisible,
-    setMenuLoading,
-    setScanPromptVisible
+    setMenuLoading
   } = menuUi;
 
   const formationSliderUi = createFormationSlider({
@@ -205,7 +203,6 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     state,
     ui,
     THREE,
-    bounceScanPrompt,
     getPlacementGateStatus,
     placeFormation: placeFormationWrapped,
     refreshReadyState: () => {
@@ -221,7 +218,6 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     setGeoStatusVisible,
     setMenuButtonVisible,
     setMenuLoading,
-    setScanPromptVisible,
     setXRDebug,
     setGreenscreenWorldActive: (isActive) => setGreenscreenWorldActive(isActive, CONFIG.greenscreenWorldColor),
     startLocationTracking,
@@ -325,7 +321,6 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
     resetInput: interactionController.reset,
     setFormationSliderVisible,
     setMenuButtonVisible,
-    setScanPromptVisible,
     setXRDebug,
     updateHud
   });

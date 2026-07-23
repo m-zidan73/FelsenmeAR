@@ -2,7 +2,6 @@ export function createArController({
   state,
   ui,
   THREE,
-  bounceScanPrompt,
   getPlacementGateStatus,
   placeFormation,
   refreshReadyState,
@@ -12,7 +11,6 @@ export function createArController({
   setGeoStatusVisible,
   setMenuButtonVisible,
   setMenuLoading,
-  setScanPromptVisible,
   setXRDebug,
   setGreenscreenWorldActive = () => {},
   startLocationTracking,
@@ -127,7 +125,6 @@ export function createArController({
     updateSunLightFromDeviceLocation();
     updateGeoStatus();
     setXRDebug("hit-test source ready");
-    setScanPromptVisible(true);
     setFormationSliderVisible(false);
     updateHud("Scanning for a flat surface. Tap the screen when the green reticle appears.");
   }
@@ -152,7 +149,6 @@ export function createArController({
     document.body.classList.remove("in-camera-ar");
     setMenuButtonVisible(false);
     setGeoStatusVisible(false);
-    setScanPromptVisible(false);
     stopLocationTracking();
     ui.startArButton.disabled = state.modelLoadError || !state.modelsLoaded;
     refreshReadyState();
@@ -168,7 +164,6 @@ export function createArController({
       return;
     }
     if (!state.latestHit) {
-      bounceScanPrompt();
       updateHud("Tap ignored: no detected plane yet. Wait for the green grid.");
       return;
     }
@@ -210,7 +205,6 @@ export function createArController({
       state.latestHit = null;
       state.latestHitResult = null;
       state.placementReticle.visible = false;
-      setScanPromptVisible(true);
 
       if (performance.now() - state.lastScanDebugTime > 900) {
         state.lastScanDebugTime = performance.now();

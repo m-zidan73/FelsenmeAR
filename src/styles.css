@@ -217,35 +217,6 @@ body.in-camera-ar .main-menu {
   border-radius: inherit;
 }
 
-.placement-controls {
-  grid-row: 3;
-  justify-self: center;
-  align-self: end;
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  width: min(520px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
-  max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
-  margin-bottom: max(16px, env(safe-area-inset-bottom));
-  pointer-events: none;
-}
-
-.scan-prompt {
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0;
-  padding: 12px 18px;
-  border-radius: 999px;
-  background: rgba(8, 10, 12, 0.62);
-  color: #f6efe6;
-  font-size: clamp(0.9rem, 2.4vw, 1.28rem);
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(8px);
-}
-
 .stage-instruction {
   position: fixed;
   top: min(66.666svh, calc(100svh - 176px - env(safe-area-inset-bottom)));
@@ -254,17 +225,18 @@ body.in-camera-ar .main-menu {
   box-sizing: border-box;
   width: min(520px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
   padding: 14px 22px;
-  transform: translate(-50%, -50%);
-  border: 2px solid rgba(246, 239, 230, 0.42);
+  transform: translate(-50%, -50%) scale(0.5);
+  transform-origin: center;
+  border: 2px solid rgba(255, 255, 255, 0.88);
   border-radius: 18px;
-  background: rgba(8, 10, 12, 0.72);
-  color: #f6efe6;
+  background: rgba(0, 0, 0, 0.88);
+  color: #ffffff;
   font-size: clamp(1.05rem, 3.5vw, 1.65rem);
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.72);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.36);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 0 16px rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   pointer-events: none;
 }
@@ -312,7 +284,7 @@ body.in-camera-ar .main-menu {
   max-width: min(72vw, 420px);
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(135, 206, 235, 0.2);
+  background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(135, 206, 235, 0.35);
@@ -502,26 +474,6 @@ body.in-camera-ar .main-menu {
   color: #f6efe6;
   font-size: clamp(1rem, 2.8vw, 1.4rem);
   font-weight: 700;
-}
-
-.scan-prompt.is-bouncing {
-  animation: promptBounce 420ms ease;
-}
-
-
-@keyframes promptBounce {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-
-  36% {
-    transform: translateY(-8px) scale(1.04);
-  }
-
-  68% {
-    transform: translateY(2px) scale(0.98);
-  }
 }
 
 .bottom-ui {
@@ -819,16 +771,6 @@ body:not(.in-camera-ar) .telemetry {
   .tutorial-icon-btn {
     width: clamp(44px, 8svh, 58px);
     height: clamp(44px, 8svh, 58px);
-  }
-
-  .placement-controls {
-    width: min(52vw, 560px);
-    margin-bottom: max(8px, env(safe-area-inset-bottom));
-  }
-
-  .scan-prompt {
-    padding: 9px 16px;
-    font-size: clamp(0.78rem, 2.4svh, 1rem);
   }
 
   .tutorial-toggle {
