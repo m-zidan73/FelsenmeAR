@@ -29,7 +29,7 @@ assert.doesNotMatch(bottomUiRule, /right:|top:\s*0|place-items|translateY/);
 
 const sliderRule = getRule(landscapeCss, ".formation-slider");
 assert.match(sliderRule, /padding:\s*5px 12px;/);
-assert.match(sliderRule, /background:\s*rgba\(238,\s*241,\s*242,\s*0\.7\);/);
+assert.match(sliderRule, /background:\s*rgba\(238,\s*241,\s*242,\s*0\.4\);/);
 assert.doesNotMatch(sliderRule, /grid-template-columns|height:\s*min\(/);
 
 const iconRule = getRule(landscapeCss, ".formation-stage img");
