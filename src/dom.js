@@ -38,6 +38,7 @@ export function getUiElements() {
     stagePlate: document.getElementById("stagePlate"),
     stageDescription: document.getElementById("stageDescription"),
     subtitleDisplay: document.getElementById("subtitleDisplay"),
-    subtitleToggle: document.getElementById("subtitleToggle")
+    subtitleToggle: document.getElementById("subtitleToggle"),
+    popupToggle: document.getElementById("popupToggle")
   };
 }

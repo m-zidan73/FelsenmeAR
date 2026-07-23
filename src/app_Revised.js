@@ -183,6 +183,25 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
   const tectonicLabels = [];
   const _allMovingColliders = [];
   const LABEL_PUSH = 0.1;
+  let popupsEnabled = false;
+  let userEnteredStage = false;
+
+  function applyLabelVisibility(stage) {
+    const show = popupsEnabled && userEnteredStage;
+    if (state.formationLabels) {
+      if (show) {
+        setLabelVisibilityByStage(state.formationLabels, stage);
+      } else {
+        for (const key in state.formationLabels) {
+          if (key === "__colliders") continue;
+          state.formationLabels[key].visible = false;
+        }
+        (state.formationLabels.__colliders || []).forEach(c => { c.visible = false; });
+      }
+    }
+    const showTectonic = show && stage === 1;
+    tectonicLabels.forEach(e => { e.sprite.visible = showTectonic; });
+  }
 
   const tapRaycaster = createTapRaycaster({
     getCamera: () => state.camera,
@@ -573,6 +592,21 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       updateSliderTimeLabel(event.target.value);
     });
 
+    if (ui.popupToggle) {
+      ui.popupToggle.classList.remove("is-active");
+      ui.popupToggle.addEventListener("click", () => {
+        popupsEnabled = !popupsEnabled;
+        ui.popupToggle.classList.toggle("is-active", popupsEnabled);
+        if (state.formationLabels) {
+          if (popupsEnabled) {
+            applyLabelVisibility(getCurrentStage());
+          } else {
+            applyLabelVisibility(getCurrentStage());
+          }
+        }
+      });
+    }
+
     ui.startArButton.disabled = true;
     setFormationSliderVisible(false);
     setMenuLoading(0, "Checking", "Checking AR capability.");
@@ -596,11 +630,12 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       if (data && typeof data.stage === "number") {
         tectonicCollisionController.handleStageChange(data.stage);
         updateRockBadge(data.stage);
-        if (state.formationLabels) {
-          setLabelVisibilityByStage(state.formationLabels, data.stage);
+        if (!userEnteredStage) {
+          userEnteredStage = true;
+          popupsEnabled = true;
+          if (ui.popupToggle) ui.popupToggle.classList.add("is-active");
         }
-        const showTectonic = data.stage === 1;
-        tectonicLabels.forEach(e => { e.sprite.visible = showTectonic; });
+        applyLabelVisibility(data.stage);
       }
     });
     EventBus.on("formation_placed", () => {
@@ -608,7 +643,6 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       updateSliderTimeLabel(0);
       ExperienceStateManager.setState(ExperienceState.SliderActive);
       if (state.formationLabels) {
-        setLabelVisibilityByStage(state.formationLabels, 1);
         const colliders = state.formationLabels.__colliders || [];
         if (colliders.length > 0) {
           tapRaycaster.addTarget("formation_labels", colliders);
@@ -664,12 +698,11 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       const capaInferiorB = plateMeshes.find(m => m.name === "CapaInferiorB");
       const capaSuperiorB = plateMeshes.find(m => m.name === "CapaSuperiorB");
       const capaSuperiorA = plateMeshes.find(m => m.name === "CapaSuperiorA");
-      const sphereMesh = plateMeshes.find(m => m.name === "Sphere");
 
       addTectonicLabel("Avalonia", capaInferiorB, -0.3);
       addTectonicLabel("Armorika", capaSuperiorB, -0.3);
       if (capaSuperiorA) addTectonicLabel("Depth: ~340 mya", capaSuperiorA, 0);
-      tectonicLabels.forEach(e => { e.sprite.visible = getCurrentStage() === 1; });
+      applyLabelVisibility(getCurrentStage());
 
       function repositionFormationLabel(key, targetMesh) {
         if (!targetMesh || !state.formationLabels) return;
@@ -685,8 +718,20 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         sprite.position.copy(localPos);
       }
 
-      repositionFormationLabel("1st Stage Rock#comp", sphereMesh);
       repositionFormationLabel("1st Stage Rock#depth", capaSuperiorA);
+
+      const _spherePos = new THREE.Vector3();
+      if (tectonicCollisionController.getSphereWorldPosition(_spherePos)) {
+        const localPos = worldToLocal(_spherePos);
+        const compKey = "1st Stage Rock#comp";
+        const compSprite = state.formationLabels[compKey];
+        const compCollider = state.formationLabels.__colliders.find(c => c.userData.labelKey === compKey);
+        if (compSprite && compCollider) {
+          compCollider.userData.originalPosition.copy(localPos);
+          compCollider.position.copy(localPos);
+          compSprite.position.copy(localPos);
+        }
+      }
     });
     EventBus.on("alignment_quality", (data) => {
       if (data && data.quality > 0.95) {
@@ -775,6 +820,15 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       const _dir = new THREE.Vector3();
       state.camera.getWorldPosition(_camWorld);
       root.worldToLocal(_camLocal.copy(_camWorld));
+      if (state.formationLabels && state.formationLabels["__rock_comp#comp"]) {
+        const rockSample = state.placementReticle?.getObjectByName("PolyCam Rock Sample");
+        if (rockSample) {
+          rockSample.getWorldPosition(_camWorld);
+          root.worldToLocal(_dir.copy(_camWorld));
+          const compCollider = _allMovingColliders.find(c => c.userData.labelKey === "__rock_comp#comp");
+          if (compCollider) compCollider.userData.originalPosition.copy(_dir);
+        }
+      }
       _allMovingColliders.forEach(c => {
         if (!c.visible || !c.userData.originalPosition) return;
         _dir.copy(_camLocal).sub(c.userData.originalPosition).normalize();

@@ -33,14 +33,14 @@ const LABEL_MATERIALS = {
   "3rd Stage Rock#comp": "Composition: Quartz Diorite",
   "3rd Stage Rock#depth": "Depth: ~10 km",
   "__rock_comp#comp": "Composition: Granodiorite",
-  "__rock_comp#depth": "Depth: Surface Level"
+  "Slope#depth": "Depth: Surface Level"
 };
 const LABEL_ROCK_COMP_KEY = "__rock_comp";
 const LABEL_LABEL_OFFSET_Y = 0.15;
 
 const LABEL_VISIBILITY = {
-  5: ["__rock_comp#comp", "__rock_comp#depth"],
-  4: ["__rock_comp#comp", "__rock_comp#depth"],
+  5: ["__rock_comp#comp", "Slope#depth"],
+  4: ["__rock_comp#comp", "Slope#depth"],
   3: ["3rd Stage Rock#comp", "3rd Stage Rock#depth"],
   2: ["2nd Stage Rock#comp", "2nd Stage Rock#depth"],
   1: ["1st Stage Rock#comp", "1st Stage Rock#depth"]
@@ -211,6 +211,9 @@ export function createGelifluctionModelFactory({ THREE }) {
     }
 
     function getBaseNodePos(baseName) {
+      if (baseName === "Slope") {
+        baseName = LABEL_ROCK_COMP_KEY;
+      }
       if (baseName === LABEL_ROCK_COMP_KEY) {
         const startNode = nodes.Starting_Rock;
         const surroundNode = nodes.Surrounding_Rocks;
@@ -234,6 +237,9 @@ export function createGelifluctionModelFactory({ THREE }) {
       const bounds = new THREE.Box3().setFromObject(target);
       const center = bounds.getCenter(new THREE.Vector3());
       const size = bounds.getSize(new THREE.Vector3());
+      if (baseName === "2nd Stage Rock" || baseName === "3rd Stage Rock") {
+        return new THREE.Vector3(center.x, center.y, center.z);
+      }
       return new THREE.Vector3(center.x, center.y + size.y * 0.5 + offsetY, center.z);
     }
 
@@ -245,11 +251,16 @@ export function createGelifluctionModelFactory({ THREE }) {
       groups[base].push(key);
     }
 
+    const DEPTH_EXTRA_Y = 0.12;
+    const DEEPER_BASES = ["2nd Stage Rock", "3rd Stage Rock"];
     for (const base in groups) {
       const basePos = getBaseNodePos(base);
       if (!basePos) continue;
       groups[base].forEach((key, idx) => {
-        const pos = basePos.clone().add(new THREE.Vector3(0, idx * LABEL_LABEL_OFFSET_Y, 0));
+        let pos = basePos.clone().add(new THREE.Vector3(0, idx * LABEL_LABEL_OFFSET_Y, 0));
+        if (key.includes("#") && key.endsWith("#depth") && DEEPER_BASES.indexOf(base) !== -1) {
+          pos = pos.add(new THREE.Vector3(0, DEPTH_EXTRA_Y, 0));
+        }
         addLabelWithCollider(key, pos);
       });
     }

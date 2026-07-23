@@ -196,20 +196,43 @@ body.in-camera-ar .main-menu {
   box-sizing: border-box;
 }
 
-.menu-button {
-  grid-row: 1;
-  justify-self: start;
-  align-self: start;
-  width: clamp(48px, 8vw, 68px);
-  height: clamp(48px, 8vw, 68px);
+.menu-button,
+.tutorial-icon-btn,
+.subtitle-toggle,
+.popup-toggle {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  width: 48px;
+  height: 48px;
   padding: 0;
-  pointer-events: auto;
+  border-radius: 12px;
   background: rgba(8, 10, 12, 0.56);
   border: 2px solid rgba(246, 239, 230, 0.36);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 27;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(246, 239, 230, 0.6);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 
+.menu-button.is-active,
+.tutorial-icon-btn.is-active,
+.subtitle-toggle.is-active,
+.popup-toggle.is-active {
+  color: #f6efe6;
+  border-color: rgba(246, 239, 230, 0.8);
+}
+
+.menu-button {
+  top: calc(12px + env(safe-area-inset-top));
+}
 .menu-button img {
   width: 100%;
   height: 100%;
@@ -270,7 +293,7 @@ body.in-camera-ar .main-menu {
 }
 .tutorial-toggle {
   position: fixed;
-  top: calc(max(12px, env(safe-area-inset-top)) + 76px);
+  top: calc(12px + env(safe-area-inset-top) + 56px);
   left: max(12px, env(safe-area-inset-left));
   z-index: 27;
   display: flex;
@@ -280,20 +303,7 @@ body.in-camera-ar .main-menu {
 }
 
 .tutorial-icon-btn {
-  width: clamp(48px, 8vw, 68px);
-  height: clamp(48px, 8vw, 68px);
-  padding: 0;
-  border: 2px solid rgba(135, 206, 235, 0.5);
-  border-radius: 999px;
-  background: rgba(135, 206, 235, 0.25);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  pointer-events: auto;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: transform 120ms ease, background 120ms ease;
+  position: static;
 }
 
 .tutorial-icon-btn:active {
@@ -409,30 +419,14 @@ body.in-camera-ar .main-menu {
 }
 
 .subtitle-toggle {
-  position: fixed;
-  bottom: clamp(158px, 25vh, 230px);
-  right: max(10px, env(safe-area-inset-right));
-  z-index: 24;
-  padding: 4px 12px;
-  border-radius: 6px;
-  background: rgba(8, 10, 12, 0.7);
-  border: 1px solid rgba(246, 239, 230, 0.15);
-  color: rgba(246, 239, 230, 0.7);
-  font-size: clamp(0.65rem, 1.6vw, 0.78rem);
-  font-weight: 600;
-  letter-spacing: 1px;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: color 200ms, border-color 200ms;
-}
-.subtitle-toggle:hover,
-.subtitle-toggle:focus-visible {
-  color: #f6efe6;
-  border-color: rgba(246, 239, 230, 0.35);
+  top: calc(12px + env(safe-area-inset-top) + 112px);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 .subtitle-toggle.is-active {
   color: #f6efe6;
-  border-color: #f6efe6;
+  border-color: rgba(246, 239, 230, 0.8);
 }
 
 .slider-time-label {
@@ -470,6 +464,10 @@ body.in-camera-ar .main-menu {
   text-align: center;
   pointer-events: none;
   animation: badgeSlideIn 350ms ease;
+}
+
+.popup-toggle {
+  top: calc(12px + env(safe-area-inset-top) + 168px);
 }
 
 @keyframes badgeSlideIn {
@@ -839,12 +837,6 @@ body:not(.in-camera-ar) .telemetry {
       calc(12px + env(safe-area-inset-left));
   }
 
-  .menu-button,
-  .tutorial-icon-btn {
-    width: clamp(44px, 8svh, 58px);
-    height: clamp(44px, 8svh, 58px);
-  }
-
   .placement-controls {
     width: min(52vw, 560px);
     margin-bottom: max(8px, env(safe-area-inset-bottom));
@@ -853,11 +845,6 @@ body:not(.in-camera-ar) .telemetry {
   .scan-prompt {
     padding: 9px 16px;
     font-size: clamp(0.78rem, 2.4svh, 1rem);
-  }
-
-  .tutorial-toggle {
-    top: calc(max(8px, env(safe-area-inset-top)) + clamp(54px, 10svh, 70px));
-    left: max(10px, env(safe-area-inset-left));
   }
 
   .tutorial-panel {
@@ -915,10 +902,6 @@ body:not(.in-camera-ar) .telemetry {
     display: grid;
     place-items: center;
     box-sizing: border-box;
-  }
-
-  .subtitle-toggle {
-    right: calc(22px + env(safe-area-inset-right) + var(--landscape-slider-width));
   }
 
   .formation-slider {
@@ -1058,10 +1041,6 @@ body:not(.in-camera-ar) .telemetry {
     --landscape-slider-width: clamp(66px, 9.5svw, 86px);
     --landscape-slider-edge-gap: max(12px, env(safe-area-inset-top), env(safe-area-inset-bottom));
     grid-template-rows: auto minmax(52px, 1fr) auto;
-  }
-
-  .subtitle-toggle {
-    right: calc(18px + env(safe-area-inset-right) + var(--landscape-slider-width));
   }
 
   .formation-slider {
