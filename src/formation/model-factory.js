@@ -36,7 +36,7 @@ const LABEL_MATERIALS = {
   "__rock_comp#depth": "Depth: Surface Level"
 };
 const LABEL_ROCK_COMP_KEY = "__rock_comp";
-const LABEL_LABEL_OFFSET_Y = -0.15;
+const LABEL_LABEL_OFFSET_Y = 0.15;
 
 const LABEL_VISIBILITY = {
   5: ["__rock_comp#comp", "__rock_comp#depth"],

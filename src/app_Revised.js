@@ -182,6 +182,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
   const activeGrabs = new Map();
   const tectonicLabels = [];
   const _allMovingColliders = [];
+  const LABEL_PUSH = 0.1;
 
   const tapRaycaster = createTapRaycaster({
     getCamera: () => state.camera,
@@ -632,27 +633,68 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         tapRaycaster.addTarget("tectonic_plates", plateMeshes);
       }
       if (!state.formationRoot) return;
-      const plateDefs = [
-        { name: "CapaInferiorA", text: "Avalonia" },
-        { name: "CapaSuperiorA", text: "Armorika" }
-      ];
       const _box = new THREE.Box3();
       const _center = new THREE.Vector3();
       const _size = new THREE.Vector3();
-      plateDefs.forEach(({ name, text }) => {
-          const mesh = plateMeshes.find(m => m.name === name);
-        if (!mesh) return;
+
+      function addTectonicLabel(text, mesh, zShift) {
+        if (!mesh) return null;
         _box.setFromObject(mesh);
         _box.getCenter(_center);
         _box.getSize(_size);
-        const pos = new THREE.Vector3(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
+        const pos = new THREE.Vector3(
+          _center.x,
+          _center.y + _size.y * 0.5 + 0.12,
+          _center.z + zShift * _size.z
+        );
         const { sprite, collider } = createStandaloneLabel(text, pos, 0.3);
         state.formationRoot.add(sprite);
         state.formationRoot.add(collider);
         sprite.visible = true;
         tapRaycaster.addTarget("tectonic_labels", [collider]);
         tectonicLabels.push({ sprite, collider });
-      });
+        return { sprite, collider };
+      }
+
+      const capaInferiorB = plateMeshes.find(m => m.name === "CapaInferiorB");
+      const capaSuperiorB = plateMeshes.find(m => m.name === "CapaSuperiorB");
+      const capaSuperiorA = plateMeshes.find(m => m.name === "CapaSuperiorA");
+      const sphereMesh = plateMeshes.find(m => m.name === "Sphere");
+
+      addTectonicLabel("Avalonia", capaInferiorB, -0.3);
+      addTectonicLabel("Armorika", capaSuperiorB, -0.3);
+      if (capaSuperiorA) addTectonicLabel("Depth: ~340 mya", capaSuperiorA, 0);
+
+      if (sphereMesh && state.formationLabels) {
+        const compSprite = state.formationLabels["1st Stage Rock#comp"];
+        const compCollider = state.formationLabels.__colliders.find(
+          c => c.userData.labelKey === "1st Stage Rock#comp"
+        );
+        if (compSprite && compCollider) {
+          _box.setFromObject(sphereMesh);
+          _box.getCenter(_center);
+          _box.getSize(_size);
+          const spherePos = new THREE.Vector3(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
+          compCollider.userData.originalPosition.copy(spherePos);
+          compCollider.position.copy(spherePos);
+          compSprite.position.copy(spherePos);
+        }
+      }
+      if (capaSuperiorA && state.formationLabels) {
+        const depthSprite = state.formationLabels["1st Stage Rock#depth"];
+        const depthCollider = state.formationLabels.__colliders.find(
+          c => c.userData.labelKey === "1st Stage Rock#depth"
+        );
+        if (depthSprite && depthCollider) {
+          _box.setFromObject(capaSuperiorA);
+          _box.getCenter(_center);
+          _box.getSize(_size);
+          const depthPos = new THREE.Vector3(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
+          depthCollider.userData.originalPosition.copy(depthPos);
+          depthCollider.position.copy(depthPos);
+          depthSprite.position.copy(depthPos);
+        }
+      }
     });
     EventBus.on("alignment_quality", (data) => {
       if (data && data.quality > 0.95) {
@@ -744,19 +786,21 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       _allMovingColliders.forEach(c => {
         if (!c.visible || !c.userData.originalPosition) return;
         _dir.copy(_camLocal).sub(c.userData.originalPosition).normalize();
-        c.position.copy(c.userData.originalPosition).addScaledVector(_dir, 0.25);
+        c.position.copy(c.userData.originalPosition).addScaledVector(_dir, LABEL_PUSH);
         c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), _dir);
         const dist = _camLocal.distanceTo(c.userData.originalPosition);
         const rScale = THREE.MathUtils.clamp(dist * 0.08, 0.08, 0.35);
         c.scale.set(rScale / 0.12, rScale / 0.12, 1);
+        const sprite = state.formationLabels && state.formationLabels[c.userData.labelKey];
+        if (sprite) sprite.position.copy(c.position);
       });
       tectonicLabels.forEach(({ sprite, collider }) => {
         if (!collider.userData.originalPosition) return;
         const base = collider.userData.originalPosition;
         _dir.copy(_camLocal).sub(base).normalize();
-        collider.position.copy(base).addScaledVector(_dir, 0.25);
+        collider.position.copy(base).addScaledVector(_dir, LABEL_PUSH);
         collider.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), _dir);
-        sprite.position.copy(base).addScaledVector(_dir, 0.25);
+        sprite.position.copy(base).addScaledVector(_dir, LABEL_PUSH);
       });
     }
 
