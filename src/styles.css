@@ -901,15 +901,15 @@ body:not(.in-camera-ar) .telemetry {
   }
 
   .bottom-ui {
-    position: fixed;
-    top: var(--ar-visual-viewport-top, 0px);
+    position: absolute;
+    top: 0;
     right: calc(10px + env(safe-area-inset-right));
-    bottom: auto;
+    bottom: 0;
     left: auto;
     transform: none;
     width: var(--landscape-slider-width);
     max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    height: var(--ar-visual-viewport-height, 100dvh);
+    height: auto;
     max-height: none;
     margin-bottom: 0;
     display: grid;
