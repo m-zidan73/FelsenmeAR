@@ -889,7 +889,7 @@ body:not(.in-camera-ar) .telemetry {
   .formation-slider {
     padding: 5px 12px;
     border-radius: 16px;
-    background: rgba(238, 241, 242, 0.4);
+    background: rgba(238, 241, 242, 0.1);
   }
 
   .formation-stages {
