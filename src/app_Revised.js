@@ -599,6 +599,8 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         if (state.formationLabels) {
           setLabelVisibilityByStage(state.formationLabels, data.stage);
         }
+        const showTectonic = data.stage === 1;
+        tectonicLabels.forEach(e => { e.sprite.visible = showTectonic; });
       }
     });
     EventBus.on("formation_placed", () => {
@@ -648,9 +650,9 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         _box.setFromObject(mesh);
         _box.getCenter(_center);
         _box.getSize(_size);
-        _world.set(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z + zShift * _size.z);
+        _world.set(_center.x, _center.y, _center.z + zShift * _size.z);
         const localPos = worldToLocal(_world);
-        const { sprite, collider } = createStandaloneLabel(text, localPos, 0.3);
+        const { sprite, collider } = createStandaloneLabel(text, localPos, 0.1);
         root.add(sprite);
         root.add(collider);
         sprite.visible = true;
@@ -667,6 +669,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       addTectonicLabel("Avalonia", capaInferiorB, -0.3);
       addTectonicLabel("Armorika", capaSuperiorB, -0.3);
       if (capaSuperiorA) addTectonicLabel("Depth: ~340 mya", capaSuperiorA, 0);
+      tectonicLabels.forEach(e => { e.sprite.visible = getCurrentStage() === 1; });
 
       function repositionFormationLabel(key, targetMesh) {
         if (!targetMesh || !state.formationLabels) return;
@@ -675,8 +678,7 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
         if (!sprite || !collider) return;
         _box.setFromObject(targetMesh);
         _box.getCenter(_center);
-        _box.getSize(_size);
-        _world.set(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
+        _world.set(_center.x, _center.y, _center.z);
         const localPos = worldToLocal(_world);
         collider.userData.originalPosition.copy(localPos);
         collider.position.copy(localPos);
