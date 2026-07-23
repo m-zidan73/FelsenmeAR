@@ -40,6 +40,11 @@ export function createViewportLayoutController({
     const { height, offsetTop } = readViewportMetrics();
     targetElement.style.setProperty("--ar-visual-viewport-top", formatPixels(offsetTop));
     targetElement.style.setProperty("--ar-visual-viewport-height", formatPixels(height));
+    const isLandscape = windowRef.innerWidth > windowRef.innerHeight;
+    const isShort = isLandscape && windowRef.innerHeight <= 560;
+    windowRef.document.body.classList.toggle("is-landscape", isLandscape);
+    windowRef.document.body.classList.toggle("is-portrait", !isLandscape);
+    windowRef.document.body.classList.toggle("is-short", isShort);
     onViewportChanged();
   }
 

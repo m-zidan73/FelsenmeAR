@@ -202,8 +202,8 @@ body.in-camera-ar .main-menu {
 .popup-toggle {
   position: fixed;
   left: max(12px, env(safe-area-inset-left));
-  width: 48px;
-  height: 48px;
+  width: clamp(44px, 7vw, 56px);
+  height: clamp(44px, 7vw, 56px);
   padding: 0;
   border-radius: 12px;
   background: rgba(8, 10, 12, 0.56);
@@ -216,7 +216,7 @@ body.in-camera-ar .main-menu {
   z-index: 27;
   display: grid;
   place-items: center;
-  font-size: 16px;
+  font-size: clamp(13px, 2.5vw, 16px);
   font-weight: 700;
   color: rgba(246, 239, 230, 0.6);
   transition: color 0.2s, border-color 0.2s, background 0.2s;
@@ -826,246 +826,240 @@ body:not(.in-camera-ar) .telemetry {
   }
 }
 
-@media (orientation: landscape) {
-  .ar-overlay {
-    --landscape-slider-width: clamp(72px, 10svw, 96px);
-    --landscape-slider-edge-gap: max(16px, env(safe-area-inset-top), env(safe-area-inset-bottom));
-    grid-template-rows: auto minmax(72px, 1fr) auto;
-    padding: calc(10px + env(safe-area-inset-top))
-      calc(12px + env(safe-area-inset-right))
-      calc(10px + env(safe-area-inset-bottom))
-      calc(12px + env(safe-area-inset-left));
-  }
-
-  .placement-controls {
-    width: min(52vw, 560px);
-    margin-bottom: max(8px, env(safe-area-inset-bottom));
-  }
-
-  .scan-prompt {
-    padding: 9px 16px;
-    font-size: clamp(0.78rem, 2.4svh, 1rem);
-  }
-
-  .tutorial-panel {
-    width: min(30vw, 360px);
-    max-width: min(30vw, 360px);
-    max-height: calc(100dvh - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    padding: 9px 11px;
-    overflow-y: auto;
-  }
-
-  .tutorial-text {
-    font-size: clamp(0.72rem, 2.2svh, 0.92rem);
-  }
-
-  .subtitle-display {
-    bottom: calc(max(126px, 25svh) + env(safe-area-inset-bottom));
-    max-width: min(48vw, 620px);
-    padding: 8px 12px;
-    font-size: clamp(0.72rem, 2.2svh, 0.92rem);
-  }
-
-  .rock-info-badge {
-    padding: clamp(6px, 1.2svh, 10px) clamp(10px, 2.5svw, 20px);
-  }
-
-  .data-overlay {
-    padding: clamp(6px, 1.2svh, 10px) clamp(10px, 2.5svw, 20px);
-  }
-
-  .stage-name {
-    font-size: clamp(0.82rem, 2.6svh, 1.08rem);
-  }
-
-  .telemetry {
-    top: calc(8px + env(safe-area-inset-top));
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: min(48vw, 560px);
-    text-align: center;
-  }
-
-  .bottom-ui {
-    position: fixed;
-    top: var(--ar-visual-viewport-top, 0px);
-    right: calc(10px + env(safe-area-inset-right));
-    bottom: auto;
-    left: auto;
-    transform: none;
-    width: var(--landscape-slider-width);
-    max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    height: var(--ar-visual-viewport-height, 100dvh);
-    max-height: none;
-    margin-bottom: 0;
-    display: grid;
-    place-items: center;
-    box-sizing: border-box;
-  }
-
-  .formation-slider {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(24px, 3.8svw, 30px);
-    grid-template-rows: 1fr;
-    align-items: stretch;
-    gap: clamp(3px, 0.7svw, 6px);
-    width: 100%;
-    height: min(70%, 480px);
-    max-height: calc(100% - var(--landscape-slider-edge-gap) - var(--landscape-slider-edge-gap));
-    padding: 8px 6px;
-    border-radius: 18px;
-  }
-
-  .formation-stages {
-    display: flex;
-    flex-direction: column-reverse;
-    align-items: center;
-    justify-content: space-between;
-    margin: 0;
-    min-height: 0;
-  }
-
-  .formation-stage {
-    min-height: 0;
-  }
-
-  .formation-stage img {
-    width: clamp(24px, 5.6svh, 38px);
-    height: clamp(22px, 5.6svh, 36px);
-  }
-
-  .formation-track-wrap {
-    height: 100%;
-    min-height: 0;
-    padding-inline: 0;
-    padding-block: 8%;
-    align-items: stretch;
-  }
-
-  .formation-range {
-    inset: 8% 0;
-    width: 100%;
-    height: auto;
-    transform: none;
-    writing-mode: vertical-lr;
-    direction: rtl;
-  }
-
-  .formation-track {
-    width: 9px;
-    height: 100%;
-    justify-self: center;
-  }
-
-  .formation-fill {
-    inset: auto 0 0 0;
-    width: auto;
-    height: var(--slider-progress);
-    background: linear-gradient(0deg, #c82b13, #5fa7bd);
-  }
-
-  .formation-dot {
-    top: auto;
-    left: 50%;
-    transform: translate(-50%, 50%);
-  }
-
-  .formation-dot:nth-child(2) {
-    bottom: 0%;
-    left: 50%;
-  }
-
-  .formation-dot:nth-child(3) {
-    bottom: 25%;
-    left: 50%;
-  }
-
-  .formation-dot:nth-child(4) {
-    bottom: 50%;
-    left: 50%;
-  }
-
-  .formation-dot:nth-child(5) {
-    bottom: 75%;
-    left: 50%;
-  }
-
-  .formation-dot:nth-child(6) {
-    bottom: 100%;
-    left: 50%;
-  }
-
-  .formation-slider.is-dragging .formation-dot.is-active {
-    transform: translate(-50%, 50%) scale(1.08);
-  }
-
-  .formation-slider.is-activation-prompting .formation-dot.is-active {
-    animation: sliderActivationBounceVertical 0.9s ease-in-out infinite;
-  }
-
-  .formation-slider.is-prompting .formation-dot.is-active {
-    animation: sliderPromptUp 1.35s ease-in-out infinite;
-  }
-
-  .slider-time-label {
-    top: 50%;
-    right: calc(100% + 8px);
-    left: auto !important;
-    transform: translateY(-50%);
-    padding: 3px 9px;
-    white-space: nowrap;
-  }
+body.is-landscape .ar-overlay {
+  --landscape-slider-width: clamp(72px, 10svw, 96px);
+  --landscape-slider-edge-gap: max(16px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+  grid-template-rows: auto minmax(72px, 1fr) auto;
+  padding: calc(10px + env(safe-area-inset-top))
+    calc(12px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom))
+    calc(12px + env(safe-area-inset-left));
 }
 
-@media (orientation: portrait) {
-  .bottom-ui {
-    width: min(84vw, 520px);
-    max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
-    margin-bottom: max(12px, env(safe-area-inset-bottom));
-  }
-
-  .formation-slider {
-    padding: 8px 10px 10px;
-    border-radius: 18px;
-  }
-
-  .formation-stage img {
-    width: min(82%, 64px);
-    height: 46px;
-  }
+body.is-landscape .placement-controls {
+  width: min(52vw, 560px);
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
-@media (max-height: 560px) and (orientation: landscape) {
-  .ar-overlay {
-    --landscape-slider-width: clamp(66px, 9.5svw, 86px);
-    --landscape-slider-edge-gap: max(12px, env(safe-area-inset-top), env(safe-area-inset-bottom));
-    grid-template-rows: auto minmax(52px, 1fr) auto;
-  }
+body.is-landscape .scan-prompt {
+  padding: 9px 16px;
+  font-size: clamp(0.78rem, 2.4svh, 1rem);
+}
 
-  .formation-slider {
-    height: min(72%, 340px);
-    padding: 6px 5px;
-  }
+body.is-landscape .tutorial-panel {
+  width: min(30vw, 360px);
+  max-width: min(30vw, 360px);
+  max-height: calc(100dvh - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  padding: 9px 11px;
+  overflow-y: auto;
+}
 
-  .formation-stages {
-    gap: 1px;
-  }
+body.is-landscape .tutorial-text {
+  font-size: clamp(0.72rem, 2.2svh, 0.92rem);
+}
 
-  .formation-stage img {
-    width: clamp(22px, 5.8svh, 32px);
-    height: clamp(20px, 5.8svh, 30px);
-  }
+body.is-landscape .subtitle-display {
+  bottom: calc(max(126px, 25svh) + env(safe-area-inset-bottom));
+  max-width: min(48vw, 620px);
+  padding: 8px 12px;
+  font-size: clamp(0.72rem, 2.2svh, 0.92rem);
+}
 
-  .data-overlay {
-    padding: clamp(5px, 1svh, 8px) clamp(8px, 2svw, 16px);
-  }
+body.is-landscape .rock-info-badge {
+  padding: clamp(6px, 1.2svh, 10px) clamp(10px, 2.5svw, 20px);
+}
 
-  .subtitle-display {
-    bottom: calc(104px + env(safe-area-inset-bottom));
-  }
+body.is-landscape .data-overlay {
+  padding: clamp(6px, 1.2svh, 10px) clamp(10px, 2.5svw, 20px);
+}
 
-  .rock-info-badge {
-    padding: clamp(5px, 1svh, 8px) clamp(8px, 2svw, 16px);
-  }
+body.is-landscape .stage-name {
+  font-size: clamp(0.82rem, 2.6svh, 1.08rem);
+}
+
+body.is-landscape .telemetry {
+  top: calc(8px + env(safe-area-inset-top));
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(48vw, 560px);
+  text-align: center;
+}
+
+body.is-landscape .bottom-ui {
+  position: fixed;
+  top: var(--ar-visual-viewport-top, 0px);
+  right: calc(10px + env(safe-area-inset-right));
+  bottom: auto;
+  left: auto;
+  transform: none;
+  width: var(--landscape-slider-width);
+  max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  height: var(--ar-visual-viewport-height, 100dvh);
+  max-height: none;
+  margin-bottom: 0;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+body.is-landscape .formation-slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(24px, 3.8svw, 30px);
+  grid-template-rows: 1fr;
+  align-items: stretch;
+  gap: clamp(3px, 0.7svw, 6px);
+  width: 100%;
+  height: min(70%, 480px);
+  max-height: calc(100% - var(--landscape-slider-edge-gap) - var(--landscape-slider-edge-gap));
+  padding: 8px 6px;
+  border-radius: 18px;
+}
+
+body.is-landscape .formation-stages {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  min-height: 0;
+}
+
+body.is-landscape .formation-stage {
+  min-height: 0;
+}
+
+body.is-landscape .formation-stage img {
+  width: clamp(24px, 5.6svh, 38px);
+  height: clamp(22px, 5.6svh, 36px);
+}
+
+body.is-landscape .formation-track-wrap {
+  height: 100%;
+  min-height: 0;
+  padding-inline: 0;
+  padding-block: 8%;
+  align-items: stretch;
+}
+
+body.is-landscape .formation-range {
+  inset: 8% 0;
+  width: 100%;
+  height: auto;
+  transform: none;
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+
+body.is-landscape .formation-track {
+  width: 9px;
+  height: 100%;
+  justify-self: center;
+}
+
+body.is-landscape .formation-fill {
+  inset: auto 0 0 0;
+  width: auto;
+  height: var(--slider-progress);
+  background: linear-gradient(0deg, #c82b13, #5fa7bd);
+}
+
+body.is-landscape .formation-dot {
+  top: auto;
+  left: 50%;
+  transform: translate(-50%, 50%);
+}
+
+body.is-landscape .formation-dot:nth-child(2) {
+  bottom: 0%;
+  left: 50%;
+}
+
+body.is-landscape .formation-dot:nth-child(3) {
+  bottom: 25%;
+  left: 50%;
+}
+
+body.is-landscape .formation-dot:nth-child(4) {
+  bottom: 50%;
+  left: 50%;
+}
+
+body.is-landscape .formation-dot:nth-child(5) {
+  bottom: 75%;
+  left: 50%;
+}
+
+body.is-landscape .formation-dot:nth-child(6) {
+  bottom: 100%;
+  left: 50%;
+}
+
+body.is-landscape .formation-slider.is-dragging .formation-dot.is-active {
+  transform: translate(-50%, 50%) scale(1.08);
+}
+
+body.is-landscape .formation-slider.is-activation-prompting .formation-dot.is-active {
+  animation: sliderActivationBounceVertical 0.9s ease-in-out infinite;
+}
+
+body.is-landscape .formation-slider.is-prompting .formation-dot.is-active {
+  animation: sliderPromptUp 1.35s ease-in-out infinite;
+}
+
+body.is-landscape .slider-time-label {
+  top: 50%;
+  right: calc(100% + 8px);
+  left: auto !important;
+  transform: translateY(-50%);
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+body.is-portrait .bottom-ui {
+  width: min(84vw, 520px);
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  margin-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+body.is-portrait .formation-slider {
+  padding: 8px 10px 10px;
+  border-radius: 18px;
+}
+
+body.is-portrait .formation-stage img {
+  width: min(82%, 64px);
+  height: 46px;
+}
+
+body.is-landscape.is-short .ar-overlay {
+  --landscape-slider-width: clamp(66px, 9.5svw, 86px);
+  --landscape-slider-edge-gap: max(12px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+  grid-template-rows: auto minmax(52px, 1fr) auto;
+}
+
+body.is-landscape.is-short .formation-slider {
+  height: min(72%, 340px);
+  padding: 6px 5px;
+}
+
+body.is-landscape.is-short .formation-stages {
+  gap: 1px;
+}
+
+body.is-landscape.is-short .formation-stage img {
+  width: clamp(22px, 5.8svh, 32px);
+  height: clamp(20px, 5.8svh, 30px);
+}
+
+body.is-landscape.is-short .data-overlay {
+  padding: clamp(5px, 1svh, 8px) clamp(8px, 2svw, 16px);
+}
+
+body.is-landscape.is-short .subtitle-display {
+  bottom: calc(104px + env(safe-area-inset-bottom));
+}
+
+body.is-landscape.is-short .rock-info-badge {
+  padding: clamp(5px, 1svh, 8px) clamp(8px, 2svw, 16px);
 }
