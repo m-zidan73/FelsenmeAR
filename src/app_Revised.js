@@ -632,24 +632,27 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       if (plateMeshes.length > 0) {
         tapRaycaster.addTarget("tectonic_plates", plateMeshes);
       }
-      if (!state.formationRoot) return;
+      const root = state.formationRoot;
+      if (!root) return;
       const _box = new THREE.Box3();
       const _center = new THREE.Vector3();
       const _size = new THREE.Vector3();
+      const _world = new THREE.Vector3();
+
+      function worldToLocal(worldPos) {
+        return root.worldToLocal(worldPos.clone());
+      }
 
       function addTectonicLabel(text, mesh, zShift) {
         if (!mesh) return null;
         _box.setFromObject(mesh);
         _box.getCenter(_center);
         _box.getSize(_size);
-        const pos = new THREE.Vector3(
-          _center.x,
-          _center.y + _size.y * 0.5 + 0.12,
-          _center.z + zShift * _size.z
-        );
-        const { sprite, collider } = createStandaloneLabel(text, pos, 0.3);
-        state.formationRoot.add(sprite);
-        state.formationRoot.add(collider);
+        _world.set(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z + zShift * _size.z);
+        const localPos = worldToLocal(_world);
+        const { sprite, collider } = createStandaloneLabel(text, localPos, 0.3);
+        root.add(sprite);
+        root.add(collider);
         sprite.visible = true;
         tapRaycaster.addTarget("tectonic_labels", [collider]);
         tectonicLabels.push({ sprite, collider });
@@ -665,36 +668,23 @@ import { PRELOAD_ASSET_URLS, PRELOAD_CACHE_NAME } from "./preload-manifest.js";
       addTectonicLabel("Armorika", capaSuperiorB, -0.3);
       if (capaSuperiorA) addTectonicLabel("Depth: ~340 mya", capaSuperiorA, 0);
 
-      if (sphereMesh && state.formationLabels) {
-        const compSprite = state.formationLabels["1st Stage Rock#comp"];
-        const compCollider = state.formationLabels.__colliders.find(
-          c => c.userData.labelKey === "1st Stage Rock#comp"
-        );
-        if (compSprite && compCollider) {
-          _box.setFromObject(sphereMesh);
-          _box.getCenter(_center);
-          _box.getSize(_size);
-          const spherePos = new THREE.Vector3(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
-          compCollider.userData.originalPosition.copy(spherePos);
-          compCollider.position.copy(spherePos);
-          compSprite.position.copy(spherePos);
-        }
+      function repositionFormationLabel(key, targetMesh) {
+        if (!targetMesh || !state.formationLabels) return;
+        const sprite = state.formationLabels[key];
+        const collider = state.formationLabels.__colliders.find(c => c.userData.labelKey === key);
+        if (!sprite || !collider) return;
+        _box.setFromObject(targetMesh);
+        _box.getCenter(_center);
+        _box.getSize(_size);
+        _world.set(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
+        const localPos = worldToLocal(_world);
+        collider.userData.originalPosition.copy(localPos);
+        collider.position.copy(localPos);
+        sprite.position.copy(localPos);
       }
-      if (capaSuperiorA && state.formationLabels) {
-        const depthSprite = state.formationLabels["1st Stage Rock#depth"];
-        const depthCollider = state.formationLabels.__colliders.find(
-          c => c.userData.labelKey === "1st Stage Rock#depth"
-        );
-        if (depthSprite && depthCollider) {
-          _box.setFromObject(capaSuperiorA);
-          _box.getCenter(_center);
-          _box.getSize(_size);
-          const depthPos = new THREE.Vector3(_center.x, _center.y + _size.y * 0.5 + 0.12, _center.z);
-          depthCollider.userData.originalPosition.copy(depthPos);
-          depthCollider.position.copy(depthPos);
-          depthSprite.position.copy(depthPos);
-        }
-      }
+
+      repositionFormationLabel("1st Stage Rock#comp", sphereMesh);
+      repositionFormationLabel("1st Stage Rock#depth", capaSuperiorA);
     });
     EventBus.on("alignment_quality", (data) => {
       if (data && data.quality > 0.95) {
