@@ -327,5 +327,9 @@ export function createAudioManager({ audioMapUrl }) {
     return _pinchGate > 0;
   }
 
-  return { load, playClip, playSequence, dispose, hasPlayed, canAdvancePinch };
+
+  function restartStageOne() {
+    handleStateChange("Stage1");
+  }
+  return { load, playClip, playSequence, dispose, hasPlayed, canAdvancePinch, restartStageOne };
 }

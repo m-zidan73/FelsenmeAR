@@ -194,6 +194,24 @@ export function createTectonicCollisionController({
     failed = false;
     resetGestureState();
     resetProgressEvents();
+
+  }
+  function restartStageOne() {
+    if (!model || !ready || failed || !stageOneActive) return false;
+
+    legacyStageOneNodes.forEach((node) => {
+      node.visible = false;
+    });
+    model.showInitial();
+    model.root.visible = true;
+    gesturePromptRequested = false;
+    gesturePromptAudioSuppressed = false;
+    resetGestureState();
+    resetProgressEvents();
+    emitProgressMilestones(0);
+    syncGesturePromptVisibility();
+    EventBus.raise("tectonic_stage_one_restarted", {});
+    return true;
   }
 
   function dispose() {
@@ -426,6 +444,7 @@ export function createTectonicCollisionController({
     handleStageChange,
     getSphereWorldPosition,
     isReplacementActive,
+    restartStageOne,
     reset,
     setGesturePromptVisible,
     setGesturePromptAudioSuppressed,
